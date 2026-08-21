@@ -29,6 +29,18 @@ describe('atom store clamping', () => {
     expect(useAtomStore.getState().electrons).toBe(2) // H⁻
   })
 
+  it('caps neutrons at the drip line and sheds them when protons drop', () => {
+    const s = useAtomStore.getState()
+    s.setCount('protons', 6)
+    s.setCount('neutrons', 200)
+    expect(useAtomStore.getState().neutrons).toBe(16) // C-22 is the edge
+    s.setCount('protons', 92)
+    s.setCount('neutrons', 146) // U-238 builds fine
+    expect(useAtomStore.getState().neutrons).toBe(146)
+    s.setCount('protons', 1)
+    expect(useAtomStore.getState().neutrons).toBe(2) // shed down to H-3
+  })
+
   it('keeps existing bounds: protons ≤ 118, nothing below 0', () => {
     const s = useAtomStore.getState()
     s.setCount('protons', 999)

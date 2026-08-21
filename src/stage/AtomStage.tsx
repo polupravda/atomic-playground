@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { Stage, Layer, Circle, Rect, Text } from 'react-konva'
+import { Stage, Layer, Circle, Rect, Shape, Text } from 'react-konva'
 import Konva from 'konva'
 import { limitFor, useAtomStore, type ParticleKind } from '../state/atomStore'
 import { useViewStore } from '../state/viewStore'
 import { useFeedbackStore } from '../state/feedbackStore'
-import { shellCapacity } from '../core/atom'
+import { useDecayStore } from '../state/decayStore'
+import { useEventStore } from '../state/eventStore'
+import { charge, isotopeLabel, shellCapacity } from '../core/atom'
+import { nuclideStability, type DecayMode } from '../core/nuclides'
 import {
   ATOM_ZONE_R,
   BUCKETS,
@@ -115,6 +118,7 @@ function AtomParticle({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
   const target = useRef<Pt | null>(null)
   useEffect(() => {
     const node = ref.current
@@ -250,6 +254,427 @@ function ShellHighlight({ r, onDone }: { r: number; onDone: () => void }) {
   )
 }
 
+/** A06: the conventional (and honest) picture of radioactivity — the
+ *  nucleus sits calm, then at RANDOM moments emits a brief dashed ray in a
+ *  random direction, like a visible Geiger click. More unstable = more
+ *  frequent rays. */
+function RadiationEmitter({
+  instability,
+  nucleusRadius,
+}: {
+  instability: number
+  nucleusRadius: number
+}) {
+  const shapeRef = useRef<Konva.Shape | null>(null)
+  const rays = useRef<Array<{ angle: number; born: number }>>([])
+  const timeRef = useRef(0)
+
+  useEffect(() => {
+    const layer = shapeRef.current?.getLayer()
+    if (!layer) return
+    rays.current = []
+    let nextAt = 0
+    // brisk pace — kids act fast
+    const meanPeriod = 1100 - 850 * Math.min(1, instability)
+    const anim = new Konva.Animation((frame) => {
+      if (!frame) return
+      timeRef.current = frame.time
+      if (frame.time >= nextAt) {
+        nextAt = frame.time + meanPeriod * (0.4 + Math.random() * 1.2)
+        const count = Math.random() < 0.25 ? 2 : 1
+        for (let k = 0; k < count; k++) {
+          rays.current.push({ angle: Math.random() * Math.PI * 2, born: frame.time })
+        }
+      }
+      rays.current = rays.current.filter((r) => frame.time - r.born < 650)
+    }, layer)
+    anim.start()
+    return () => {
+      anim.stop()
+    }
+  }, [instability])
+
+  return (
+    <Shape
+      ref={shapeRef}
+      listening={false}
+      sceneFunc={(ctx, shape) => {
+        const reach = nucleusRadius + 80
+        shape.getSelfRect = () => ({
+          x: CENTER.x - reach,
+          y: CENTER.y - reach,
+          width: reach * 2,
+          height: reach * 2,
+        })
+        const native = ctx._context as CanvasRenderingContext2D
+        native.save()
+        native.setLineDash([7, 5])
+        native.lineWidth = 2
+        native.lineCap = 'round'
+        for (const ray of rays.current) {
+          const age = (timeRef.current - ray.born) / 650
+          const alpha = Math.max(0, 1 - age)
+          const r0 = nucleusRadius + 4 + age * 34
+          const r1 = r0 + 26
+          native.strokeStyle = `rgba(251, 191, 36, ${alpha})`
+          native.beginPath()
+          native.moveTo(
+            CENTER.x + r0 * Math.cos(ray.angle),
+            CENTER.y + r0 * Math.sin(ray.angle),
+          )
+          native.lineTo(
+            CENTER.x + r1 * Math.cos(ray.angle),
+            CENTER.y + r1 * Math.sin(ray.angle),
+          )
+          native.stroke()
+        }
+        native.restore()
+      }}
+    />
+  )
+}
+
+/** A04, kid-visible: what an ion does to nearby ELECTRONS (the blue dots
+ *  kids already know). Positive ion: electron sparks drift inward — it pulls
+ *  them in. Negative ion: sparks fly toward the atom, then get deflected and
+ *  pushed back out — it repels them. Physically these are test charges,
+ *  chosen to be electrons so the color language stays consistent. */
+function ChargeSparkEmitter({ chargeValue }: { chargeValue: number }) {
+  const shapeRef = useRef<Konva.Shape | null>(null)
+  const sparks = useRef<Array<{ angle: number; born: number }>>([])
+  const timeRef = useRef(0)
+  const attracts = chargeValue > 0
+  const magnitude = Math.min(4, Math.abs(chargeValue))
+  // Coulomb scaling: a stronger charge acts faster (shorter spark lifetime)
+  // and reaches farther (sparks start from a larger radius). For negatives,
+  // stronger charge also turns incoming electrons away earlier.
+  const lifetime = 1300 - magnitude * 140
+  const outerR = ATOM_ZONE_R + 50 + magnitude * 20
+  const repelDistance = ATOM_ZONE_R + 8 + magnitude * 14
+
+  useEffect(() => {
+    const layer = shapeRef.current?.getLayer()
+    if (!layer) return
+    // A constant population of exactly `magnitude` electrons: charge +1
+    // shows one electron bumping in at a time; +2 shows two, etc. Births
+    // are staggered so they don't move in sync, and an expired spark is
+    // immediately reborn from a different side.
+    sparks.current = Array.from({ length: magnitude }, (_, i) => ({
+      angle: Math.random() * Math.PI * 2,
+      born: -(i / magnitude) * lifetime,
+    }))
+    const anim = new Konva.Animation((frame) => {
+      if (!frame) return
+      timeRef.current = frame.time
+      for (const spark of sparks.current) {
+        if (frame.time - spark.born >= lifetime) {
+          spark.angle = Math.random() * Math.PI * 2
+          spark.born = frame.time
+        }
+      }
+    }, layer)
+    anim.start()
+    return () => {
+      anim.stop()
+    }
+  }, [chargeValue, magnitude, lifetime])
+
+  return (
+    <Shape
+      ref={shapeRef}
+      listening={false}
+      sceneFunc={(ctx, shape) => {
+        const reach = ATOM_ZONE_R + 160
+        shape.getSelfRect = () => ({
+          x: CENTER.x - reach,
+          y: CENTER.y - reach,
+          width: reach * 2,
+          height: reach * 2,
+        })
+        const native = ctx._context as CanvasRenderingContext2D
+        native.save()
+        for (const spark of sparks.current) {
+          const t = (timeRef.current - spark.born) / lifetime
+          let dist: number
+          let alpha: number
+          if (attracts) {
+            // pulled in with acceleration, absorbed at the atom's edge
+            dist = outerR - (outerR - (ATOM_ZONE_R - 8)) * Math.pow(t, 1.5)
+            alpha = t < 0.12 ? t / 0.12 : 1 - Math.max(0, (t - 0.7) / 0.3)
+          } else {
+            // flies toward the atom, gets repelled — a stronger negative
+            // charge turns it away farther out — and bounces back
+            const u = (t - 0.45) / 0.55
+            dist = repelDistance + (outerR - repelDistance) * u * u
+            alpha = t < 0.12 ? t / 0.12 : 1 - Math.max(0, (t - 0.75) / 0.25)
+            // The push made visible: a blue force arrow springing from the
+            // atom's edge at the bounce. Blue on purpose — the repulsion
+            // comes from the ion's extra ELECTRONS (protons only attract).
+            const push = 1 - Math.abs(t - 0.45) / 0.22
+            if (push > 0) {
+              const baseR = ATOM_ZONE_R + 2
+              const tipR = Math.min(dist - ELECTRON_R - 3, baseR + 18 + 14 * push)
+              if (tipR > baseR + 6) {
+                const cosA = Math.cos(spark.angle)
+                const sinA = Math.sin(spark.angle)
+                const tipX = CENTER.x + tipR * cosA
+                const tipY = CENTER.y + tipR * sinA
+                native.strokeStyle = `rgba(125, 211, 252, ${push * 0.9})`
+                native.lineWidth = 2.5
+                native.lineCap = 'round'
+                native.beginPath()
+                native.moveTo(CENTER.x + baseR * cosA, CENTER.y + baseR * sinA)
+                native.lineTo(tipX, tipY)
+                native.stroke()
+                for (const spread of [-0.5, 0.5]) {
+                  native.beginPath()
+                  native.moveTo(tipX, tipY)
+                  native.lineTo(
+                    tipX - 7 * Math.cos(spark.angle + spread),
+                    tipY - 7 * Math.sin(spark.angle + spread),
+                  )
+                  native.stroke()
+                }
+              }
+            }
+          }
+          const x = CENTER.x + dist * Math.cos(spark.angle)
+          const y = CENTER.y + dist * Math.sin(spark.angle)
+          const a = Math.max(0, alpha)
+          // short motion tail, trailing behind the direction of travel
+          const radialSign = attracts || t < 0.45 ? 1 : -1
+          native.strokeStyle = `rgba(56, 189, 248, ${a * 0.45})`
+          native.lineWidth = 2
+          native.beginPath()
+          native.moveTo(
+            CENTER.x + (dist + 10 * radialSign) * Math.cos(spark.angle),
+            CENTER.y + (dist + 10 * radialSign) * Math.sin(spark.angle),
+          )
+          native.lineTo(x, y)
+          native.stroke()
+          // the electron spark itself — same size as the atom's electrons
+          native.fillStyle = `rgba(56, 189, 248, ${a})`
+          native.beginPath()
+          native.arc(x, y, ELECTRON_R, 0, Math.PI * 2)
+          native.fill()
+        }
+        native.restore()
+      }}
+    />
+  )
+}
+
+/** A07–A10 — decay animation, mode-aware.
+ *  α: the nucleus rattles, then a compact 2p+2n cluster (a helium nucleus!)
+ *  shoots out. β⁻: one neutron visibly turns into a proton, then a fast
+ *  electron escapes; β⁺ the mirror image with a positron. Every decay ends
+ *  with a γ photon — daughters are typically born excited and settle by
+ *  emitting one — which also teaches that γ changes NOTHING about identity.
+ *  onTransform fires at the moment of transformation so the particle counts
+ *  change exactly when the story says so. */
+const ALPHA_OFFSETS: Array<{ dx: number; dy: number; proton: boolean }> = [
+  { dx: -6, dy: -5, proton: true },
+  { dx: 7, dy: -6, proton: false },
+  { dx: -7, dy: 6, proton: false },
+  { dx: 6, dy: 6, proton: true },
+]
+
+function DecayOverlay({
+  mode,
+  nucleusRadius,
+  onTransform,
+  onDone,
+}: {
+  mode: DecayMode
+  nucleusRadius: number
+  onTransform: () => void
+  onDone: () => void
+}) {
+  const shapeRef = useRef<Konva.Shape | null>(null)
+  const timeRef = useRef(0)
+  const emitAngle = useRef(Math.random() * Math.PI * 2)
+  const gammaAngle = useRef(Math.random() * Math.PI * 2)
+  const spot = useRef({
+    dx: (Math.random() - 0.5) * nucleusRadius,
+    dy: (Math.random() - 0.5) * nucleusRadius,
+  })
+  // Kid-paced: the β transform (one nucleon changing color) needs the most
+  // reading time; emissions travel slowly enough to follow; the γ photon is
+  // the closing beat, not a blink.
+  const WIGGLE_MS = mode === 'alpha' ? 1700 : 2600
+  const EMIT_MS = mode === 'alpha' ? 2800 : 3000
+  const GAMMA_MS = 2200
+
+  useEffect(() => {
+    const layer = shapeRef.current?.getLayer()
+    if (!layer) {
+      onDone()
+      return
+    }
+    let transformed = false
+    let done = false
+    const anim = new Konva.Animation((frame) => {
+      if (!frame || done) return
+      timeRef.current = frame.time
+      if (frame.time >= WIGGLE_MS && !transformed) {
+        transformed = true
+        onTransform()
+      }
+      if (frame.time >= WIGGLE_MS + EMIT_MS + GAMMA_MS) {
+        done = true
+        anim.stop()
+        onDone()
+      }
+    }, layer)
+    anim.start()
+    return () => {
+      anim.stop()
+    }
+    // runs once per mount; the overlay is keyed per decay
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return (
+    <Shape
+      ref={shapeRef}
+      listening={false}
+      sceneFunc={(ctx, shape) => {
+        const reach = ATOM_ZONE_R + 170
+        shape.getSelfRect = () => ({
+          x: CENTER.x - reach,
+          y: CENTER.y - reach,
+          width: reach * 2,
+          height: reach * 2,
+        })
+        const native = ctx._context as CanvasRenderingContext2D
+        const t = timeRef.current
+        native.save()
+        if (t < WIGGLE_MS) {
+          // strain phase: the nucleus rattles under an amber ring
+          native.strokeStyle = `rgba(251, 191, 36, ${0.25 + 0.2 * Math.sin(t / 55)})`
+          native.lineWidth = 2
+          native.beginPath()
+          native.arc(CENTER.x, CENTER.y, nucleusRadius + 7, 0, Math.PI * 2)
+          native.stroke()
+          if (mode === 'alpha') {
+            // the alpha cluster rattling, ready to break free
+            const rattle = 3 + 3 * (t / WIGGLE_MS)
+            const cx = CENTER.x + rattle * Math.sin(t / 26)
+            const cy = CENTER.y + rattle * Math.cos(t / 21)
+            drawAlphaCluster(native, cx, cy, 1)
+          } else {
+            // one nucleon transforming: color lerps n→p (β⁻) or p→n (β⁺)
+            const k = t / WIGGLE_MS
+            const from = mode === 'beta-minus' ? [148, 163, 184] : [248, 113, 113]
+            const to = mode === 'beta-minus' ? [248, 113, 113] : [148, 163, 184]
+            const c = from.map((v, i) => Math.round(v + (to[i] - v) * k))
+            const cx = CENTER.x + spot.current.dx
+            const cy = CENTER.y + spot.current.dy
+            native.fillStyle = `rgba(255, 255, 255, ${0.15 + 0.15 * Math.sin(t / 70)})`
+            native.beginPath()
+            native.arc(cx, cy, NUCLEON_R * 1.9, 0, Math.PI * 2)
+            native.fill()
+            native.fillStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, 1)`
+            native.beginPath()
+            native.arc(cx, cy, NUCLEON_R, 0, Math.PI * 2)
+            native.fill()
+          }
+        } else if (t < WIGGLE_MS + EMIT_MS) {
+          // emission phase: the decay product accelerates away
+          const f = Math.min(1, (t - WIGGLE_MS) / EMIT_MS)
+          const d = f * f * (ATOM_ZONE_R + 140)
+          const cx = CENTER.x + d * Math.cos(emitAngle.current)
+          const cy = CENTER.y + d * Math.sin(emitAngle.current)
+          const alpha = f < 0.75 ? 1 : Math.max(0, 1 - (f - 0.75) / 0.25)
+          const trailColor =
+            mode === 'alpha'
+              ? `rgba(251, 191, 36, ${alpha * 0.35})`
+              : mode === 'beta-minus'
+                ? `rgba(56, 189, 248, ${alpha * 0.4})`
+                : `rgba(248, 113, 113, ${alpha * 0.4})`
+          native.strokeStyle = trailColor
+          native.lineWidth = 3
+          native.lineCap = 'round'
+          const tail = Math.max(0, d - 55)
+          native.beginPath()
+          native.moveTo(
+            CENTER.x + tail * Math.cos(emitAngle.current),
+            CENTER.y + tail * Math.sin(emitAngle.current),
+          )
+          native.lineTo(cx, cy)
+          native.stroke()
+          if (mode === 'alpha') {
+            drawAlphaCluster(native, cx, cy, alpha)
+            native.fillStyle = `rgba(251, 191, 36, ${alpha})`
+            native.font = '15px monospace'
+            native.fillText('α', cx + 18, cy - 15)
+          } else {
+            native.fillStyle =
+              mode === 'beta-minus'
+                ? `rgba(56, 189, 248, ${alpha})`
+                : `rgba(248, 113, 113, ${alpha})`
+            native.beginPath()
+            native.arc(cx, cy, ELECTRON_R, 0, Math.PI * 2)
+            native.fill()
+            native.font = '15px monospace'
+            native.fillText(mode === 'beta-minus' ? 'β⁻' : 'β⁺', cx + 14, cy - 12)
+          }
+        } else {
+          // gamma phase: the fresh daughter sheds extra energy as a photon —
+          // same element, same isotope, just calmer (A10)
+          const g = Math.min(1, (t - WIGGLE_MS - EMIT_MS) / GAMMA_MS)
+          const ringAlpha = (1 - g) * 0.45
+          native.strokeStyle = `rgba(196, 181, 253, ${ringAlpha})`
+          native.lineWidth = 2
+          native.beginPath()
+          native.arc(CENTER.x, CENTER.y, nucleusRadius + 6 + g * 55, 0, Math.PI * 2)
+          native.stroke()
+          // the photon: a travelling wavy line
+          const head = g * (ATOM_ZONE_R + 130)
+          const alpha = g < 0.8 ? 1 : Math.max(0, 1 - (g - 0.8) / 0.2)
+          const cosA = Math.cos(gammaAngle.current)
+          const sinA = Math.sin(gammaAngle.current)
+          native.strokeStyle = `rgba(196, 181, 253, ${alpha})`
+          native.lineWidth = 2
+          native.beginPath()
+          for (let s = 0; s <= 16; s++) {
+            const along = Math.max(0, head - 42 + s * 2.6)
+            const wave = 5 * Math.sin(s * 1.15 + t / 40)
+            const px = CENTER.x + along * cosA - wave * sinA
+            const py = CENTER.y + along * sinA + wave * cosA
+            if (s === 0) native.moveTo(px, py)
+            else native.lineTo(px, py)
+          }
+          native.stroke()
+          native.fillStyle = `rgba(196, 181, 253, ${alpha})`
+          native.font = '15px monospace'
+          native.fillText('γ', CENTER.x + (head + 14) * cosA, CENTER.y + (head + 14) * sinA)
+        }
+        native.restore()
+      }}
+    />
+  )
+}
+
+function drawAlphaCluster(
+  native: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  alpha: number,
+) {
+  for (const o of ALPHA_OFFSETS) {
+    native.fillStyle = o.proton
+      ? `rgba(248, 113, 113, ${alpha})`
+      : `rgba(148, 163, 184, ${alpha})`
+    native.beginPath()
+    native.arc(cx + o.dx, cy + o.dy, NUCLEON_R * 0.9, 0, Math.PI * 2)
+    native.fill()
+    native.strokeStyle = `rgba(15, 23, 42, ${alpha * 0.6})`
+    native.lineWidth = 1
+    native.stroke()
+  }
+}
+
 let ghostSeq = 0
 
 function nextElectronId(ids: number[]): number {
@@ -297,6 +722,8 @@ export function AtomStage() {
   const prevNeutrons = useRef(neutrons)
   const lastDropPoint = useRef<Partial<Record<ParticleKind, Pt>>>({})
   const skipExitAnim = useRef(false)
+  // β decay creates a nucleon INSIDE the nucleus — no fly-in from a bucket.
+  const skipEnterAnim = useRef(false)
 
   const [shellFlashes, setShellFlashes] = useState<Array<{ id: number; r: number }>>([])
 
@@ -345,6 +772,7 @@ export function AtomStage() {
       }
     }
     skipExitAnim.current = false
+    skipEnterAnim.current = false
     lastDropPoint.current = {}
     prevElectrons.current = electrons
     prevProtons.current = protons
@@ -357,9 +785,21 @@ export function AtomStage() {
     electrons: electrons === prevElectrons.current + 1,
   }
   const enterFromFor = (kind: ParticleKind): Pt | undefined =>
-    justAdded[kind] ? (lastDropPoint.current[kind] ?? bucketHome(kind)) : undefined
+    justAdded[kind] && !skipEnterAnim.current
+      ? (lastDropPoint.current[kind] ?? bucketHome(kind))
+      : undefined
 
   const nucleons = nucleonLayout(protons, neutrons)
+
+  // A06: stability depends only on the nucleus — electrons play no part.
+  const nucleusInfo = nuclideStability(protons, neutrons)
+  const atomCharge = charge(protons, electrons)
+  const decayActive = useDecayStore((s) => s.active)
+  const finishDecay = useDecayStore((s) => s.finish)
+  const nucleusRadius =
+    nucleons.length > 0
+      ? Math.max(...nucleons.map((n) => distToCenter(n.x, n.y))) + NUCLEON_R
+      : 0
 
   const {
     shells,
@@ -382,6 +822,9 @@ export function AtomStage() {
   const isEmpty = protons + neutrons + electrons === 0
 
   const notify = useFeedbackStore((s) => s.notify)
+  const clearFeedback = useFeedbackStore((s) => s.clear)
+  // manual edits supersede any lingering event story
+  const clearStory = useEventStore((s) => s.clearStory)
 
   const handleDrop = (kind: ParticleKind, point: Pt) => {
     if (transition) return // the atom is mid-morph; ignore drops until done
@@ -402,18 +845,24 @@ export function AtomStage() {
                 { text: ' is the maximum!' },
               ]
             : [
-                { text: '200', color: 'neutrons' as const, big: true },
+                {
+                  text: String(limitFor('neutrons', protons)),
+                  color: 'neutrons' as const,
+                  big: true,
+                },
                 { text: ' neutrons', color: 'neutrons' as const },
-                { text: ' is the maximum!' },
+                { text: ' is all this nucleus can hold — extras fall right off!' },
               ],
       )
       return
     }
+    clearStory()
     lastDropPoint.current[kind] = point
     addParticle(kind)
   }
 
   const removeElectronAt = (slot: number) => {
+    clearStory()
     skipExitAnim.current = true
     setElectronIds((ids) => {
       const copy = ids.slice()
@@ -430,6 +879,8 @@ export function AtomStage() {
       <Stage
         width={STAGE_W}
         height={STAGE_H}
+        onMouseDown={clearFeedback}
+        onTouchStart={clearFeedback}
         onWheel={(e) => {
           if (view !== 'orbitals') return
           e.evt.preventDefault()
@@ -569,6 +1020,7 @@ export function AtomStage() {
                   : undefined
               }
               onRemove={() => {
+                clearStory()
                 skipExitAnim.current = true
                 addParticle(p.kind, -1)
               }}
@@ -590,6 +1042,78 @@ export function AtomStage() {
                 />
               )
             })}
+          {view !== 'orbitals' && nucleusInfo?.stability === 'unstable' && (
+            <RadiationEmitter
+              instability={nucleusInfo.instability}
+              nucleusRadius={nucleusRadius}
+            />
+          )}
+          {view !== 'orbitals' && atomCharge !== 0 && (
+            <ChargeSparkEmitter chargeValue={atomCharge} />
+          )}
+          {decayActive && (
+            <DecayOverlay
+              key={`decay-${decayActive.seq}`}
+              mode={decayActive.mode}
+              nucleusRadius={nucleusRadius}
+              onTransform={() => {
+                skipExitAnim.current = true
+                skipEnterAnim.current = true
+                if (decayActive.mode === 'alpha') {
+                  addParticle('protons', -2)
+                  addParticle('neutrons', -2)
+                } else if (decayActive.mode === 'beta-minus') {
+                  addParticle('protons', 1)
+                  addParticle('neutrons', -1)
+                } else {
+                  addParticle('protons', -1)
+                  addParticle('neutrons', 1)
+                }
+              }}
+              onDone={finishDecay}
+            />
+          )}
+
+          {/* Atom status in the corner, close to the particles themselves:
+              isotope, nuclear stability, charge. */}
+          {protons > 0 &&
+            (() => {
+              const statusY = view === 'orbitals' ? 54 : 14
+              const q = atomCharge
+              const rows: Array<{ text: string; fill: string }> = [
+                { text: isotopeLabel(protons, neutrons) ?? '', fill: '#6ee7b7' },
+              ]
+              if (nucleusInfo) {
+                rows.push(
+                  nucleusInfo.stability === 'stable'
+                    ? { text: 'stable', fill: '#6ee7b7' }
+                    : { text: '☢ radioactive', fill: '#fcd34d' },
+                )
+              }
+              rows.push({
+                text:
+                  q > 0
+                    ? `⚡ charge +${q}`
+                    : q < 0
+                      ? `⚡ charge −${Math.abs(q)}`
+                      : 'charge 0',
+                fill: q > 0 ? '#f87171' : q < 0 ? '#38bdf8' : '#94a3b8',
+              })
+              return rows.map((row, i) => (
+                <Text
+                  key={`status-${i}`}
+                  x={STAGE_W - 216}
+                  y={statusY + i * 19}
+                  width={200}
+                  align="right"
+                  text={row.text}
+                  fontSize={13}
+                  fontFamily="monospace"
+                  fill={row.fill}
+                  listening={false}
+                />
+              ))
+            })()}
           {departing.map((g) => (
             <DepartingParticle
               key={`ghost-${g.id}`}

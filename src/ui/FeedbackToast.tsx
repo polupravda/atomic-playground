@@ -31,17 +31,18 @@ export function FeedbackToast() {
   const bubbleRef = useRef<HTMLDivElement | null>(null)
 
   // No auto-dismiss — slow readers keep the bubble as long as they need.
-  // It closes only on an outside click or the ✕ button.
+  // It closes only on an outside click or the ✕ button. Capture-phase
+  // pointerdown so no component can swallow the event before we see it.
   useEffect(() => {
     if (!message) return
-    const onPointerDown = (e: MouseEvent) => {
+    const onPointerDown = (e: PointerEvent) => {
       if (bubbleRef.current && !bubbleRef.current.contains(e.target as Node)) {
         clear()
       }
     }
-    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('pointerdown', onPointerDown, true)
     return () => {
-      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('pointerdown', onPointerDown, true)
     }
   }, [seq, message, clear])
 

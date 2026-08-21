@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion } from 'motion/react'
 import {
   limitFor,
   maxElectronsFor,
@@ -7,8 +6,8 @@ import {
   type ParticleKind,
 } from '../state/atomStore'
 import { useFeedbackStore, type FeedbackSegment } from '../state/feedbackStore'
+import { useEventStore } from '../state/eventStore'
 import { FeedbackToast } from './FeedbackToast'
-import { charge } from '../core/atom'
 
 const ROWS: Array<{ kind: ParticleKind; label: string; dotClass: string }> = [
   { kind: 'protons', label: 'Protons', dotClass: 'bg-red-400' },
@@ -34,7 +33,10 @@ function overLimitMessage(
       { text: 'Maximum ' },
       { text: String(limit), color: 'neutrons', big: true },
       { text: ' neutrons', color: 'neutrons' },
-      { text: '!' },
+      { text: ' for ' },
+      { text: String(protons), color: 'protons', big: true },
+      { text: ` proton${protons === 1 ? '' : 's'}`, color: 'protons' },
+      { text: ' — extra neutrons just fall off the nucleus!' },
     ]
   }
   return [
@@ -54,11 +56,15 @@ function overLimitMessage(
 function NumberRow({ kind, label, dotClass }: (typeof ROWS)[number]) {
   const value = useAtomStore((s) => s[kind])
   const protons = useAtomStore((s) => s.protons)
+  const neutrons = useAtomStore((s) => s.neutrons)
   const electrons = useAtomStore((s) => s.electrons)
   const setCount = useAtomStore((s) => s.setCount)
   const addParticle = useAtomStore((s) => s.addParticle)
   const notify = useFeedbackStore((s) => s.notify)
   const flash = useFeedbackStore((s) => s.flash)
+  // manual edits supersede any lingering event story (it described an atom
+  // that no longer exists)
+  const clearStory = useEventStore((s) => s.clearStory)
 
   // While non-null, the input shows this animated value in red.
   const [display, setDisplay] = useState<number | null>(null)
@@ -102,10 +108,23 @@ function NumberRow({ kind, label, dotClass }: (typeof ROWS)[number]) {
   const applyProtonValue = (next: number) => {
     const clamped = Math.min(limitFor('protons', 0), Math.max(0, Math.round(next)))
     const shed = electrons - maxElectronsFor(clamped)
+    const shedNeutrons = neutrons - limitFor('neutrons', clamped)
     setCount('protons', next)
     if (next > limitFor('protons', 0)) {
       notify(overLimitMessage('protons', limitFor('protons', 0), protons))
       animateCorrection(next, limitFor('protons', 0))
+    } else if (shedNeutrons > 0) {
+      notify(
+        [
+          { text: String(shedNeutrons), color: 'neutrons', big: true },
+          { text: ` neutron${shedNeutrons === 1 ? '' : 's'}`, color: 'neutrons' },
+          { text: ' fell off — a nucleus with only ' },
+          { text: String(clamped), color: 'protons', big: true },
+          { text: ` proton${clamped === 1 ? '' : 's'}`, color: 'protons' },
+          { text: " can't hold that many!" },
+        ],
+        { kind: 'neutrons', from: neutrons },
+      )
     } else if (shed > 0) {
       notify(
         [
@@ -122,6 +141,7 @@ function NumberRow({ kind, label, dotClass }: (typeof ROWS)[number]) {
   }
 
   const handleInput = (raw: number) => {
+    clearStory()
     if (Number.isNaN(raw)) {
       cancelAnim()
       setCount(kind, 0)
@@ -142,7 +162,9 @@ function NumberRow({ kind, label, dotClass }: (typeof ROWS)[number]) {
     }
   }
 
-  const electronsAtLimit = kind === 'electrons' && electrons >= maxElectronsFor(protons)
+  const atLimit =
+    (kind === 'electrons' && electrons >= maxElectronsFor(protons)) ||
+    (kind === 'neutrons' && neutrons >= limitFor('neutrons', protons))
 
   return (
     <li className="flex items-center gap-2 text-sm">
@@ -153,6 +175,7 @@ function NumberRow({ kind, label, dotClass }: (typeof ROWS)[number]) {
         aria-label={`Remove one of ${label}`}
         onClick={() => {
           cancelAnim()
+          clearStory()
           if (kind === 'protons') applyProtonValue(value - 1)
           else addParticle(kind, -1)
         }}
@@ -178,13 +201,16 @@ function NumberRow({ kind, label, dotClass }: (typeof ROWS)[number]) {
         aria-label={`Add one of ${label}`}
         onClick={() => {
           cancelAnim()
+          clearStory()
           if (kind === 'protons') applyProtonValue(value + 1)
           else addParticle(kind, 1)
         }}
-        disabled={electronsAtLimit}
+        disabled={atLimit}
         title={
-          electronsAtLimit
-            ? 'An atom can only bind about one electron more than its protons — add protons first'
+          atLimit
+            ? kind === 'electrons'
+              ? 'An atom can only bind about one electron more than its protons — add protons first'
+              : 'The neutron drip line: this nucleus cannot hold any more neutrons'
             : undefined
         }
         className="h-7 w-7 rounded-md bg-slate-700 font-mono text-slate-100 transition hover:bg-slate-600 disabled:opacity-30 disabled:hover:bg-slate-700"
@@ -200,6 +226,7 @@ export function CountsPanel() {
   const neutrons = useAtomStore((s) => s.neutrons)
   const electrons = useAtomStore((s) => s.electrons)
   const reset = useAtomStore((s) => s.reset)
+  const clearStory = useEventStore((s) => s.clearStory)
 
   return (
     <aside className="relative w-64 rounded-xl border border-slate-700 bg-slate-800/60 p-4">
@@ -214,28 +241,12 @@ export function CountsPanel() {
           <NumberRow key={row.kind} {...row} />
         ))}
       </ul>
-      <div className="mt-4 flex items-center justify-between border-t border-slate-700 pt-3 text-sm">
-        <span className="text-slate-300">Charge</span>
-        {(() => {
-          const q = charge(protons, electrons)
-          return (
-            <motion.span
-              key={q}
-              initial={{ scale: 1.5 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-              className={`font-mono text-base ${
-                q > 0 ? 'text-red-400' : q < 0 ? 'text-sky-400' : 'text-slate-400'
-              }`}
-            >
-              {q > 0 ? `+${q}` : q < 0 ? `−${Math.abs(q)}` : '0'}
-            </motion.span>
-          )
-        })()}
-      </div>
       <button
         type="button"
-        onClick={reset}
+        onClick={() => {
+          clearStory()
+          reset()
+        }}
         disabled={protons + neutrons + electrons === 0}
         className="mt-4 w-full rounded-lg bg-slate-700 px-3 py-1.5 text-sm text-slate-200 transition hover:bg-slate-600 disabled:opacity-30 disabled:hover:bg-slate-700"
       >

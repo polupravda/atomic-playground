@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { MAX_ATOMIC_NUMBER } from '../core/elements'
+import { maxNeutronsFor } from '../core/nuclides'
 
 // Raw user-controlled particle counts only. Everything else (element, charge,
 // isotope, shells) is derived in components via core/ functions — derived
@@ -19,7 +20,7 @@ export function maxElectronsFor(protons: number): number {
 /** Upper bound for a particle kind given the current proton count. */
 export function limitFor(kind: ParticleKind, protons: number): number {
   if (kind === 'protons') return MAX_ATOMIC_NUMBER
-  if (kind === 'neutrons') return MAX_NEUTRONS
+  if (kind === 'neutrons') return maxNeutronsFor(protons)
   return maxElectronsFor(protons)
 }
 
@@ -34,12 +35,16 @@ interface Counts {
   electrons: number
 }
 
-/** A02 clamping: protons 0–118 (the periodic table), neutrons 0–200, and
- *  electrons additionally capped by the proton count — lowering protons
- *  sheds now-unbindable electrons. */
+/** A02 clamping: protons 0–118 (the periodic table); neutrons capped by the
+ *  neutron drip line for the current proton count (extra neutrons simply
+ *  fall off a real nucleus); electrons capped by protons + 1. Lowering
+ *  protons sheds now-unbindable neutrons and electrons. */
 function clampCounts(raw: Counts): Counts {
   const protons = clampInt(raw.protons, MAX_ATOMIC_NUMBER)
-  const neutrons = clampInt(raw.neutrons, MAX_NEUTRONS)
+  const neutrons = Math.min(
+    clampInt(raw.neutrons, MAX_NEUTRONS),
+    maxNeutronsFor(protons),
+  )
   const electrons = Math.min(
     clampInt(raw.electrons, MAX_NEUTRONS),
     maxElectronsFor(protons),

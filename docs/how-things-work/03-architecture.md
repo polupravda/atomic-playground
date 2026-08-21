@@ -35,6 +35,23 @@ motions (particle enters/leaves, particle moves between atoms, density
 overlap, attract/repel) are all canvas-world. If an animation is one of those
 four, it belongs in `stage/`.
 
+## Info panel state rules
+
+The left panel has four sections with different persistence rules:
+
+1. **"Right now"** — live: always mirrors the current atom, recomputed on
+   every particle change. Never sticky (it would lie otherwise).
+2. **"What just happened"** (event story, `state/eventStore.ts`) — sticky:
+   written when an event starts (decays, currently) and persists through
+   view switches, morphs, zooming and watching, until superseded by the
+   next event or cleared by a **manual atom edit** (drag in/out, ± buttons,
+   typed counts, reset). The event's own internal count changes do NOT
+   clear the story it wrote.
+3. **"What am I seeing?"** — mode-following: describes the ongoing view /
+   morph / watch mode, so it follows the mode.
+4. **Tips** — static. (Correction speech bubbles are sticky until dismissed
+   by ✕ or an outside click — a separate channel.)
+
 ## Current status
 
 - `core/` holds the 118-element dataset and the pure rules (element lookup,

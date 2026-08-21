@@ -150,7 +150,7 @@ function WatchLayer({
     const anim = new Konva.Animation((frame) => {
       if (!frame) return
       timeRef.current = frame.time
-      const interval = fastRef.current ? 70 : 330
+      const interval = fastRef.current ? 25 : 70
       if (frame.time - lastAt >= interval) {
         lastAt = frame.time
         const p = samplePoint(sub, r)

@@ -1,11 +1,13 @@
 import { motion } from 'motion/react'
 import { useAtomStore } from '../state/atomStore'
 import { elementForProtons } from '../core/elements'
-import { charge, chargeLabel, isotopeLabel, massNumber } from '../core/atom'
+import { charge, chargeLabel, massNumber } from '../core/atom'
 
 // A03: the proton count alone determines the element. The badge re-mounts on
 // every atomic-number change (key), playing a short "discovery" pop + glow.
 // A04: the ion superscript (Na⁺-style) is driven by charge = p − e.
+// Isotope, stability and charge readouts live on the canvas, near the
+// particles themselves.
 export function ElementBadge() {
   const protons = useAtomStore((s) => s.protons)
   const neutrons = useAtomStore((s) => s.neutrons)
@@ -13,8 +15,6 @@ export function ElementBadge() {
   const element = elementForProtons(protons)
   const ion = chargeLabel(protons, electrons)
   const positive = charge(protons, electrons) > 0
-  // A05: neutrons change the isotope, never the element identity.
-  const isotope = isotopeLabel(protons, neutrons)
 
   return (
     <div className="flex min-h-[6.5rem] w-64 items-center rounded-xl border border-slate-700 bg-slate-800/60 p-4">
@@ -60,18 +60,16 @@ export function ElementBadge() {
             <div className="text-xs text-slate-400">
               {protons} proton{protons === 1 ? '' : 's'}
             </div>
-            {isotope && (
-              <motion.div
-                key={isotope}
-                initial={{ scale: 1.25, opacity: 0.4 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 22 }}
-                className="mt-1 inline-block rounded bg-slate-900 px-1.5 py-0.5 font-mono text-xs text-emerald-300"
-                title={`Mass number ${massNumber(protons, neutrons)} = ${protons} protons + ${neutrons} neutrons`}
-              >
-                {isotope}
-              </motion.div>
-            )}
+            <motion.div
+              key={massNumber(protons, neutrons)}
+              initial={{ scale: 1.25, opacity: 0.4 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 22 }}
+              title={`Mass number = ${protons} protons + ${neutrons} neutrons`}
+              className="mt-1 inline-block rounded bg-slate-900 px-1.5 py-0.5 font-mono text-xs text-emerald-300"
+            >
+              ⚖️ mass {massNumber(protons, neutrons)}
+            </motion.div>
           </div>
         </motion.div>
       ) : (
