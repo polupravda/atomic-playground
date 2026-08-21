@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useAtomStore } from '../state/atomStore'
 import {
   MAX_ORBITAL_ZOOM,
@@ -15,11 +16,23 @@ export function OrbitalPanel() {
   const setZoom = useViewStore((s) => s.setOrbitalZoom)
   const hidden = useViewStore((s) => s.hiddenSubshells)
   const toggleSubshell = useViewStore((s) => s.toggleSubshell)
+  const watching = useViewStore((s) => s.watching)
+  const setWatching = useViewStore((s) => s.setWatching)
+  const watchFast = useViewStore((s) => s.watchFast)
+  const toggleWatchFast = useViewStore((s) => s.toggleWatchFast)
   const electrons = useAtomStore((s) => s.electrons)
 
-  if (view !== 'orbitals') return null
-
   const subshells = subshellConfiguration(electrons)
+
+  // Stop watching if the watched subshell no longer exists.
+  const watchedExists = subshells.some(
+    (sub) => subshellLabel(sub.n, sub.l) === watching,
+  )
+  useEffect(() => {
+    if (watching && !watchedExists) setWatching(null)
+  }, [watching, watchedExists, setWatching])
+
+  if (view !== 'orbitals') return null
 
   return (
     <div className="w-64 rounded-xl border border-slate-700 bg-slate-800/60 p-4">
@@ -63,8 +76,14 @@ export function OrbitalPanel() {
           {subshells.map((sub, i) => {
             const label = subshellLabel(sub.n, sub.l)
             const isHidden = hidden.includes(label)
+            const isWatched = watching === label
             return (
-              <li key={label} className="flex items-center gap-2">
+              <li
+                key={label}
+                className={`flex items-center gap-2 rounded px-1 ${
+                  isWatched ? 'bg-slate-700/60 ring-1 ring-sky-700' : ''
+                }`}
+              >
                 <span
                   className="h-3 w-3 shrink-0 rounded-full"
                   style={{ backgroundColor: subshellColor(i, 1) }}
@@ -73,6 +92,17 @@ export function OrbitalPanel() {
                 <span className="flex-1 text-xs text-slate-400">
                   {sub.electrons} e⁻
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setWatching(isWatched ? null : label)}
+                  aria-label={`${isWatched ? 'Stop watching' : 'Watch'} an electron in ${label}`}
+                  title="Watch an electron: each flash is one look"
+                  className={`rounded px-1 text-xs transition ${
+                    isWatched ? 'opacity-100' : 'opacity-50 hover:opacity-90'
+                  }`}
+                >
+                  📸
+                </button>
                 <button
                   type="button"
                   onClick={() => toggleSubshell(label)}
@@ -89,6 +119,24 @@ export function OrbitalPanel() {
             )
           })}
         </ul>
+      )}
+      {watching && (
+        <div className="mt-3 flex items-center gap-2 border-t border-slate-700 pt-2 text-xs">
+          <button
+            type="button"
+            onClick={toggleWatchFast}
+            className="rounded-md bg-slate-700 px-2 py-1 text-slate-200 transition hover:bg-slate-600"
+          >
+            {watchFast ? '🐢 slower' : '⚡ faster'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setWatching(null)}
+            className="rounded-md bg-slate-700 px-2 py-1 text-slate-200 transition hover:bg-slate-600"
+          >
+            stop watching
+          </button>
+        </div>
       )}
     </div>
   )

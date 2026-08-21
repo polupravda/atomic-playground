@@ -90,6 +90,31 @@ function AtomParticle({
   // runs — which would teleport the particle and leave the tween nothing to
   // animate. All movement goes through node.to() below.
   const initialPos = useRef<Pt>(enterFrom ?? { x, y })
+
+  // A18: electrons are dynamic participants, not static dots — a gentle
+  // in-place shimmer (scale + opacity breathing, each with its own phase).
+  // Deliberately NOT an orbit: circling would teach the planetary picture
+  // the cloud view exists to correct.
+  useEffect(() => {
+    if (kind !== 'electrons') return
+    const node = ref.current
+    const layer = node?.getLayer()
+    if (!node || !layer) return
+    const phase = Math.random() * Math.PI * 2
+    const anim = new Konva.Animation((frame) => {
+      if (!frame) return
+      const s = 1 + 0.07 * Math.sin(frame.time / 420 + phase)
+      node.scale({ x: s, y: s })
+      node.opacity(0.88 + 0.12 * Math.sin(frame.time / 610 + phase * 2))
+    }, layer)
+    anim.start()
+    return () => {
+      anim.stop()
+      node.scale({ x: 1, y: 1 })
+      node.opacity(1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const target = useRef<Pt | null>(null)
   useEffect(() => {
     const node = ref.current

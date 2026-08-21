@@ -20,6 +20,7 @@ const VIEW_EXPLANATIONS: Record<AtomView | 'morph-cloud' | 'morph-shells', {
     paragraphs: [
       'This soft glow is the electron cloud. Brighter spots are where an electron is easiest to find.',
       "It's a map of chances — not a real fog! The cloud has no sharp edge, and it's the picture physicists actually use.",
+      "The cloud is what you get when you add all the orbitals together — the whole atom's electron blur. (The Orbitals view shows the separate parts.)",
     ],
   },
   orbitals: {
@@ -54,13 +55,24 @@ const TIPS = [
   'Protons choose the element, neutrons choose the isotope, electrons choose the charge.',
 ]
 
+const WATCHING_EXPLANATION = {
+  title: 'Watching an electron',
+  paragraphs: [
+    'Flash! Each flash shows where we would find the electron if we looked. Between flashes it has NO path — that is the strange truth of quantum physics.',
+    'Watch the flecks pile up: many looks together paint the orbital. Notice the flashes never land where the orbital is dark.',
+    'This is extreme slow motion — a real electron would give about 10,000,000,000,000,000 looks every second!',
+  ],
+}
+
 export function InfoPanel() {
   const view = useViewStore((s) => s.view)
   const transition = useViewStore((s) => s.transition)
+  const watching = useViewStore((s) => s.watching)
   const key = transition
     ? (`morph-${transition.to}` as 'morph-cloud' | 'morph-shells')
     : view
-  const section = VIEW_EXPLANATIONS[key]
+  const section =
+    key === 'orbitals' && watching ? WATCHING_EXPLANATION : VIEW_EXPLANATIONS[key]
 
   return (
     <aside className="min-h-0 w-64 flex-1 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/60 p-4 text-sm leading-relaxed text-slate-300">

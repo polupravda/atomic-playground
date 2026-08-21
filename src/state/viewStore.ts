@@ -20,10 +20,17 @@ interface ViewState {
    *  each can be hidden by its label (e.g. '2p'). */
   orbitalZoom: number
   hiddenSubshells: string[]
+  /** "Watch an electron" (flashbulb mode): the label of the subshell being
+   *  watched, or null. Each flash is one position measurement sampled from
+   *  the orbital's probability density — there is no path between flashes. */
+  watching: string | null
+  watchFast: boolean
   requestView: (view: AtomView) => void
   completeTransition: () => void
   setOrbitalZoom: (zoom: number) => void
   toggleSubshell: (label: string) => void
+  setWatching: (label: string | null) => void
+  toggleWatchFast: () => void
 }
 
 export const useViewStore = create<ViewState>((set) => ({
@@ -31,11 +38,13 @@ export const useViewStore = create<ViewState>((set) => ({
   transition: null,
   orbitalZoom: 1,
   hiddenSubshells: [],
+  watching: null,
+  watchFast: false,
   requestView: (target) =>
     set((s) => {
       if (s.transition || target === s.view) return s
       if (target === 'orbitals' || s.view === 'orbitals') {
-        return { view: target, transition: null }
+        return { view: target, transition: null, watching: null, watchFast: false }
       }
       return { transition: { from: s.view, to: target } }
     }),
@@ -51,4 +60,6 @@ export const useViewStore = create<ViewState>((set) => ({
         ? s.hiddenSubshells.filter((l) => l !== label)
         : [...s.hiddenSubshells, label],
     })),
+  setWatching: (label) => set({ watching: label, watchFast: false }),
+  toggleWatchFast: () => set((s) => ({ watchFast: !s.watchFast })),
 }))
