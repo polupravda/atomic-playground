@@ -68,6 +68,9 @@ function NumberRow({ kind, label, dotClass }: (typeof ROWS)[number]) {
 
   // While non-null, the input shows this animated value in red.
   const [display, setDisplay] = useState<number | null>(null)
+  // While non-null, the raw text being typed — lets a focused "0" clear to
+  // an empty field with just a cursor instead of a sticky zero.
+  const [draft, setDraft] = useState<string | null>(null)
   const animFrame = useRef<number | null>(null)
 
   const cancelAnim = () => {
@@ -77,6 +80,7 @@ function NumberRow({ kind, label, dotClass }: (typeof ROWS)[number]) {
   }
 
   const animateCorrection = (from: number, to: number) => {
+    setDraft(null) // the countdown (and its result) must win over typed text
     if (animFrame.current !== null) cancelAnimationFrame(animFrame.current)
     const start = performance.now()
     const duration = 1300
@@ -141,6 +145,11 @@ function NumberRow({ kind, label, dotClass }: (typeof ROWS)[number]) {
   }
 
   const handleInput = (raw: number) => {
+    // Echo guard: while the correction countdown animates the input's value,
+    // a blur (e.g. from clicking elsewhere) can fire a change event carrying
+    // that animated value. It's our own output, not user input — ignoring it
+    // prevents the violation bubble from instantly re-opening.
+    if (display !== null && raw === display) return
     clearStory()
     if (Number.isNaN(raw)) {
       cancelAnim()
@@ -188,8 +197,15 @@ function NumberRow({ kind, label, dotClass }: (typeof ROWS)[number]) {
         type="number"
         min={0}
         aria-label={`${label} count`}
-        value={display ?? value}
-        onChange={(e) => handleInput(e.target.valueAsNumber)}
+        value={display ?? draft ?? value}
+        onFocus={(e) => {
+          if (Number(e.target.value) === 0) setDraft('')
+        }}
+        onBlur={() => setDraft(null)}
+        onChange={(e) => {
+          setDraft(e.target.value)
+          handleInput(e.target.valueAsNumber)
+        }}
         className={`h-7 w-14 rounded-md border bg-slate-900 text-center font-mono outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
           display !== null
             ? 'border-red-500 text-red-400'

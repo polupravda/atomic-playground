@@ -70,6 +70,21 @@ export function maxNeutronsFor(protons: number): number {
   return Math.min(200, Math.round(1.75 * protons + 7))
 }
 
+/** A sensible default neutron count when loading an element (P03): the
+ *  lightest stable isotope for Z ≤ 20 (which is also the most common one
+ *  there), and the valley-of-stability optimum beyond — e.g. gold loads as
+ *  roughly Au-197, uranium as roughly U-237. */
+export function typicalNeutrons(protons: number): number {
+  if (protons < 1) return 0
+  if (protons <= 20) return STABLE_N_LIGHT[protons][0]
+  // solve A ≈ Z·(1.98 + 0.0155·A^⅔) by fixed-point iteration
+  let a = 2 * protons
+  for (let i = 0; i < 6; i++) {
+    a = protons * (1.98 + 0.0155 * Math.pow(a, 2 / 3))
+  }
+  return Math.min(maxNeutronsFor(protons), Math.round(a) - protons)
+}
+
 export type DecayMode = 'alpha' | 'beta-minus' | 'beta-plus'
 
 /**

@@ -35,14 +35,20 @@ export function FeedbackToast() {
   // pointerdown so no component can swallow the event before we see it.
   useEffect(() => {
     if (!message) return
-    const onPointerDown = (e: PointerEvent) => {
+    const onOutside = (e: Event) => {
       if (bubbleRef.current && !bubbleRef.current.contains(e.target as Node)) {
         clear()
       }
     }
-    document.addEventListener('pointerdown', onPointerDown, true)
+    // pointerdown dismisses immediately; the capture-phase click runs AFTER
+    // any blur-triggered change echo, killing a bubble the echo re-opened —
+    // and BEFORE the clicked element's own handlers, so a genuinely new
+    // violation raised by this same click still shows its bubble.
+    document.addEventListener('pointerdown', onOutside, true)
+    document.addEventListener('click', onOutside, true)
     return () => {
-      document.removeEventListener('pointerdown', onPointerDown, true)
+      document.removeEventListener('pointerdown', onOutside, true)
+      document.removeEventListener('click', onOutside, true)
     }
   }, [seq, message, clear])
 
@@ -53,24 +59,19 @@ export function FeedbackToast() {
           key={seq}
           ref={bubbleRef}
           initial={{ opacity: 0, scale: 0.6, x: 16 }}
-          animate={{
-            opacity: 1,
-            scale: 1,
-            x: 0,
-            boxShadow: [
-              '0 0 10px rgba(251, 191, 36, 0.25)',
-              '0 0 26px rgba(251, 191, 36, 0.55)',
-              '0 0 10px rgba(251, 191, 36, 0.25)',
-            ],
-          }}
+          animate={{ opacity: 1, scale: 1, x: 0 }}
           exit={{ opacity: 0, scale: 0.6, x: 16 }}
-          transition={{
-            default: { type: 'spring', stiffness: 320, damping: 22 },
-            boxShadow: { repeat: Infinity, duration: 2, ease: 'easeInOut' },
-          }}
+          transition={{ type: 'spring', stiffness: 320, damping: 22 }}
           style={{ transformOrigin: 'right center' }}
           className="absolute right-full top-2 z-50 mr-5 w-64 rounded-3xl border-2 border-amber-300/70 bg-slate-800 px-4 py-3 pr-8 text-sm leading-relaxed"
         >
+          {/* glow pulse as pure CSS: an infinite Motion animation here would
+              block AnimatePresence's exit and make the bubble undismissable */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 animate-pulse rounded-3xl"
+            style={{ boxShadow: '0 0 22px rgba(251, 191, 36, 0.45)' }}
+          />
           {/* speech-bubble tail pointing at the particle panel */}
           <div className="absolute -right-[9px] top-9 h-4 w-4 rotate-45 border-r-2 border-t-2 border-amber-300/70 bg-slate-800" />
           <button

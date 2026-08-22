@@ -6,6 +6,7 @@ import { useViewStore } from '../state/viewStore'
 import { useFeedbackStore } from '../state/feedbackStore'
 import { useDecayStore } from '../state/decayStore'
 import { useEventStore } from '../state/eventStore'
+import { useDiscoveryStore } from '../state/discoveryStore'
 import { charge, isotopeLabel, shellCapacity } from '../core/atom'
 import { nuclideStability, type DecayMode } from '../core/nuclides'
 import {
@@ -13,7 +14,6 @@ import {
   BUCKETS,
   BUCKET_Y,
   CENTER,
-  COLORS,
   ELECTRON_R,
   ENTER_DURATION,
   EXIT_DURATION,
@@ -28,6 +28,7 @@ import {
   shellIndexOfSlot,
   type Pt,
 } from './layout'
+import { drawGlossyParticle, glossyFillProps } from './particleStyle'
 import { CloudView } from './CloudView'
 import { OrbitalsView } from './OrbitalsView'
 import { CloudToShellsTransition, ShellsToCloudTransition } from './ViewTransition'
@@ -49,10 +50,8 @@ function BucketToken({
     <Circle
       x={home.x}
       y={home.y}
-      radius={kind === 'electrons' ? ELECTRON_R : NUCLEON_R}
-      fill={COLORS[kind]}
-      shadowColor={COLORS[kind]}
-      shadowBlur={10}
+      radius={(kind === 'electrons' ? ELECTRON_R : NUCLEON_R) * 1.5}
+      {...glossyFillProps(kind, kind === 'electrons' ? ELECTRON_R : NUCLEON_R)}
       draggable
       onDragMove={(e) => {
         const p = e.target.position()
@@ -146,10 +145,8 @@ function AtomParticle({
       ref={ref}
       x={initialPos.current.x}
       y={initialPos.current.y}
-      radius={radius}
-      fill={COLORS[kind]}
-      stroke="#0f172a"
-      strokeWidth={1}
+      radius={radius * 1.5}
+      {...glossyFillProps(kind, radius)}
       draggable
       onDragEnd={(e) => {
         const p = e.target.position()
@@ -221,8 +218,8 @@ function DepartingParticle({
       ref={ref}
       x={x}
       y={y}
-      radius={kind === 'electrons' ? ELECTRON_R : NUCLEON_R}
-      fill={COLORS[kind]}
+      radius={(kind === 'electrons' ? ELECTRON_R : NUCLEON_R) * 1.5}
+      {...glossyFillProps(kind, kind === 'electrons' ? ELECTRON_R : NUCLEON_R)}
       listening={false}
     />
   )
@@ -452,11 +449,8 @@ function ChargeSparkEmitter({ chargeValue }: { chargeValue: number }) {
           )
           native.lineTo(x, y)
           native.stroke()
-          // the electron spark itself — same size as the atom's electrons
-          native.fillStyle = `rgba(56, 189, 248, ${a})`
-          native.beginPath()
-          native.arc(x, y, ELECTRON_R, 0, Math.PI * 2)
-          native.fill()
+          // the electron spark itself — same size and look as the atom's
+          drawGlossyParticle(native, 'electrons', x, y, ELECTRON_R, a)
         }
         native.restore()
       }}
@@ -609,13 +603,19 @@ function DecayOverlay({
             native.font = '15px monospace'
             native.fillText('α', cx + 18, cy - 15)
           } else {
+            // positron drawn in proton red (positive antimatter twin)
+            drawGlossyParticle(
+              native,
+              mode === 'beta-minus' ? 'electrons' : 'protons',
+              cx,
+              cy,
+              ELECTRON_R,
+              alpha,
+            )
             native.fillStyle =
               mode === 'beta-minus'
                 ? `rgba(56, 189, 248, ${alpha})`
                 : `rgba(248, 113, 113, ${alpha})`
-            native.beginPath()
-            native.arc(cx, cy, ELECTRON_R, 0, Math.PI * 2)
-            native.fill()
             native.font = '15px monospace'
             native.fillText(mode === 'beta-minus' ? 'β⁻' : 'β⁺', cx + 14, cy - 12)
           }
@@ -663,17 +663,17 @@ function drawAlphaCluster(
   alpha: number,
 ) {
   for (const o of ALPHA_OFFSETS) {
-    native.fillStyle = o.proton
-      ? `rgba(248, 113, 113, ${alpha})`
-      : `rgba(148, 163, 184, ${alpha})`
-    native.beginPath()
-    native.arc(cx + o.dx, cy + o.dy, NUCLEON_R * 0.9, 0, Math.PI * 2)
-    native.fill()
-    native.strokeStyle = `rgba(15, 23, 42, ${alpha * 0.6})`
-    native.lineWidth = 1
-    native.stroke()
+    drawGlossyParticle(
+      native,
+      o.proton ? 'protons' : 'neutrons',
+      cx + o.dx,
+      cy + o.dy,
+      NUCLEON_R * 0.9,
+      alpha,
+    )
   }
 }
+
 
 let ghostSeq = 0
 
@@ -726,6 +726,17 @@ export function AtomStage() {
   const skipEnterAnim = useRef(false)
 
   const [shellFlashes, setShellFlashes] = useState<Array<{ id: number; r: number }>>([])
+
+  // P03: an element loaded from the periodic table arrives with a pulse of
+  // the whole atom zone.
+  const loadPulse = useDiscoveryStore((s) => s.loadPulse)
+  const prevLoadPulse = useRef(loadPulse)
+  useEffect(() => {
+    if (loadPulse !== prevLoadPulse.current) {
+      prevLoadPulse.current = loadPulse
+      setShellFlashes((f) => [...f, { id: ghostSeq++, r: ATOM_ZONE_R - 5 }])
+    }
+  }, [loadPulse])
 
   const inShellsView = view === 'shells' && !transition
 

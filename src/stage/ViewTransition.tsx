@@ -11,6 +11,7 @@ import {
   type ElectronSlotMeta,
   type Pt,
 } from './layout'
+import { drawGlossyParticle } from './particleStyle'
 
 // A13/A14 — the signature animation. Shells → cloud: electrons start
 // orbiting their rings, their trajectories leave translucent traces that
@@ -148,11 +149,9 @@ export function ShellsToCloudTransition({
         sceneFunc={(ctx) => {
           const st = state.current
           if (st.electronOpacity <= 0) return
-          ctx.setAttr('fillStyle', `rgba(56, 189, 248, ${st.electronOpacity})`)
+          const native = ctx._context as CanvasRenderingContext2D
           st.positions.forEach((pos) => {
-            ctx.beginPath()
-            ctx.arc(pos.x, pos.y, ELECTRON_R, 0, Math.PI * 2)
-            ctx.fill()
+            drawGlossyParticle(native, 'electrons', pos.x, pos.y, ELECTRON_R, st.electronOpacity)
           })
         }}
       />
@@ -249,19 +248,18 @@ export function CloudToShellsTransition({
           if (st.electronOpacity <= 0) return
           // electrons spiral back into their slots as the cloud gathers
           const extra = (1 - easeOutCubic(st.p)) * Math.PI * 2.5
-          ctx.setAttr('fillStyle', `rgba(56, 189, 248, ${st.electronOpacity})`)
+          const native = ctx._context as CanvasRenderingContext2D
           filledMeta.forEach((m) => {
             const a = m.angle + extra
             const r = shellRadii[m.si]
-            ctx.beginPath()
-            ctx.arc(
+            drawGlossyParticle(
+              native,
+              'electrons',
               CENTER.x + r * Math.cos(a),
               CENTER.y + r * Math.sin(a),
               ELECTRON_R,
-              0,
-              Math.PI * 2,
+              st.electronOpacity,
             )
-            ctx.fill()
           })
         }}
       />

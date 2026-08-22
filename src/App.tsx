@@ -1,4 +1,8 @@
+import { useEffect } from 'react'
 import { AtomStage } from './stage/AtomStage'
+import { useAtomStore } from './state/atomStore'
+import { useDiscoveryStore } from './state/discoveryStore'
+import { PeriodicTable } from './ui/PeriodicTable'
 import { CountsPanel } from './ui/CountsPanel'
 import { ElementBadge } from './ui/ElementBadge'
 import { ViewToggle } from './ui/ViewToggle'
@@ -7,6 +11,13 @@ import { DecayButton } from './ui/DecayButton'
 import { InfoPanel } from './ui/InfoPanel'
 
 export default function App() {
+  // P02: any element the kid builds counts as discovered.
+  const protons = useAtomStore((s) => s.protons)
+  const markDiscovered = useDiscoveryStore((s) => s.markDiscovered)
+  useEffect(() => {
+    if (protons >= 1) markDiscovered(protons)
+  }, [protons, markDiscovered])
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100">
       <main className="mx-auto flex max-w-[1440px] flex-col items-center gap-6 px-6 py-5">
@@ -24,6 +35,7 @@ export default function App() {
             <ViewToggle />
             <OrbitalPanel />
             <CountsPanel />
+            <PeriodicTable />
             <DecayButton />
           </div>
         </div>

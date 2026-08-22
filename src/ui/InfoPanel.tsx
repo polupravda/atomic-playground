@@ -80,6 +80,12 @@ function situationParagraphs(p: number, n: number, e: number): IconPara[] {
             text: 'The nucleus is radioactive — watch the little rays escaping! One day it will transform.',
           },
     )
+    if (nucleus.stability === 'stable' && q === 0 && e > 0) {
+      parts.push({
+        icon: '🌟',
+        text: 'A complete, peaceful atom — balanced and stable. This is how most atoms around you live. Beautiful work!',
+      })
+    }
   }
   return parts
 }

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { decayMode, maxNeutronsFor, nuclideStability } from './nuclides'
+import {
+  decayMode,
+  maxNeutronsFor,
+  nuclideStability,
+  typicalNeutrons,
+} from './nuclides'
 
 const stab = (p: number, n: number) => nuclideStability(p, n)?.stability
 
@@ -35,6 +40,21 @@ describe('nuclideStability (A06)', () => {
     expect(stab(43, 55)).toBe('unstable') // Tc: no stable isotopes
     expect(stab(61, 84)).toBe('unstable') // Pm: no stable isotopes
     expect(stab(94, 150)).toBe('unstable') // Pu
+  })
+
+  it('suggests a sensible default isotope for loading (P03)', () => {
+    expect(typicalNeutrons(1)).toBe(0) // H-1
+    expect(typicalNeutrons(6)).toBe(6) // C-12
+    expect(typicalNeutrons(8)).toBe(8) // O-16
+    expect(typicalNeutrons(17)).toBe(18) // Cl-35
+    expect(typicalNeutrons(79)).toBeGreaterThanOrEqual(115) // Au ≈ 197
+    expect(typicalNeutrons(79)).toBeLessThanOrEqual(121)
+    expect(typicalNeutrons(92)).toBeGreaterThanOrEqual(142) // U ≈ 238
+    expect(typicalNeutrons(92)).toBeLessThanOrEqual(148)
+    // the default must always be a legal (bound) nuclide
+    for (let z = 1; z <= 118; z++) {
+      expect(typicalNeutrons(z)).toBeLessThanOrEqual(maxNeutronsFor(z))
+    }
   })
 
   it('knows the neutron drip line', () => {
