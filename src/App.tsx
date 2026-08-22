@@ -9,6 +9,7 @@ import { ViewToggle } from './ui/ViewToggle'
 import { OrbitalPanel } from './ui/OrbitalPanel'
 import { DecayButton } from './ui/DecayButton'
 import { MatterLab } from './ui/MatterLab'
+import { ChargePlayground } from './ui/ChargePlayground'
 import { InfoPanel } from './ui/InfoPanel'
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
             <OrbitalPanel />
             <PeriodicTable />
             <MatterLab />
+            <ChargePlayground />
             <DecayButton />
           </div>
         </div>

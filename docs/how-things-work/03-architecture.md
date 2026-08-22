@@ -52,6 +52,40 @@ The left panel has four sections with different persistence rules:
 4. **Tips** — static. (Correction speech bubbles are sticky until dismissed
    by ✕ or an outside click — a separate channel.)
 
+## Visual language
+
+Shared color/typography vocabulary — every new feature must stay inside it:
+
+- **Red** = proton / positive charge. **Sky blue** = electron / negative
+  charge. **Slate** = neutron / neutral. **Amber** = force & explanation
+  (arrows, speech bubbles, event stories). **Emerald** = stable/isotope.
+  **Violet** = gamma.
+- Because red and sky are taken, the **orbital palette contains no red or
+  blue hues** — subshells are marked only with
+  violet/pink/green/orange/yellow-family colors (`orbitalPalette.ts`).
+- Charged **ions** (charge playground) are never red/blue bodies — that would
+  read as bare protons/electrons. An ion is a **miniature shell-view atom**
+  (tiny nucleus, one ring, slowly circling electrons) inside a red/sky
+  **glow** (the charge), plus a small ± corner badge. The charge is
+  countable: a positive ion shows an empty electron seat, a negative ion an
+  extra squeezed-in electron.
+- In the builder, an ion gets a **charge aura**: a corona ring at one FIXED
+  radius just outside the dashed atom zone, identical in shells and cloud
+  views — red for +, sky for −, brighter and wider with more charge. Fixed on
+  purpose: the aura's size then means exactly one thing (the charge), never
+  "the atom grew a shell", and kids always know where to look. Deliberately a crisp hollow ring, NOT radiating
+  waves — waves read as emission (that's the decay rays), and the sharp
+  silhouette stays distinguishable from the fuzzy cloud even when both are
+  sky blue.
+- **Big glowing sky text is reserved for element names** (periodic table
+  header, etc.) — kids find "which element is this?" by looking for the glow.
+  Drawer/view headlines instead use uppercase, letter-spaced, muted slate
+  (`text-xl font-semibold uppercase tracking-wider text-slate-300`, no glow),
+  echoing the small uppercase section headers inside info panels.
+- Info blocks share one house style (see the charge playground panel):
+  `p-3` container on `bg-slate-800/40`, `text-xs` uppercase slate-400 section
+  headers with `border-t` separators, `text-sm` body, icon-led paragraphs.
+
 ## Current status
 
 - `core/` holds the 118-element dataset and the pure rules (element lookup,

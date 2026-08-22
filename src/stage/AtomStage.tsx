@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Stage, Layer, Circle, Rect, Shape, Text } from 'react-konva'
+import { Stage, Layer, Circle, Group, Rect, Shape, Text } from 'react-konva'
 import Konva from 'konva'
 import { limitFor, useAtomStore, type ParticleKind } from '../state/atomStore'
 import { useViewStore } from '../state/viewStore'
@@ -14,6 +14,7 @@ import {
   BUCKETS,
   BUCKET_Y,
   CENTER,
+  CLOUD_R,
   ELECTRON_R,
   ENTER_DURATION,
   EXIT_DURATION,
@@ -39,11 +40,13 @@ function BucketToken({
   x,
   onZoneHover,
   onDrop,
+  onDragTrack,
 }: {
   kind: ParticleKind
   x: number
   onZoneHover: (inside: boolean) => void
   onDrop: (kind: ParticleKind, point: Pt) => void
+  onDragTrack?: (pos: Pt | null) => void
 }) {
   const home = { x, y: BUCKET_Y - 12 }
   return (
@@ -56,8 +59,10 @@ function BucketToken({
       onDragMove={(e) => {
         const p = e.target.position()
         onZoneHover(distToCenter(p.x, p.y) < ATOM_ZONE_R)
+        onDragTrack?.({ x: p.x, y: p.y })
       }}
       onDragEnd={(e) => {
+        onDragTrack?.(null)
         const p = e.target.position()
         if (distToCenter(p.x, p.y) < ATOM_ZONE_R) onDrop(kind, { x: p.x, y: p.y })
         e.target.position(home)
@@ -77,6 +82,7 @@ function AtomParticle({
   radius,
   enterFrom,
   onRemove,
+  onDragTrack,
 }: {
   kind: ParticleKind
   x: number
@@ -84,6 +90,8 @@ function AtomParticle({
   radius: number
   enterFrom?: Pt
   onRemove: () => void
+  /** A24: live position while dragging (null when the drag ends). */
+  onDragTrack?: (pos: Pt | null) => void
 }) {
   const ref = useRef<Konva.Circle | null>(null)
   // The node's position is owned imperatively after mount: the x/y PROPS on
@@ -148,7 +156,12 @@ function AtomParticle({
       radius={radius * 1.5}
       {...glossyFillProps(kind, radius)}
       draggable
+      onDragMove={(e) => {
+        const p = e.target.position()
+        onDragTrack?.({ x: p.x, y: p.y })
+      }}
       onDragEnd={(e) => {
+        onDragTrack?.(null)
         const p = e.target.position()
         // Always snap the node back to its slot: on removal the released
         // particle must vanish at the cursor, never freeze outside the zone
@@ -336,6 +349,63 @@ function RadiationEmitter({
  *  them in. Negative ion: sparks fly toward the atom, then get deflected and
  *  pushed back out — it repels them. Physically these are test charges,
  *  chosen to be electrons so the color language stays consistent. */
+// A03 follow-up: an ion visibly shines — a corona ring hugging the atom's
+// outer edge in its charge color (red +, sky −). Deliberately a ring with a
+// crisp inner edge, NOT radiating waves: waves read as emission (that's our
+// decay rays), and a static charge emits nothing. The sharp silhouette also
+// keeps it distinct from the fuzzy electron cloud even when both are sky
+// blue — the cloud is brightest inside and fades out, the corona is a hollow
+// ring starting just beyond the cloud's edge.
+function ChargeAura({
+  chargeValue,
+  baseRadius,
+}: {
+  chargeValue: number
+  baseRadius: number
+}) {
+  const groupRef = useRef<Konva.Group | null>(null)
+  useEffect(() => {
+    const group = groupRef.current
+    if (!group) return
+    const anim = new Konva.Animation((frame) => {
+      if (!frame) return
+      group.opacity(0.78 + 0.22 * Math.sin(frame.time / 650))
+    }, group.getLayer())
+    anim.start()
+    return () => {
+      anim.stop()
+    }
+  }, [])
+  const k = Math.min(Math.abs(chargeValue), 4) / 4 // stronger charge → brighter, wider
+  const glow = chargeValue > 0 ? '248, 113, 113' : '56, 189, 248'
+  const band = 14 + 14 * k
+  const outer = baseRadius + band
+  return (
+    <Group ref={groupRef} x={CENTER.x} y={CENTER.y} listening={false}>
+      <Circle
+        radius={outer}
+        fillRadialGradientStartPoint={{ x: 0, y: 0 }}
+        fillRadialGradientEndPoint={{ x: 0, y: 0 }}
+        fillRadialGradientStartRadius={0}
+        fillRadialGradientEndRadius={outer}
+        fillRadialGradientColorStops={[
+          0,
+          `rgba(${glow}, 0)`,
+          Math.max(0, (baseRadius - 2) / outer),
+          `rgba(${glow}, 0)`,
+          baseRadius / outer,
+          `rgba(${glow}, ${0.3 + 0.35 * k})`,
+          Math.min(1, (baseRadius + band * 0.45) / outer),
+          `rgba(${glow}, ${0.12 + 0.16 * k})`,
+          1,
+          `rgba(${glow}, 0)`,
+        ]}
+        listening={false}
+      />
+    </Group>
+  )
+}
+
 function ChargeSparkEmitter({ chargeValue }: { chargeValue: number }) {
   const shapeRef = useRef<Konva.Shape | null>(null)
   const sparks = useRef<Array<{ angle: number; born: number }>>([])
@@ -675,6 +745,89 @@ function drawAlphaCluster(
 }
 
 
+/** A24: while an electron is being dragged, show the nucleus's pull on it —
+ *  a dashed connection line and an amber force arrow that grows as the
+ *  electron gets closer (F ∝ Z/r², electron screening simplified away).
+ *  A snapshot of force, not a trajectory — no orbit is implied. */
+function AttractionIndicator({
+  tracker,
+  params,
+}: {
+  tracker: React.RefObject<{ active: boolean; x: number; y: number }>
+  params: React.RefObject<{ protons: number; nucleusRadius: number }>
+}) {
+  const shapeRef = useRef<Konva.Shape | null>(null)
+  useEffect(() => {
+    const layer = shapeRef.current?.getLayer()
+    if (!layer) return
+    const anim = new Konva.Animation(() => undefined, layer)
+    anim.start()
+    return () => {
+      anim.stop()
+    }
+  }, [])
+
+  return (
+    <Shape
+      ref={shapeRef}
+      listening={false}
+      sceneFunc={(ctx, shape) => {
+        shape.getSelfRect = () => ({
+          x: 0,
+          y: 0,
+          width: STAGE_W,
+          height: STAGE_H,
+        })
+        const t = tracker.current
+        const { protons, nucleusRadius } = params.current
+        if (!t?.active || protons < 1) return
+        const dx = CENTER.x - t.x
+        const dy = CENTER.y - t.y
+        const r = Math.hypot(dx, dy)
+        if (r < nucleusRadius + ELECTRON_R + 6) return
+        const ux = dx / r
+        const uy = dy / r
+        const native = ctx._context as CanvasRenderingContext2D
+        native.save()
+        // dashed connection: electron ↔ nucleus
+        native.strokeStyle = 'rgba(148, 163, 184, 0.35)'
+        native.lineWidth = 1.5
+        native.setLineDash([5, 6])
+        native.beginPath()
+        native.moveTo(t.x + ux * (ELECTRON_R + 4), t.y + uy * (ELECTRON_R + 4))
+        native.lineTo(
+          CENTER.x - ux * (nucleusRadius + 4),
+          CENTER.y - uy * (nucleusRadius + 4),
+        )
+        native.stroke()
+        native.setLineDash([])
+        // the pull arrow: stronger nucleus and shorter distance = longer
+        const force = (protons * 30000) / (r * r)
+        const len = Math.min(64, 4 + force)
+        const x0 = t.x + ux * (ELECTRON_R + 3)
+        const y0 = t.y + uy * (ELECTRON_R + 3)
+        const x1 = x0 + ux * len
+        const y1 = y0 + uy * len
+        native.strokeStyle = 'rgba(251, 191, 36, 0.9)'
+        native.lineWidth = 3
+        native.lineCap = 'round'
+        native.beginPath()
+        native.moveTo(x0, y0)
+        native.lineTo(x1, y1)
+        native.stroke()
+        const ha = Math.atan2(uy, ux)
+        for (const spread of [-0.5, 0.5]) {
+          native.beginPath()
+          native.moveTo(x1, y1)
+          native.lineTo(x1 - 9 * Math.cos(ha + spread), y1 - 9 * Math.sin(ha + spread))
+          native.stroke()
+        }
+        native.restore()
+      }}
+    />
+  )
+}
+
 let ghostSeq = 0
 
 function nextElectronId(ids: number[]): number {
@@ -726,6 +879,14 @@ export function AtomStage() {
   const skipEnterAnim = useRef(false)
 
   const [shellFlashes, setShellFlashes] = useState<Array<{ id: number; r: number }>>([])
+
+  // A24: live position of a dragged electron + parameters for the pull arrow
+  const attractTracker = useRef({ active: false, x: 0, y: 0 })
+  const attractParams = useRef({ protons: 0, nucleusRadius: 0 })
+  const trackElectron = (pos: Pt | null) => {
+    if (pos) attractTracker.current = { active: true, x: pos.x, y: pos.y }
+    else attractTracker.current.active = false
+  }
 
   // P03: an element loaded from the periodic table arrives with a pulse of
   // the whole atom zone.
@@ -811,6 +972,7 @@ export function AtomStage() {
     nucleons.length > 0
       ? Math.max(...nucleons.map((n) => distToCenter(n.x, n.y))) + NUCLEON_R
       : 0
+  attractParams.current = { protons, nucleusRadius }
 
   const {
     shells,
@@ -920,6 +1082,13 @@ export function AtomStage() {
             />
           )}
 
+          {/* charge aura sits UNDER the atom, at one FIXED radius just
+              outside the dashed zone in every view: the aura's size then
+              means exactly one thing — the charge — and never doubles as
+              "the atom grew a shell". Kids always know where to look. */}
+          {!transition && view !== 'orbitals' && atomCharge !== 0 && (
+            <ChargeAura chargeValue={atomCharge} baseRadius={CLOUD_R + 6} />
+          )}
           {view === 'cloud' && !transition && (
             <CloudView shells={shells} shellRadii={shellRadii} />
           )}
@@ -1050,6 +1219,7 @@ export function AtomStage() {
                   radius={ELECTRON_R}
                   enterFrom={i === electrons - 1 ? enterFromFor('electrons') : undefined}
                   onRemove={() => removeElectronAt(i)}
+                  onDragTrack={trackElectron}
                 />
               )
             })}
@@ -1125,6 +1295,9 @@ export function AtomStage() {
                 />
               ))
             })()}
+          {inShellsView && (
+            <AttractionIndicator tracker={attractTracker} params={attractParams} />
+          )}
           {departing.map((g) => (
             <DepartingParticle
               key={`ghost-${g.id}`}
@@ -1143,6 +1316,7 @@ export function AtomStage() {
               x={x}
               onZoneHover={setOverZone}
               onDrop={handleDrop}
+              onDragTrack={kind === 'electrons' ? trackElectron : undefined}
             />
           ))}
         </Layer>

@@ -59,12 +59,12 @@ function situationParagraphs(p: number, n: number, e: number): IconPara[] {
   } else if (q > 0) {
     parts.push({
       icon: '⚡',
-      text: `The charge is +${q}: ${q === 1 ? 'one more proton' : `${q} more protons`} than electrons. That makes it a positive ion (${element.symbol}${chargeLabel(p, e)}) — it pulls on electrons and would happily grab a spare one!`,
+      text: `The charge is +${q}: ${q === 1 ? 'one more proton' : `${q} more protons`} than electrons. That makes it a positive ion (${element.symbol}${chargeLabel(p, e)}) — it pulls on electrons and would happily grab a spare one! The red ring shining around the atom is its charge.`,
     })
   } else {
     parts.push({
       icon: '⚡',
-      text: `The charge is −${-q}: ${-q === 1 ? 'one extra electron' : `${-q} extra electrons`}. That makes it a negative ion (${element.symbol}${chargeLabel(p, e)}) — it pushes other electrons away and sticks to positive things.`,
+      text: `The charge is −${-q}: ${-q === 1 ? 'one extra electron' : `${-q} extra electrons`}. That makes it a negative ion (${element.symbol}${chargeLabel(p, e)}) — it pushes other electrons away and sticks to positive things. The blue ring shining around the atom is its charge.`,
     })
   }
   const nucleus = nuclideStability(p, n)
@@ -105,6 +105,10 @@ const VIEW_EXPLANATIONS: Record<
       {
         icon: '💡',
         text: "Electrons don't really ride on rails — the rings are a simple way to count and sort them. Protons and neutrons really do cluster in the nucleus, though!",
+      },
+      {
+        icon: '🧲',
+        text: 'Drag an electron around and watch the amber arrow: the nucleus pulls it electromagnetically — hard when close, gently when far.',
       },
     ],
   },
@@ -217,10 +221,13 @@ const TIPS: IconPara[] = [
   },
 ]
 
+// Styling matches the charge playground's info block (the house style for
+// info panels): p-3 container, text-xs uppercase headers with border-t
+// separators, text-sm body.
 function Para({ icon, text }: IconPara) {
   return (
     <div className="flex items-start gap-2">
-      <span aria-hidden className="shrink-0 text-base leading-snug">
+      <span aria-hidden className="shrink-0 leading-snug">
         {icon}
       </span>
       <p>{text}</p>
@@ -246,43 +253,43 @@ export function InfoPanel() {
   const story = useEventStore((s) => s.story)
 
   return (
-    <aside className="h-full w-64 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/60 p-4 text-sm leading-relaxed text-slate-300">
-      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
+    <aside className="h-full w-64 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/40 p-3 text-sm leading-relaxed text-slate-300">
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
         Right now
       </h2>
-      <div className="space-y-2.5">
+      <div className="space-y-2 text-slate-200">
         {situation.map((p, i) => (
           <Para key={i} {...p} />
         ))}
       </div>
       {story && (
         <>
-          <h2 className="mb-2 mt-4 text-sm font-semibold uppercase tracking-wide text-slate-400">
+          <h2 className="mb-2 mt-4 border-t border-slate-700 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
             What just happened
           </h2>
-          <h3 className="mb-1.5 font-medium text-amber-300">{story.title}</h3>
-          <div className="space-y-2.5">
+          <h3 className="mb-1.5 text-sm font-medium text-amber-300">{story.title}</h3>
+          <div className="space-y-2">
             {story.paragraphs.map((p, i) => (
               <Para key={i} {...p} />
             ))}
           </div>
         </>
       )}
-      <h2 className="mb-2 mt-4 text-sm font-semibold uppercase tracking-wide text-slate-400">
+      <h2 className="mb-2 mt-4 border-t border-slate-700 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
         What am I seeing?
       </h2>
-      <h3 className="mb-1.5 font-medium text-sky-300">
+      <h3 className="mb-1.5 text-sm font-medium text-sky-300">
         {viewSection.icon} {viewSection.title}
       </h3>
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         {viewSection.paragraphs.map((p, i) => (
           <Para key={i} {...p} />
         ))}
       </div>
-      <h2 className="mb-2 mt-4 text-sm font-semibold uppercase tracking-wide text-slate-400">
+      <h2 className="mb-2 mt-4 border-t border-slate-700 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
         Tips
       </h2>
-      <div className="space-y-2.5 text-slate-400">
+      <div className="space-y-2 text-slate-400">
         {TIPS.map((tip, i) => (
           <Para key={i} {...tip} />
         ))}
