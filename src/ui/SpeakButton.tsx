@@ -2,6 +2,34 @@
 // browser's built-in speech synthesis — no downloads, works offline.
 // Rendered as a span[role=button] so it can live inside other buttons
 // (e.g. the element badge) without invalid nesting.
+
+/** Bright amber vector speaker — same glyph as the bonding lab's canvas
+ *  badge (the 🔊 emoji is natively dark gray and looked dull). */
+export function SpeakerIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="-9 -9 18 18" aria-hidden>
+      <path
+        d="M -5.5 -2 L -2.5 -2 L 0.5 -4.5 L 0.5 4.5 L -2.5 2 L -5.5 2 Z"
+        fill="#fcd34d"
+      />
+      <path
+        d="M 2.916 -1.953 A 2.6 2.6 0 0 1 2.916 1.953"
+        fill="none"
+        stroke="#fcd34d"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M 4.236 -3.456 A 4.6 4.6 0 0 1 4.236 3.456"
+        fill="none"
+        stroke="#fcd34d"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 export function SpeakButton({
   text,
   className,
@@ -33,7 +61,7 @@ export function SpeakButton({
         className ?? ''
       }`}
     >
-      🔊
+      <SpeakerIcon />
     </span>
   )
 }

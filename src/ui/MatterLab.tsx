@@ -14,7 +14,9 @@ import { SpeakButton } from './SpeakButton'
 // the element's real melting/boiling points (standard pressure, stated).
 // The atoms themselves never change — only their arrangement (X03).
 
-const W = 560
+// 42rem drawer − p-5 padding − container border = the exact canvas width,
+// so the box walls ARE the visible border (no invisible early bounce)
+const W = 630
 const H = 360
 const R = 10
 const COUNT = 40
@@ -239,7 +241,7 @@ export function MatterLab() {
                 </span>
               </div>
               <div className="flex min-h-0 flex-1 flex-col justify-center gap-4">
-              <div className="overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
+              <div className="mx-auto w-fit overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
                 <MatterSim tempC={clampedTemp} melt={points.melt} boil={points.boil} />
               </div>
               <div>

@@ -346,11 +346,11 @@ export function PeriodicTable() {
   const setCount = useAtomStore((s) => s.setCount)
   const clearStory = useEventStore((s) => s.clearStory)
   const [open, setOpen] = useState(false)
-  const [patterns, setPatterns] = useState(false)
-  const [valence, setValence] = useState(false)
+  const [patterns, setPatterns] = useState(true)
+  const [valence, setValence] = useState(true)
   const [focusCategories, setFocusCategories] = useState<ElementCategory[]>([])
   // 🖼️ photo-browse mode: shows the selected element's photos in the sidebar
-  const [photosMode, setPhotosMode] = useState(false)
+  const [photosMode, setPhotosMode] = useState(true)
   // clicking a cell SELECTS it (drives side panels); the big "Open in
   // editor" button is what actually builds the atom
   const [selectedZ, setSelectedZ] = useState<number | null>(null)

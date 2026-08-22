@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Layer, Shape, Stage } from 'react-konva'
 import Konva from 'konva'
 import { drawGlossyParticle } from '../stage/particleStyle'
-import { SideDrawer } from './SideDrawer'
+import { PageNav } from './PageNav'
 
 // A21/A22/A23 — the charge playground. Drag ➕ and ➖ charges onto the
 // field: amber force arrows make the invisible electric force visible,
@@ -11,8 +11,12 @@ import { SideDrawer } from './SideDrawer'
 // apart. Charges are draggable at any time (A23: feel the force change
 // with distance); drop one back on a tray to remove it.
 
-const W = 920
-const H = 560
+// canvas width measured from the viewport at load (same pattern as the
+// builder stage): page frame (≤1440) − 48 padding − 16rem info column −
+// 24 gap − 2 canvas border
+const W = Math.max(620, Math.min(window.innerWidth, 1440) - 48 - 256 - 24 - 2)
+// full page height: viewport − 40 page padding − 2 canvas border
+const H = Math.max(480, window.innerHeight - 42)
 const R = 20
 const FIELD_BOTTOM = H - 78 // below this line live the trays
 const K = 60000 // Coulomb constant, in pixel units
@@ -375,7 +379,6 @@ function ChargeField({
 }
 
 export function ChargePlayground() {
-  const [open, setOpen] = useState(false)
   const [counts, setCounts] = useState({ plus: 0, minus: 0 })
   const [clearSignal, setClearSignal] = useState(0)
 
@@ -405,37 +408,9 @@ export function ChargePlayground() {
   }
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="w-64 rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2.5 text-left text-sm text-slate-200 transition hover:bg-slate-700"
-      >
-        ⚡ Charge playground
-      </button>
-      <SideDrawer
-        open={open}
-        onClose={() => setOpen(false)}
-        ariaLabel="Charge playground"
-        widthClassName="w-[min(100vw,80rem)]"
-      >
-        <div className="grid min-h-0 flex-1 grid-cols-[16rem_1fr] grid-rows-[auto_minmax(0,1fr)] gap-x-6 gap-y-3 pt-1">
-          <div className="col-start-2 row-start-1 flex items-center gap-2 pr-8">
-            {/* Drawer headline style: uppercase, tracked, muted, NO glow.
-                The big glowing sky label is reserved for element names —
-                kids find the element by looking for the glow. */}
-            <span className="text-xl font-semibold uppercase tracking-wider text-slate-300">
-              ⚡ Charge playground
-            </span>
-            <button
-              type="button"
-              onClick={() => setClearSignal((n) => n + 1)}
-              className="ml-auto rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5 text-sm text-slate-300 transition hover:bg-slate-700"
-            >
-              🧹 Clear field
-            </button>
-          </div>
-          <div className="col-start-1 row-span-2 row-start-1 flex min-h-0 flex-col gap-3">
+    <div className="grid h-full min-h-0 grid-cols-[16rem_1fr] grid-rows-[minmax(0,1fr)] gap-x-6">
+      <div className="col-start-1 row-start-1 flex min-h-0 flex-col gap-3">
+        <PageNav />
             <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/40 p-3 text-sm leading-relaxed text-slate-300">
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 Right now
@@ -515,16 +490,21 @@ export function ChargePlayground() {
               </div>
             </div>
           </div>
-          <div className="col-start-2 row-start-2 flex min-h-0 items-center justify-center">
-            <div className="overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
-              <ChargeField
-                clearSignal={clearSignal}
-                onCounts={(plus, minus) => setCounts({ plus, minus })}
-              />
-            </div>
-          </div>
+      <div className="col-start-2 row-start-1 flex min-h-0 items-center justify-center">
+        <div className="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
+          <ChargeField
+            clearSignal={clearSignal}
+            onCounts={(plus, minus) => setCounts({ plus, minus })}
+          />
+          <button
+            type="button"
+            onClick={() => setClearSignal((n) => n + 1)}
+            className="absolute bottom-3 right-3 rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-sm text-slate-300 transition hover:bg-slate-700"
+          >
+            🧹 Clear field
+          </button>
         </div>
-      </SideDrawer>
-    </>
+      </div>
+    </div>
   )
 }
