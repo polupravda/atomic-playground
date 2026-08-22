@@ -4,10 +4,11 @@ import { useAtomStore } from './state/atomStore'
 import { useDiscoveryStore } from './state/discoveryStore'
 import { PeriodicTable } from './ui/PeriodicTable'
 import { CountsPanel } from './ui/CountsPanel'
-import { ElementBadge } from './ui/ElementBadge'
+import { ElementCard } from './ui/ElementCard'
 import { ViewToggle } from './ui/ViewToggle'
 import { OrbitalPanel } from './ui/OrbitalPanel'
 import { DecayButton } from './ui/DecayButton'
+import { MatterLab } from './ui/MatterLab'
 import { InfoPanel } from './ui/InfoPanel'
 
 export default function App() {
@@ -31,11 +32,12 @@ export default function App() {
           </div>
           <AtomStage />
           <div className="flex flex-col gap-4 self-stretch">
-            <ElementBadge />
+            <ElementCard />
             <ViewToggle />
-            <OrbitalPanel />
             <CountsPanel />
+            <OrbitalPanel />
             <PeriodicTable />
+            <MatterLab />
             <DecayButton />
           </div>
         </div>

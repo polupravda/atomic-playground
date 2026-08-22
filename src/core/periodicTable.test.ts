@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { tablePosition } from './periodicTable'
+import { elementCategory, tablePosition } from './periodicTable'
 
 describe('tablePosition (P01)', () => {
   it('places the anchor elements correctly', () => {
@@ -15,6 +15,20 @@ describe('tablePosition (P01)', () => {
     expect(tablePosition(79)).toEqual({ row: 6, col: 11 }) // Au, group 11
     expect(tablePosition(92)).toEqual({ row: 10, col: 6 }) // U
     expect(tablePosition(118)).toEqual({ row: 7, col: 18 }) // Og
+  })
+
+  it('classifies element families (P04)', () => {
+    expect(elementCategory(1)).toBe('nonmetal') // H
+    expect(elementCategory(11)).toBe('alkali-metal') // Na
+    expect(elementCategory(20)).toBe('alkaline-earth') // Ca
+    expect(elementCategory(26)).toBe('transition-metal') // Fe
+    expect(elementCategory(14)).toBe('metalloid') // Si
+    expect(elementCategory(8)).toBe('nonmetal') // O
+    expect(elementCategory(17)).toBe('halogen') // Cl
+    expect(elementCategory(10)).toBe('noble-gas') // Ne
+    expect(elementCategory(58)).toBe('lanthanide') // Ce
+    expect(elementCategory(92)).toBe('actinide') // U
+    expect(elementCategory(82)).toBe('post-transition-metal') // Pb
   })
 
   it('gives every element a unique cell within the grid', () => {

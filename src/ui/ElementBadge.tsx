@@ -2,6 +2,7 @@ import { motion } from 'motion/react'
 import { useAtomStore } from '../state/atomStore'
 import { elementForProtons } from '../core/elements'
 import { charge, chargeLabel, massNumber } from '../core/atom'
+import { SpeakButton } from './SpeakButton'
 
 // A03: the proton count alone determines the element. The badge re-mounts on
 // every atomic-number change (key), playing a short "discovery" pop + glow.
@@ -17,7 +18,7 @@ export function ElementBadge() {
   const positive = charge(protons, electrons) > 0
 
   return (
-    <div className="flex min-h-[6.5rem] w-64 items-center rounded-xl border border-slate-700 bg-slate-800/60 p-4">
+    <div className="relative flex min-h-[6.5rem] w-64 items-center rounded-xl border border-slate-700 bg-slate-800/60 p-4">
       {element ? (
         <motion.div
           key={element.atomicNumber}
@@ -56,7 +57,12 @@ export function ElementBadge() {
             <span className="text-3xl font-bold text-sky-300">{element.symbol}</span>
           </motion.div>
           <div>
-            <div className="text-lg font-semibold text-slate-100">{element.name}</div>
+            <div className="flex items-center gap-2">
+              <SpeakButton text={element.name} className="h-6 w-6 text-xs" />
+              <span className="text-lg font-semibold text-slate-100">
+                {element.name}
+              </span>
+            </div>
             <div className="text-xs text-slate-400">
               {protons} proton{protons === 1 ? '' : 's'}
             </div>

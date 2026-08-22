@@ -7,6 +7,38 @@ export interface TablePosition {
   col: number
 }
 
+// P04: the classic element families — the visual proof that elements
+// aren't random. Simplified where chemistry is genuinely fuzzy (Ts counted
+// with the halogens, superheavy chemistry unknown).
+export type ElementCategory =
+  | 'alkali-metal'
+  | 'alkaline-earth'
+  | 'transition-metal'
+  | 'post-transition-metal'
+  | 'metalloid'
+  | 'nonmetal'
+  | 'halogen'
+  | 'noble-gas'
+  | 'lanthanide'
+  | 'actinide'
+
+const METALLOIDS = new Set([5, 14, 32, 33, 51, 52])
+const OTHER_NONMETALS = new Set([1, 6, 7, 8, 15, 16, 34])
+
+export function elementCategory(z: number): ElementCategory {
+  if (z >= 57 && z <= 71) return 'lanthanide'
+  if (z >= 89 && z <= 103) return 'actinide'
+  if (METALLOIDS.has(z)) return 'metalloid'
+  if (OTHER_NONMETALS.has(z)) return 'nonmetal'
+  const { col } = tablePosition(z)
+  if (col === 18) return 'noble-gas'
+  if (col === 17) return 'halogen'
+  if (z !== 1 && col === 1) return 'alkali-metal'
+  if (col === 2) return 'alkaline-earth'
+  if (col >= 3 && col <= 12) return 'transition-metal'
+  return 'post-transition-metal'
+}
+
 export function tablePosition(z: number): TablePosition {
   if (z === 1) return { row: 1, col: 1 }
   if (z === 2) return { row: 1, col: 18 }
