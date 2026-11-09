@@ -8,6 +8,7 @@ const ITEMS: Array<{ id: AppPage; label: string }> = [
   { id: 'builder', label: '⚛️ Atom builder' },
   { id: 'charges', label: '⚡ Charge playground' },
   { id: 'bonding', label: '🧪 Bonding lab' },
+  { id: 'light', label: '💡 Light lab' },
   { id: 'examples', label: '🌍 Atoms in action' },
 ]
 

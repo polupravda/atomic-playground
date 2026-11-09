@@ -51,6 +51,15 @@ The left panel has four sections with different persistence rules:
    morph / watch mode, so it follows the mode.
 4. **Tips** — static. (Correction speech bubbles are sticky until dismissed
    by ✕ or an outside click — a separate channel.)
+5. **Tips are the ONLY home for coaching** (decision 2026-11-09, Light-lab
+   feedback): no "do X to see Y" lines anywhere else — not under photo
+   cards, not in control cards, not on the canvas. Content panels show
+   content that reacts to what the kid does; the UI's own affordances
+   (sliders, highlights, live swaps) teach the interaction by responding.
+   Scattered nudges add noise and go stale; if guidance is truly needed, it
+   goes into the Tips section — once. (Short factual notes at a control,
+   e.g. "height of the wave — it never changes the color", are content, not
+   coaching, and stay allowed.)
 
 ## Visual language
 

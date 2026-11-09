@@ -13,54 +13,48 @@ import { BOMB_PHOTO_GROUPS } from '../core/examplePhotos'
 import { BombsTable, ChainStats, CompareTable, DamageLegend, ParticleLegend } from './BombLegend'
 import { StoryTimeline } from './StoryTimeline'
 import { BombsIcon } from './BombsIcon'
+import { LightExample } from './LightExample'
+import { Paras, SectionHeader, type Para } from './Paras'
 
 // R00 — "Atoms in action": a top-level sibling view of practical examples
 // where the atom ideas from the builder show up in the real world. Each
-// example = info panel (left) + demo canvas (middle) + real photos (right).
-// The example strip above the canvas is the switcher; more examples (power
-// plant, the Sun, smoke detector…) plug in as further tabs.
+// example = info panel (left) + demo canvas (middle) + story timeline /
+// real photos (right). The example strip above the canvas is the switcher;
+// both examples stay mounted (the hidden one's animation pauses); more
+// examples (power plant, star stuff…) plug in as further tabs.
 
-type ExampleId = 'bomb'
+type ExampleId = 'bomb' | 'light'
 const EXAMPLES: Array<{ id: ExampleId; label: string }> = [
   { id: 'bomb', label: '☢️ Atomic bomb' },
+  { id: 'light', label: '✨ Light & color' },
 ]
 
-/** `focus` = what is happening on the canvas RIGHT NOW: drawn in the amber
- *  caption style (amber border, dark fill) that captions used to have on
- *  the canvas itself. */
-type Para = { icon: string; text: ReactNode; focus?: boolean }
-
-function Paras({ items, className = '' }: { items: Para[]; className?: string }) {
+/** the example switcher strip, rendered inside every example's header row */
+function ExampleTabs({
+  example,
+  onPick,
+}: {
+  example: ExampleId
+  onPick: (id: ExampleId) => void
+}) {
   return (
-    <div className={`space-y-2 ${className}`}>
-      {items.map((p, i) => (
-        <div
-          key={i}
-          className={`flex items-start gap-2 ${
-            p.focus
-              ? 'rounded-lg border border-amber-500/70 bg-slate-900/80 px-2 py-1.5 text-amber-100'
-              : ''
+    <div className="flex gap-1 rounded-xl border border-slate-700 bg-slate-800/60 p-1 text-sm">
+      {EXAMPLES.map((ex) => (
+        <button
+          key={ex.id}
+          type="button"
+          onClick={() => onPick(ex.id)}
+          aria-current={example === ex.id ? 'page' : undefined}
+          className={`rounded-lg px-3 py-1 transition ${
+            example === ex.id
+              ? 'bg-sky-600 font-medium text-white'
+              : 'text-slate-300 hover:bg-slate-700'
           }`}
         >
-          <span aria-hidden className="shrink-0 leading-snug">
-            {p.icon}
-          </span>
-          <div>{p.text}</div>
-        </div>
+          {ex.label}
+        </button>
       ))}
     </div>
-  )
-}
-
-function SectionHeader({ children, first = false }: { children: ReactNode; first?: boolean }) {
-  return (
-    <h3
-      className={`mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ${
-        first ? '' : 'mt-4 border-t border-slate-700 pt-3'
-      }`}
-    >
-      {children}
-    </h3>
   )
 }
 
@@ -361,6 +355,20 @@ const initialReport: FissionReport = {
 export function ExamplesPage() {
   const page = usePageStore((s) => s.page)
   const [example, setExample] = useState<ExampleId>('bomb')
+  const tabs = <ExampleTabs example={example} onPick={setExample} />
+  return (
+    <>
+      <div className={example === 'bomb' ? 'h-full' : 'hidden'}>
+        <BombExample active={page === 'examples' && example === 'bomb'} tabs={tabs} />
+      </div>
+      <div className={example === 'light' ? 'h-full' : 'hidden'}>
+        <LightExample active={page === 'examples' && example === 'light'} tabs={tabs} />
+      </div>
+    </>
+  )
+}
+
+function BombExample({ active, tabs }: { active: boolean; tabs: ReactNode }) {
   // null = the lineup chooser
   const [mode, setMode] = useState<BombDesignId | null>(null)
   const [paused, setPaused] = useState(false)
@@ -440,23 +448,7 @@ export function ExamplesPage() {
       {/* middle: example switcher + design picker + demo canvas */}
       <div className="col-start-2 row-start-1 flex min-h-0 flex-col items-center gap-2">
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
-          <div className="flex gap-1 rounded-xl border border-slate-700 bg-slate-800/60 p-1 text-sm">
-            {EXAMPLES.map((ex) => (
-              <button
-                key={ex.id}
-                type="button"
-                onClick={() => setExample(ex.id)}
-                aria-current={example === ex.id ? 'page' : undefined}
-                className={`rounded-lg px-3 py-1 transition ${
-                  example === ex.id
-                    ? 'bg-sky-600 font-medium text-white'
-                    : 'text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {ex.label}
-              </button>
-            ))}
-          </div>
+          {tabs}
           <button
             type="button"
             onClick={() => choose(null)}
@@ -478,7 +470,7 @@ export function ExamplesPage() {
             mode={mode}
             paused={paused}
             seek={seek}
-            active={page === 'examples'}
+            active={active}
             onReport={setReport}
             onFinished={onFinished}
           />
@@ -537,7 +529,7 @@ export function ExamplesPage() {
           <StoryTimeline
             mode={mode}
             currentId={report.storyId}
-            visible={page === 'examples' && rightTab === 'story'}
+            visible={active && rightTab === 'story'}
             onSeek={onSeek}
           />
           )}
