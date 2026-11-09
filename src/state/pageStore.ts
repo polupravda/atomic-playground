@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 // Top-level page switching (no router: views stay MOUNTED and are merely
 // hidden, so every canvas keeps its state between switches).
-export type AppPage = 'builder' | 'charges' | 'bonding'
+export type AppPage = 'builder' | 'charges' | 'bonding' | 'examples'
 
 interface PageState {
   page: AppPage

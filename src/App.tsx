@@ -13,6 +13,7 @@ import { ChargePlayground } from './ui/ChargePlayground'
 import { BondingLab } from './ui/BondingLab'
 import { InfoPanel } from './ui/InfoPanel'
 import { PageNav } from './ui/PageNav'
+import { ExamplesPage } from './ui/ExamplesPage'
 import { usePageStore } from './state/pageStore'
 
 export default function App() {
@@ -65,6 +66,12 @@ export default function App() {
           style={{ height: 'calc(100vh - 40px)' }}
         >
           <BondingLab />
+        </div>
+        <div
+          className={page === 'examples' ? '' : 'hidden'}
+          style={{ height: 'calc(100vh - 40px)' }}
+        >
+          <ExamplesPage />
         </div>
       </main>
     </div>

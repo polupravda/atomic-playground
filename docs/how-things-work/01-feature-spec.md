@@ -74,6 +74,27 @@ proton/electron counts.
 | **F01** | **Model explanation layer**         | Click "What am I seeing?"                                                                | Short explanation of current model                                       | Optional overlay                                                                                                                                                                                      | Prevent misconceptions                                            | Every simplified visualization should state what it simplifies                                                      | —                                                                                                                     |
 | **F02** | **Difficulty levels**               | Select `Explore` / `More detail`                                                         | Progressive information                                                  | Same animation, additional labels/explanations                                                                                                                                                        | One playground can serve different ages                           | Avoid forcing advanced quantum concepts on young children                                                           | —                                                                                                                     |
 
+## Atoms in action — practical examples (R00–R0x, added 2026-11-08)
+
+A fourth top-level view, **🌍 Atoms in action**, sibling of the builder and
+the two playgrounds (PageNav). It answers "where does this atom stuff show
+up in real life?" Each example is one curated scenario with the same
+three-column layout: **info panel** (left: Right now / How it works / honest
+notes) — **demo canvas** (middle, with the example's own controls) —
+**real photos** (right, with attribution). An example strip above the canvas
+switches examples; new examples plug in as tabs.
+
+Placement rationale: like the two playgrounds, examples don't depend on the
+atom being built, so they are a sibling view, not a builder drawer. They are
+NOT folded into P10 (element "real-world uses" photos): P10 is per element,
+an example is a whole process that spans many atoms.
+
+| ID      | Example | Interaction | What is shown | Scientific rule / honesty |
+| ------- | ------- | ----------- | ------------- | ------------------------- |
+| **R00** | **Examples view** | Open 🌍 Atoms in action, pick an example tab | Info panel + demo canvas + photo column | Curated scenarios only (same philosophy as bonding) |
+| **R01** | **Atomic bomb (fission chain reaction)** | Pick a design — 🔫 Little Boy (gun, U-235), 💣 Fat Man (implosion, Pu-239), ☀️ Tsar Bomba (hydrogen bomb: fission trigger → X-rays → D+T fusion) — then press **DETONATE** (the gun type is fired by a comic plunger detonator) | Countdown → assembly (bullet fired into target / plutonium ball squeezed by explosives) → one neutron starts a chain: hit nuclei stretch and split into two fragments + 2–3 neutrons; live split / generation / escaped counters → flash cut to fireball, shock wave and mushroom cloud. Photos grouped The bombs / The explosions / What was left: Little Boy, Fat Man, Tsar Bomba casing; Trinity, Nagasaki cloud, Tsar fireball; Hiroshima & Nagasaki ruins, Peace Memorial | Critical mass must EMERGE from geometry (neutrons escaping a small lump), not be scripted. Real yields: U-235 ≈ 2.4, Pu-239 ≈ 2.9 neutrons/fission; ~200 MeV per fission (≈ 50 million × burning one carbon atom); ~10 ns per generation. Honest notes: slowed ~a billion times; 100 nuclei vs trillions of trillions; nuclei drawn huge (most close passes are misses); only ~1 kg of Little Boy's 64 kg split; explosion not to scale. Hiroshima & Nagasaki told plainly and kindly. |
+| R02+    | *Candidates* | — | Nuclear power plant (the same chain, controlled by control rods — the natural sequel to R01), the Sun (fusion), smoke detector (Am-241 alpha), carbon dating (C-14 decay), fireworks colors (electron excitation, ties to E02) | — |
+
 ## Recommended bonding scope
 
 **Do not build a universal chemistry engine initially.** For V1, hard-code /
