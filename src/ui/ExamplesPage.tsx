@@ -1,17 +1,18 @@
-import { useState, type ReactNode } from 'react'
+import { memo, useCallback, useState, type ReactNode } from 'react'
 import { PageNav } from './PageNav'
 import { usePageStore } from '../state/pageStore'
-import { FissionStage, type FissionReport } from '../stage/FissionStage'
+import { FissionStage, FISSION_W, chooserRows, type FissionReport } from '../stage/FissionStage'
+import { closeupFuelInfo, closeupStory } from '../stage/fissionCloseup'
 import {
   BOMB_DESIGNS,
-  BOMB_DESIGN_ORDER,
-  hiroshimas,
+  hiroshimasRounded,
   realChainTime,
   type BombDesignId,
 } from '../core/fission'
 import { BOMB_PHOTO_GROUPS } from '../core/examplePhotos'
-import { ChainStats, CompareTable, DamageLegend, ParticleLegend } from './BombLegend'
+import { BombsTable, ChainStats, CompareTable, DamageLegend, ParticleLegend } from './BombLegend'
 import { StoryTimeline } from './StoryTimeline'
+import { BombsIcon } from './BombsIcon'
 
 // R00 — "Atoms in action": a top-level sibling view of practical examples
 // where the atom ideas from the builder show up in the real world. Each
@@ -69,35 +70,72 @@ const ARMED: Record<BombDesignId, Para[]> = {
       icon: '🔫',
       text: 'Little Boy (gun type): two pieces of uranium-235 wait apart inside a gun barrel. Each piece alone is too small — its neutrons would escape before finding another nucleus.',
     },
-    { icon: '👇', text: 'Press DETONATE to fire one piece into the other.' },
+    { icon: '⏳', text: 'In a moment we zoom inside and fire one piece into the other.' },
   ],
   implosion: [
     {
       icon: '💣',
       text: 'Fat Man (implosion): a ball of plutonium-239 sits inside a shell of explosives. Its atoms are as close as in any metal — just like Little Boy’s uranium — but the ball is too small: most neutrons would escape.',
     },
-    { icon: '👇', text: 'Press DETONATE to squeeze it.' },
+    { icon: '⏳', text: 'In a moment we zoom inside and squeeze it.' },
   ],
   tsar: [
     {
       icon: '☀️',
       text: 'Tsar Bomba is a HYDROGEN bomb — a different kind. Stage 1 (left) is a small plutonium implosion bomb, wrapped in explosives like Fat Man, used only as a trigger. Stage 2 (right) is hydrogen fuel: deuterium and tritium.',
     },
-    { icon: '👇', text: 'Press DETONATE to fire the trigger.' },
+    { icon: '⏳', text: 'In a moment we zoom inside and fire the trigger.' },
+  ],
+}
+
+/** the armed bomb is shown from OUTSIDE first: what the outline shows */
+const REAL_SHAPE: Record<BombDesignId, Para[]> = {
+  gun: [
+    {
+      icon: '📐',
+      text: 'Little Boy\'s real shape: a long, thin tube — 3 m long and 0.7 m wide — with a box of fins at the tail. The gun barrel runs along the inside; the uranium target sits in the nose.',
+    },
+  ],
+  implosion: [
+    {
+      icon: '📐',
+      text: 'Fat Man\'s real shape: a fat egg, 3.3 m long and 1.5 m wide. It is round because the big round ball of explosives fills it. The box at the tail kept it steady as it fell.',
+    },
+  ],
+  tsar: [
+    {
+      icon: '📐',
+      text: 'Tsar Bomba\'s real shape: a giant tube 8 m long and 2.1 m wide — as long as two cars. It was so fat that the plane\'s bomb doors had to be taken off to carry it.',
+    },
   ],
 }
 
 /** Left-panel explanation of the current moment. The short ACTION captions
  *  live in the story timeline (right column), highlighted there. */
+/** the lineup chooser (no bomb picked yet) */
+const CHOOSER: Para[] = [
+  {
+    icon: '📏',
+    text: 'Meet the three bombs, drawn on ONE scale next to a grown-up. Tsar Bomba was more than twice as long as the other two — and the small gold balls show how little nuclear fuel was inside.',
+  },
+  {
+    icon: '👆',
+    text: 'Pick a bomb to watch how it works: first from the outside, then inside, down to its atoms — and then its explosion.',
+  },
+]
+
+const INTRO: Para[] = [{ icon: '🔍', text: 'Here it comes: zooming in on the bomb you picked…' }]
+
 function rightNow(mode: BombDesignId, r: FissionReport): Para[] {
-  if (r.phase === 'explosion' && r.explosionStep === 4) return []
+  if (r.phase === 'explosion' && r.explosionStep >= 4) return []
+  if (r.intro) return INTRO
   return rightNowRaw(mode, r)
 }
 
 function rightNowRaw(mode: BombDesignId, r: FissionReport): Para[] {
   switch (r.phase) {
     case 'armed':
-      return ARMED[mode]
+      return [...REAL_SHAPE[mode], ...ARMED[mode]]
     case 'countdown':
       return [{ icon: '⏳', text: `Counting down… ${r.countdown}` }]
     case 'assembling':
@@ -142,52 +180,7 @@ function rightNowRaw(mode: BombDesignId, r: FissionReport): Para[] {
       ]
     }
     case 'closeup':
-      return [
-        [
-          {
-            icon: '🔍',
-            text: 'Zooming in on uranium atoms being hit, one after another. A neutron flies in — it has no electric charge, so neither the electrons nor the protons push it away. It slips straight into the nucleus.',
-          },
-        ],
-        [
-          {
-            icon: '〰️',
-            text: 'The nucleus swallows the neutron and becomes uranium-236. It is far too wobbly: it stretches like a peanut…',
-          },
-        ],
-        [
-          {
-            icon: '💥',
-            text: 'SPLIT! Two smaller atoms fly apart — barium and krypton — plus 3 new neutrons. The energy comes out as heat (the speed of the halves) and violet γ rays, the same rays you saw in the atom builder.',
-          },
-          {
-            icon: '🧮',
-            text: 'Count it: 1 + 235 = 236 = 141 + 92 + 3. No nucleon is lost — they are just shared out differently.',
-          },
-        ],
-        [
-          {
-            icon: '🎯',
-            text: 'Follow the neutron heading up-right: it reaches the next uranium atom and hits its nucleus. Atom 2 starts to wobble.',
-          },
-        ],
-        [
-          {
-            icon: '🔁',
-            text: 'Atom 2 splits the same way, and one of ITS neutrons flies on to atom 3. The other neutrons fly off to hit atoms we can\'t see.',
-          },
-        ],
-        [
-          {
-            icon: '🎲',
-            text: 'Atom 3 splits differently: into xenon + strontium + 2 neutrons (1 + 235 = 140 + 94 + 2). Uranium can break into many different pairs.',
-          },
-          {
-            icon: '📈',
-            text: 'Every split frees 2 or 3 neutrons, so 1 hit becomes 2–3, then 4–9, then more: the chain reaction grows by itself.',
-          },
-        ],
-      ][r.closeupStep]
+      return closeupStory(BOMB_DESIGNS[mode].fuel)[r.closeupStep]?.panel ?? []
     case 'xray':
       return [
         {
@@ -240,7 +233,7 @@ function rightNowRaw(mode: BombDesignId, r: FissionReport): Para[] {
                 icon: '🍄',
                 text:
                   mode === 'tsar'
-                    ? `The mushroom cloud rose about 65 km — 7 times higher than Mount Everest. Tsar Bomba was as strong as about ${(Math.round(hiroshimas('tsar') / 100) * 100).toLocaleString('en-US')} Hiroshima bombs.`
+                    ? `The mushroom cloud rose about 65 km — 7 times higher than Mount Everest. Tsar Bomba was as strong as about ${hiroshimasRounded('tsar').toLocaleString('en-US')} Hiroshima bombs.`
                     : 'The hot fireball rises like a hot-air balloon and pulls a column of dust up behind it — the mushroom cloud.',
               },
             ]
@@ -249,10 +242,13 @@ function rightNowRaw(mode: BombDesignId, r: FissionReport): Para[] {
   }
 }
 
-const HOW_IT_WORKS: Para[] = [
+const howItWorks = (mode: BombDesignId): Para[] => [
   {
     icon: '⚛️',
-    text: 'Uranium-235 has a huge, wobbly nucleus: 92 protons all pushing each other apart, held together just barely.',
+    text:
+      BOMB_DESIGNS[mode].fuel === 'uranium-235'
+        ? 'Uranium-235 has a huge, wobbly nucleus: 92 protons all pushing each other apart, held together just barely.'
+        : 'Plutonium-239 has a huge, wobbly nucleus: 94 protons all pushing each other apart, held together just barely.',
   },
   {
     icon: '🎯',
@@ -287,10 +283,10 @@ const DESIGN_INFO: Record<'gun' | 'implosion' | 'tsar', Para> = {
   },
 }
 
-const HONEST_NOTES: Para[] = [
+const honestNotes = (mode: BombDesignId): Para[] => [
   {
     icon: '📐',
-    text: 'The dashed casings show the parts inside, not the real shape of each bomb. Little Boy was a tube about 3 m long, Fat Man an egg about 3 m long, and Tsar Bomba a giant tube about 8 m long and 2 m wide.',
+    text: 'Every run starts with the three real outlines on one scale, then zooms to your bomb next to a grown-up; the parts inside it are a diagram, shrunk to fit. After DETONATE we zoom in: there the dashed casing shows the parts, not the real shape of the bomb.',
   },
   {
     icon: '🐢',
@@ -298,7 +294,7 @@ const HONEST_NOTES: Para[] = [
   },
   {
     icon: '🔢',
-    text: 'We draw 100 nuclei. A real bomb has trillions of trillions — and only a small part of them split. In Little Boy only about 1 kg of its 64 kg of uranium split before the bomb blew itself apart.',
+    text: `We draw ${BOMB_DESIGNS[mode].nucleusCount} nuclei${mode === 'tsar' ? ' in the trigger' : ''}. A real bomb has trillions of trillions — and only a small part of them split. In Little Boy only about 1 kg of its 64 kg of uranium split before the bomb blew itself apart.`,
   },
   {
     icon: '🔭',
@@ -306,7 +302,7 @@ const HONEST_NOTES: Para[] = [
   },
   {
     icon: '🔍',
-    text: 'In the close-up the nucleus is drawn thousands of times too big — really it is 100,000 times smaller than its atom. Each nucleus shows ~30 particles instead of 235, and uranium can also split into other pairs than barium + krypton. The real halves fly off as charged ions that lose many electrons.',
+    text: closeupNote(mode),
   },
   {
     icon: '🧪',
@@ -325,6 +321,11 @@ const HONEST_NOTES: Para[] = [
     text: 'The damage distances are typical textbook values for a bomb exploding high above flat ground. Real cities differ: in Nagasaki, hills sheltered whole districts.',
   },
 ]
+
+function closeupNote(mode: BombDesignId): string {
+  const f = closeupFuelInfo(BOMB_DESIGNS[mode].fuel)
+  return `In the close-up the nucleus is drawn thousands of times too big — really it is 100,000 times smaller than its atom. Each nucleus shows ~30 particles instead of ${f.mass}, and ${f.name} can also split into other pairs than ${f.firstPair[0]} + ${f.firstPair[1]}. The real halves fly off as charged ions that lose many electrons.`
+}
 
 const TRUE_STORY: Para[] = [
   {
@@ -352,22 +353,29 @@ const initialReport: FissionReport = {
   fuelTotal: 0,
   closeupStep: 0,
   explosionStep: 0,
-  storyId: 'armed',
+  storyId: 'intro',
   aftermath: false,
+  intro: true,
 }
 
 export function ExamplesPage() {
   const page = usePageStore((s) => s.page)
   const [example, setExample] = useState<ExampleId>('bomb')
-  const [mode, setMode] = useState<BombDesignId>('gun')
-  const [detonateSignal, setDetonateSignal] = useState(0)
-  const [resetSignal, setResetSignal] = useState(0)
+  // null = the lineup chooser
+  const [mode, setMode] = useState<BombDesignId | null>(null)
   const [paused, setPaused] = useState(false)
+  const choose = (id: BombDesignId | null) => {
+    setMode(id)
+    setPaused(false)
+  }
+  const onFinished = useCallback(() => {
+    setMode(null)
+    setPaused(false)
+  }, [])
   const [seek, setSeek] = useState<{ id: string; n: number } | null>(null)
   const [rightTab, setRightTab] = useState<'story' | 'photos'>('story')
   const [report, setReport] = useState<FissionReport>(initialReport)
-
-    report.phase === 'chainDone'
+  const onSeek = useCallback((id: string) => setSeek((prev) => ({ id, n: (prev?.n ?? 0) + 1 })), [])
 
   const designOrder: Array<'gun' | 'implosion' | 'tsar'> =
     mode === 'tsar'
@@ -375,6 +383,9 @@ export function ExamplesPage() {
       : mode === 'implosion'
         ? ['implosion', 'gun', 'tsar']
         : ['gun', 'implosion', 'tsar']
+  // texts that need a fuel fall back to Little Boy's on the chooser
+  const m = mode ?? 'gun'
+  const running = mode !== null
 
   return (
     <div className="grid h-full min-h-0 grid-cols-[16rem_minmax(0,1fr)_18rem] grid-rows-[minmax(0,1fr)] gap-x-6">
@@ -383,28 +394,44 @@ export function ExamplesPage() {
         <PageNav />
         <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/40 p-3 text-sm leading-relaxed text-slate-300">
           <SectionHeader first>Right now</SectionHeader>
-          <Paras items={rightNow(mode, report)} className="text-slate-200" />
-          <ChainStats mode={mode} r={report} />
-          {report.phase === 'explosion' && report.explosionStep < 4 && (
+          {mode === null ? (
             <>
-              <SectionHeader>Damage on the ground (to scale)</SectionHeader>
-              <DamageLegend mode={mode} />
+              <Paras items={CHOOSER} className="text-slate-200" />
+              <SectionHeader>The bombs themselves</SectionHeader>
+              <BombsTable />
+            </>
+          ) : (
+            <>
+              <Paras items={rightNow(mode, report)} className="text-slate-200" />
+              <ChainStats mode={mode} r={report} />
+              {report.phase === 'explosion' && report.explosionStep < 4 && (
+                <>
+                  <SectionHeader>Damage on the ground (to scale)</SectionHeader>
+                  <DamageLegend mode={mode} />
+                </>
+              )}
+              {report.phase === 'explosion' && report.explosionStep === 4 && (
+                <>
+                  <SectionHeader>The three bombs compared</SectionHeader>
+                  <CompareTable mode={mode} />
+                </>
+              )}
+              {report.intro && (
+                <>
+                  <SectionHeader>The bombs themselves</SectionHeader>
+                  <BombsTable mode={mode} />
+                </>
+              )}
+              <SectionHeader>What the dots mean</SectionHeader>
+              <ParticleLegend mode={mode} />
             </>
           )}
-          {report.phase === 'explosion' && report.explosionStep === 4 && (
-            <>
-              <SectionHeader>The three bombs compared</SectionHeader>
-              <CompareTable mode={mode} />
-            </>
-          )}
-          <SectionHeader>What the dots mean</SectionHeader>
-          <ParticleLegend mode={mode} />
           <SectionHeader>How it works</SectionHeader>
-          <Paras items={HOW_IT_WORKS} />
+          <Paras items={howItWorks(m)} />
           <SectionHeader>Three ways to build one</SectionHeader>
           <Paras items={designOrder.map((d) => DESIGN_INFO[d])} />
           <SectionHeader>Honest notes</SectionHeader>
-          <Paras items={HONEST_NOTES} className="text-slate-400" />
+          <Paras items={honestNotes(m)} className="text-slate-400" />
           <SectionHeader>A true story</SectionHeader>
           <Paras items={TRUE_STORY} />
         </div>
@@ -430,56 +457,33 @@ export function ExamplesPage() {
               </button>
             ))}
           </div>
-          <div
-            role="radiogroup"
-            aria-label="Bomb design"
-            className="flex gap-1 rounded-xl border border-slate-700 bg-slate-800/60 p-1 text-sm"
+          <button
+            type="button"
+            onClick={() => choose(null)}
+            disabled={!running}
+            aria-current={running ? undefined : 'page'}
+            title="Go to the bomb selection screen"
+            className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-medium transition ${
+              running
+                ? 'border-sky-500/70 bg-slate-800/80 text-sky-100 hover:bg-sky-600 hover:text-white'
+                : 'cursor-default border-slate-700 bg-sky-600 text-white'
+            }`}
           >
-            {BOMB_DESIGN_ORDER.map((id) => (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={mode === id}
-                onClick={() => {
-                  setMode(id)
-                  setPaused(false)
-                  setResetSignal((n) => n + 1)
-                }}
-                className={`rounded-lg px-3 py-1 transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                  mode === id
-                    ? 'bg-sky-600 font-medium text-white'
-                    : 'text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {BOMB_DESIGNS[id].label}
-              </button>
-            ))}
-          </div>
+            <BombsIcon className="h-7 w-11 shrink-0" />
+            {running ? 'Choose another bomb' : 'Choose a bomb'}
+          </button>
         </div>
         <div className="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
           <FissionStage
             mode={mode}
-            detonateSignal={detonateSignal}
-            resetSignal={resetSignal}
             paused={paused}
             seek={seek}
             active={page === 'examples'}
             onReport={setReport}
+            onFinished={onFinished}
           />
-          {report.phase === 'armed' && (
-            <button
-              type="button"
-              onClick={() => {
-                setPaused(false)
-                setDetonateSignal((n) => n + 1)
-              }}
-              className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-2xl border-2 border-red-400 bg-red-600 px-8 py-3 text-lg font-bold uppercase tracking-widest text-white shadow-lg shadow-red-900/50 transition hover:bg-red-500 active:scale-95"
-            >
-              💥 Detonate
-            </button>
-          )}
-          {report.phase !== 'armed' && (
+          {mode === null && <Chooser onChoose={choose} />}
+          {running && (
             <button
               type="button"
               onClick={() => setPaused((v) => !v)}
@@ -491,18 +495,6 @@ export function ExamplesPage() {
               }`}
             >
               {paused ? '▶ Resume' : '⏸ Pause'}
-            </button>
-          )}
-          {report.phase === 'explosion' && (
-            <button
-              type="button"
-              onClick={() => {
-                setPaused(false)
-                setResetSignal((n) => n + 1)
-              }}
-              className="absolute bottom-4 right-4 rounded-xl border border-slate-600 bg-slate-800/85 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-700"
-            >
-              ↺ Build the bomb again
             </button>
           )}
         </div>
@@ -537,59 +529,107 @@ export function ExamplesPage() {
           data-story-scroll
           className={`min-h-0 flex-1 overflow-y-auto pr-1 ${rightTab === 'story' ? '' : 'hidden'}`}
         >
+          {mode === null ? (
+            <p className="px-1 pt-2 text-sm text-slate-400">
+              👈 Pick a bomb — its story will appear here, step by step.
+            </p>
+          ) : (
           <StoryTimeline
             mode={mode}
             currentId={report.storyId}
-            onSeek={(id) => setSeek((prev) => ({ id, n: (prev?.n ?? 0) + 1 }))}
+            visible={page === 'examples' && rightTab === 'story'}
+            onSeek={onSeek}
           />
+          )}
         </div>
         <div
           className={`min-h-0 flex-1 overflow-y-auto pr-1 ${rightTab === 'photos' ? '' : 'hidden'}`}
         >
-          {BOMB_PHOTO_GROUPS.map((group, gi) => (
-            <section key={group.title} className={gi === 0 ? '' : 'mt-4'}>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                {group.title}
-              </h2>
-              <div className="space-y-3">
-                {group.photos.map((ph) => (
-                  <figure
-                    key={ph.file}
-                    className={`rounded-xl border p-2 transition ${
-                      ph.design === mode
-                        ? 'border-amber-500/60 bg-amber-500/10'
-                        : 'border-slate-700 bg-slate-800/40'
-                    }`}
-                  >
-                    <img
-                      src={`${import.meta.env.BASE_URL}examples/${ph.file}`}
-                      alt={ph.caption}
-                      loading="lazy"
-                      className={`w-full rounded-lg border border-slate-700 ${
-                        ph.tall ? 'h-72 bg-black object-contain' : 'h-36 object-cover'
-                      }`}
-                    />
-                    <figcaption className="mt-1">
-                      <div className="text-sm leading-snug text-slate-200">{ph.caption}</div>
-                      <div className="text-[9px] text-slate-500">
-                        <a
-                          href={ph.source}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline hover:text-slate-300"
-                        >
-                          {ph.creator}
-                        </a>{' '}
-                        ({ph.license})
-                      </div>
-                    </figcaption>
-                  </figure>
-                ))}
-              </div>
-            </section>
-          ))}
+          <PhotoPanel mode={mode} />
         </div>
       </div>
     </div>
+  )
+}
+
+/** The real photos (right column, Photos tab); the current design's are
+ *  highlighted. Memoised: it only changes when the design does. */
+const PhotoPanel = memo(function PhotoPanel({ mode }: { mode: BombDesignId | null }) {
+  return (
+    <>
+      {BOMB_PHOTO_GROUPS.map((group, gi) => (
+        <section key={group.title} className={gi === 0 ? '' : 'mt-4'}>
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            {group.title}
+          </h2>
+          <div className="space-y-3">
+            {group.photos.map((ph) => (
+              <figure
+                key={ph.file}
+                className={`rounded-xl border p-2 transition ${
+                  ph.design === mode
+                    ? 'border-amber-500/60 bg-amber-500/10'
+                    : 'border-slate-700 bg-slate-800/40'
+                }`}
+              >
+                <img
+                  src={`${import.meta.env.BASE_URL}examples/${ph.file}`}
+                  alt={ph.caption}
+                  loading="lazy"
+                  className={`w-full rounded-lg border border-slate-700 ${
+                    ph.tall ? 'h-72 bg-black object-contain' : 'h-36 object-cover'
+                  }`}
+                />
+                <figcaption className="mt-1">
+                  <div className="text-sm leading-snug text-slate-200">{ph.caption}</div>
+                  <div className="text-[9px] text-slate-500">
+                    <a
+                      href={ph.source}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline hover:text-slate-300"
+                    >
+                      {ph.creator}
+                    </a>{' '}
+                    ({ph.license})
+                  </div>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
+      ))}
+    </>
+  )
+})
+
+const NAMES: Record<BombDesignId, string> = { gun: 'Little Boy', implosion: 'Fat Man', tsar: 'Tsar Bomba' }
+
+/** Click targets over the canvas lineup: each bomb row is one big button
+ *  ("▶ Watch it"); picking one starts its whole story (auto-play). */
+function Chooser({ onChoose }: { onChoose: (id: BombDesignId) => void }) {
+  const rows = chooserRows()
+  return (
+    <>
+      {rows.map((r) => (
+        <button
+          key={r.mode}
+          type="button"
+          onClick={() => onChoose(r.mode)}
+          aria-label={`Watch ${NAMES[r.mode]}`}
+          className="group absolute rounded-xl border border-slate-700/0 transition hover:border-sky-400/70 hover:bg-sky-400/10 focus-visible:border-sky-400 focus-visible:outline-none"
+          style={{
+            left: r.left,
+            top: r.top,
+            width: Math.min(FISSION_W - 8, r.right) - r.left,
+            height: r.bottom - r.top,
+          }}
+        >
+          <span className="absolute right-3 top-1.5 rounded-full bg-sky-600 px-3 py-1 text-sm font-semibold text-white shadow-md shadow-black/40 transition group-hover:scale-105 group-hover:bg-sky-500">
+            ▶ Watch it
+          </span>
+        </button>
+      ))}
+    </>
   )
 }

@@ -84,6 +84,18 @@ export function hiroshimas(id: BombDesignId): number {
   return Math.round(y / (BOMB_DESIGNS.gun.yieldKt ?? 15))
 }
 
+/** Hiroshimas rounded to the nearest hundred, for big bombs ("≈ 3,300"). */
+export function hiroshimasRounded(id: BombDesignId): number {
+  return Math.round(hiroshimas(id) / 100) * 100
+}
+
+/** Yield as text: "15 kilotons" / "50 megatons" ('short': "15 kt" / "50 Mt"). */
+export function yieldText(id: BombDesignId, style: 'long' | 'short' = 'long'): string {
+  const kt = BOMB_DESIGNS[id].yieldKt ?? 0
+  if (kt >= 1000) return `${kt / 1000} ${style === 'long' ? 'megatons' : 'Mt'}`
+  return `${kt} ${style === 'long' ? 'kilotons' : 'kt'}`
+}
+
 // ---------- damage on the ground (R01 aftermath map) ----------
 // Rounded textbook values for a ~15 kt AIRBURST over flat ground (Hiroshima
 // was 15 kt at ~600 m). Other yields scale by the classic laws: blast
@@ -151,3 +163,35 @@ export function formatTinySeconds(seconds: number): string {
 export function realChainTime(generations: number): string {
   return formatTinySeconds(generations * GENERATION_TIME_S)
 }
+
+// ---------- the bombs themselves (R01 real shape + lineup) ----------
+// Real outside sizes, rounded. The nuclear fuel is shown as ONE ball of
+// metal at its real density (Little Boy's uranium really was rings + a
+// cylinder; Fat Man's plutonium really was a ball).
+
+export interface RealBomb {
+  lengthM: number
+  widthM: number
+  /** total weight, tonnes */
+  weightT: number
+  /** nuclear fuel inside (null = still secret) */
+  fuel: { kg: number; ballCm: number } | null
+}
+
+/** Diameter (cm) of a ball of `kg` of metal with density `gPerCm3`. */
+export function ballDiameterCm(kg: number, gPerCm3: number): number {
+  const volumeCm3 = (kg * 1000) / gPerCm3
+  return Math.cbrt((6 * volumeCm3) / Math.PI)
+}
+
+export const REAL_BOMBS: Record<BombDesignId, RealBomb> = {
+  // uranium metal: 19.1 g/cm³
+  gun: { lengthM: 3.0, widthM: 0.71, weightT: 4.4, fuel: { kg: 64, ballCm: ballDiameterCm(64, 19.1) } },
+  // Fat Man's plutonium–gallium alloy: 15.9 g/cm³ (a 9 cm ball)
+  implosion: { lengthM: 3.25, widthM: 1.52, weightT: 4.7, fuel: { kg: 6.2, ballCm: ballDiameterCm(6.2, 15.9) } },
+  // Tsar Bomba's fuel amounts have never been published
+  tsar: { lengthM: 8.0, widthM: 2.1, weightT: 27, fuel: null },
+}
+
+/** A grown-up next to the bombs, for scale (m). */
+export const PERSON_HEIGHT_M = 1.8

@@ -1,6 +1,8 @@
 import { drawGlossyParticle } from './particleStyle'
 import type { ParticleKind } from '../state/atomStore'
 import { shellConfiguration } from '../core/atom'
+import type { BombDesign } from '../core/fission'
+import { blit, clamp01, easeIn, easeInOut, easeOut, makeCanvasSprite, type Sprite } from './canvasUtil'
 
 // R01 close-up: late in the chain reaction the camera zooms into one nucleus
 // that has just been hit, and the canvas cross-fades into a close view drawn
@@ -8,12 +10,15 @@ import { shellConfiguration } from '../core/atom'
 // spinning glossy electrons, REAL shell configurations from core/atom) and
 // the builder's radiation language (violet wavy γ photons).
 //
-// Slow on purpose: THREE uranium atoms are hit one after the other, so kids
-// see the chain move from atom to atom:
-//   atom 1: n + ²³⁵U → ²³⁶U → ¹⁴¹Ba + ⁹²Kr + 3 n   (one neutron → atom 2)
-//   atom 2: n + ²³⁵U → ²³⁶U → ¹⁴¹Ba + ⁹²Kr + 3 n   (one neutron → atom 3)
-//   atom 3: n + ²³⁵U → ²³⁶U → ¹⁴⁰Xe + ⁹⁴Sr + 2 n   (uranium splits in
-//           different ways — a second real pair shows that)
+// Slow on purpose: THREE atoms of the bomb's own fuel are hit one after the
+// other, so kids see the chain move from atom to atom. Real split pairs:
+//   uranium-235 (Little Boy):
+//     atoms 1–2: n + ²³⁵U → ²³⁶U → ¹⁴¹Ba + ⁹²Kr + 3 n
+//     atom 3:    n + ²³⁵U → ²³⁶U → ¹⁴⁰Xe + ⁹⁴Sr + 2 n
+//   plutonium-239 (Fat Man, Tsar Bomba's trigger):
+//     atoms 1–2: n + ²³⁹Pu → ²⁴⁰Pu → ¹³⁴Xe + ¹⁰³Zr + 3 n
+//     atom 3:    n + ²³⁹Pu → ²⁴⁰Pu → ¹⁴⁴Ba + ⁹⁴Sr + 2 n
+// (atom 3 splits differently: heavy nuclei break into many different pairs)
 // The camera starts on atom 1, then pans to follow the chain to atoms 2–3.
 // Honest simplifications (also in the info panel): nuclei drawn thousands of
 // times too big, ~30 nucleons shown instead of 235, the real halves fly off
@@ -36,10 +41,6 @@ export const CLOSEUP_TOTAL = OUT_END + HOLD_OUT
 export const CLOSEUP_MAX_ZOOM = 9
 const MAX_ZOOM = CLOSEUP_MAX_ZOOM
 
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
-const easeIn = (p: number) => p * p
-const easeOut = (p: number) => 1 - (1 - p) * (1 - p)
-const easeInOut = (p: number) => (p < 0.5 ? 2 * p * p : 1 - 2 * (1 - p) * (1 - p))
 
 /** Camera for the nuclear view, how visible the close-up scene is, and the
  *  alpha of the amber "this atom" circle drawn around the focus in the
@@ -68,13 +69,63 @@ export function closeupCamera(t: number): { zoom: number; sceneAlpha: number; ma
 
 // ---------- the script ----------
 
-type FragId = 'ba' | 'kr' | 'xe' | 'sr'
-const FRAG: Record<FragId, { name: string; protons: number }> = {
-  ba: { name: 'barium', protons: 56 },
-  kr: { name: 'krypton', protons: 36 },
-  xe: { name: 'xenon', protons: 54 },
-  sr: { name: 'strontium', protons: 38 },
+type FragId = 'ba' | 'kr' | 'xe' | 'sr' | 'zr'
+const FRAG: Record<FragId, { name: string; symbol: string; protons: number }> = {
+  ba: { name: 'barium', symbol: 'Ba', protons: 56 },
+  kr: { name: 'krypton', symbol: 'Kr', protons: 36 },
+  xe: { name: 'xenon', symbol: 'Xe', protons: 54 },
+  sr: { name: 'strontium', symbol: 'Sr', protons: 38 },
+  zr: { name: 'zirconium', symbol: 'Zr', protons: 40 },
 }
+
+export type CloseupFuel = BombDesign['fuel']
+
+/** how one atom of the fuel splits: the halves (mass numbers) + neutrons */
+interface SplitPair {
+  heavy: FragId
+  heavyA: number
+  light: FragId
+  lightA: number
+  neutrons: number
+}
+
+const FUELS: Record<
+  CloseupFuel,
+  { name: string; symbol: string; protons: number; mass: number; pairs: [SplitPair, SplitPair, SplitPair] }
+> = {
+  'uranium-235': {
+    name: 'uranium',
+    symbol: 'U',
+    protons: 92,
+    mass: 235,
+    pairs: [
+      { heavy: 'ba', heavyA: 141, light: 'kr', lightA: 92, neutrons: 3 },
+      { heavy: 'ba', heavyA: 141, light: 'kr', lightA: 92, neutrons: 3 },
+      { heavy: 'xe', heavyA: 140, light: 'sr', lightA: 94, neutrons: 2 },
+    ],
+  },
+  'plutonium-239': {
+    name: 'plutonium',
+    symbol: 'Pu',
+    protons: 94,
+    mass: 239,
+    pairs: [
+      { heavy: 'xe', heavyA: 134, light: 'zr', lightA: 103, neutrons: 3 },
+      { heavy: 'xe', heavyA: 134, light: 'zr', lightA: 103, neutrons: 3 },
+      { heavy: 'ba', heavyA: 144, light: 'sr', lightA: 94, neutrons: 2 },
+    ],
+  },
+}
+
+/** fuel facts the info panel needs (name, mass number, first split pair) */
+export function closeupFuelInfo(fuel: CloseupFuel) {
+  const f = FUELS[fuel]
+  return { name: f.name, mass: f.mass, firstPair: [FRAG[f.pairs[0].heavy].name, FRAG[f.pairs[0].light].name] }
+}
+
+const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹'
+const sup = (n: number) => String(n).replace(/\d/g, (d) => SUP[Number(d)])
+const cap = (w: string) => w[0].toUpperCase() + w.slice(1)
 
 interface SplitSpec {
   x: number // world position, in units of k
@@ -82,11 +133,9 @@ interface SplitSpec {
   hitT: number // neutron arrives (scene time, s)
   splitT: number
   axis: number // direction the heavier half flies
-  heavy: FragId
-  light: FragId
-  /** neutrons freed: angle, or the index of the atom it will hit */
+  /** neutrons freed: angle, or the index of the atom it will hit (the
+   *  count matches each fuel's pair: 3, 3, 2) */
   out: Array<{ a: number } | { target: number }>
-  eq: string
 }
 
 const SPLITS: SplitSpec[] = [
@@ -96,10 +145,7 @@ const SPLITS: SplitSpec[] = [
     hitT: 2.2,
     splitT: 3.7,
     axis: -Math.PI / 2 - 0.35,
-    heavy: 'ba',
-    light: 'kr',
     out: [{ target: 1 }, { a: 0.95 }, { a: Math.PI + 0.45 }],
-    eq: 'n + ²³⁵U  →  ²³⁶U  →  ¹⁴¹Ba + ⁹²Kr + 3 n + energy',
   },
   {
     x: 330,
@@ -107,10 +153,7 @@ const SPLITS: SplitSpec[] = [
     hitT: 6.0,
     splitT: 7.3,
     axis: -0.4,
-    heavy: 'ba',
-    light: 'kr',
     out: [{ target: 2 }, { a: -0.25 }, { a: Math.PI - 0.55 }],
-    eq: 'n + ²³⁵U  →  ²³⁶U  →  ¹⁴¹Ba + ⁹²Kr + 3 n + energy',
   },
   {
     x: 380,
@@ -118,10 +161,7 @@ const SPLITS: SplitSpec[] = [
     hitT: 9.1,
     splitT: 10.3,
     axis: Math.PI,
-    heavy: 'xe',
-    light: 'sr',
     out: [{ a: 0.6 }, { a: -2.4 }],
-    eq: 'n + ²³⁵U  →  ²³⁶U  →  ¹⁴⁰Xe + ⁹⁴Sr + 2 n + energy',
   },
 ]
 // atoms that are never hit — the rest of the metal
@@ -140,47 +180,134 @@ const CAM_END = {
 const PAN_START = SPLITS[0].splitT + 0.4
 const PAN_END = SPLITS[1].hitT - 0.6
 
-/** Which step of the story is showing (0–5), for captions + info panel. */
+// ---------- the story steps (ONE source for canvas, timeline + panel) ----------
+
+// a step ends when the scene reaches this time (s); the last never ends
+const STEP_ENDS = [
+  SPLITS[0].hitT, // 0 a neutron flies in
+  SPLITS[0].splitT, // 1 the nucleus wobbles
+  SPLITS[1].hitT, // 2 split!
+  SPLITS[1].splitT, // 3 atom 2 is hit
+  SPLITS[2].splitT, // 4 atom 2 splits
+  Infinity, // 5 atom 3 splits
+]
+export const CLOSEUP_STEP_COUNT = STEP_ENDS.length
+
+/** Which story step is showing (0 … CLOSEUP_STEP_COUNT−1). */
 export function closeupStep(t: number): number {
   const s = t - SCENE_START
-  const [a, b, c] = SPLITS
-  if (s < a.hitT) return 0
-  if (s < a.splitT) return 1
-  if (s < b.hitT) return 2
-  if (s < b.splitT) return 3
-  if (s < c.splitT) return 4
-  return 5
+  return STEP_ENDS.findIndex((end) => s < end)
 }
 
-/** short caption per story step (shown in the info panel's focus box) */
-export const CLOSEUP_CAPTIONS = [
-  'A neutron flies in. It has no electric charge, so nothing pushes it away.',
-  'The nucleus swallows it and becomes uranium-236 — too wobbly! It stretches…',
-  'SPLIT! Barium + krypton + 3 new neutrons + energy (heat and violet γ rays).',
-  'One of the new neutrons reaches the next uranium atom… and hits it!',
-  'Atom 2 splits too — and its neutron flies on to atom 3.',
-  'Atom 3 splits into xenon + strontium. Every split frees more neutrons: the chain grows!',
-]
+export interface CloseupStepText {
+  icon: string
+  title: string
+  /** short caption (story timeline) */
+  caption: string
+  /** the reaction written out */
+  equation: string
+  /** longer explanation (left info panel) */
+  panel: Array<{ icon: string; text: string }>
+}
 
-/** the reaction written out, per story step */
-export const CLOSEUP_EQUATIONS = [
-  'n + ²³⁵U',
-  'n + ²³⁵U → ²³⁶U',
-  'n + ²³⁵U → ²³⁶U → ¹⁴¹Ba + ⁹²Kr + 3 n + energy',
-  'n + ²³⁵U → ²³⁶U',
-  'n + ²³⁵U → ²³⁶U → ¹⁴¹Ba + ⁹²Kr + 3 n + energy',
-  'n + ²³⁵U → ²³⁶U → ¹⁴⁰Xe + ⁹⁴Sr + 2 n + energy',
-]
+/** All close-up story steps for the bomb's fuel (CLOSEUP_STEP_COUNT long). */
+export function closeupStory(fuel: CloseupFuel): CloseupStepText[] {
+  const f = FUELS[fuel]
+  const A = f.mass
+  const fuelN = `n + ${sup(A)}${f.symbol}`
+  const wobbly = `${fuelN} → ${sup(A + 1)}${f.symbol}`
+  const splitEq = (p: SplitPair) =>
+    `${wobbly} → ${sup(p.heavyA)}${FRAG[p.heavy].symbol} + ${sup(p.lightA)}${FRAG[p.light].symbol} + ${p.neutrons} n + energy`
+  const [p1, p2, p3] = f.pairs
+  const h = (p: SplitPair) => FRAG[p.heavy].name
+  const l = (p: SplitPair) => FRAG[p.light].name
+  return [
+    {
+      icon: '🎯',
+      title: 'A neutron flies in',
+      caption: 'A neutron flies in. It has no electric charge, so nothing pushes it away.',
+      equation: fuelN,
+      panel: [
+        {
+          icon: '🔍',
+          text: `Zooming in on ${f.name} atoms being hit, one after another. A neutron flies in — it has no electric charge, so neither the electrons nor the protons push it away. It slips straight into the nucleus.`,
+        },
+      ],
+    },
+    {
+      icon: '〰️',
+      title: `${cap(f.name)}-${A + 1} wobbles`,
+      caption: `The nucleus swallows it and becomes ${f.name}-${A + 1} — too wobbly! It stretches…`,
+      equation: wobbly,
+      panel: [
+        {
+          icon: '〰️',
+          text: `The nucleus swallows the neutron and becomes ${f.name}-${A + 1}. It is far too wobbly: it stretches like a peanut…`,
+        },
+      ],
+    },
+    {
+      icon: '💥',
+      title: 'Split!',
+      caption: `SPLIT! ${cap(h(p1))} + ${l(p1)} + ${p1.neutrons} new neutrons + energy (heat and violet γ rays).`,
+      equation: splitEq(p1),
+      panel: [
+        {
+          icon: '💥',
+          text: `SPLIT! Two smaller atoms fly apart — ${h(p1)} and ${l(p1)} — plus ${p1.neutrons} new neutrons. The energy comes out as heat (the speed of the halves) and violet γ rays, the same rays you saw in the atom builder.`,
+        },
+        {
+          icon: '🧮',
+          text: `Count it: 1 + ${A} = ${A + 1} = ${p1.heavyA} + ${p1.lightA} + ${p1.neutrons}. No nucleon is lost — they are just shared out differently.`,
+        },
+      ],
+    },
+    {
+      icon: '🎯',
+      title: 'Atom 2 is hit',
+      caption: `One of the new neutrons reaches the next ${f.name} atom… and hits it!`,
+      equation: wobbly,
+      panel: [
+        {
+          icon: '🎯',
+          text: `Follow the neutron heading up-right: it reaches the next ${f.name} atom and hits its nucleus. Atom 2 starts to wobble.`,
+        },
+      ],
+    },
+    {
+      icon: '🔁',
+      title: 'Atom 2 splits',
+      caption: 'Atom 2 splits too — and its neutron flies on to atom 3.',
+      equation: splitEq(p2),
+      panel: [
+        {
+          icon: '🔁',
+          text: "Atom 2 splits the same way, and one of ITS neutrons flies on to atom 3. The other neutrons fly off to hit atoms we can't see.",
+        },
+      ],
+    },
+    {
+      icon: '🎲',
+      title: 'Atom 3 splits',
+      caption: `Atom 3 splits into ${h(p3)} + ${l(p3)}. Every split frees more neutrons: the chain grows!`,
+      equation: splitEq(p3),
+      panel: [
+        {
+          icon: '🎲',
+          text: `Atom 3 splits differently: into ${h(p3)} + ${l(p3)} + ${p3.neutrons} neutrons (1 + ${A} = ${p3.heavyA} + ${p3.lightA} + ${p3.neutrons}). ${cap(f.name)} can break into many different pairs.`,
+        },
+        {
+          icon: '📈',
+          text: 'Every split frees 2 or 3 neutrons, so 1 hit becomes 2–3, then 4–9, then more: the chain reaction grows by itself.',
+        },
+      ],
+    },
+  ]
+}
 
 // ---------- sprites: big nuclei for the close view ----------
 
-interface Sprite {
-  canvas: HTMLCanvasElement
-  size: number
-}
-
 function cluster(n: number, protons: number, pr: number): Sprite {
-  const dpr = window.devicePixelRatio || 1
   const golden = Math.PI * (3 - Math.sqrt(5))
   const pts: Array<[ParticleKind, number, number]> = []
   let placed = 0
@@ -194,16 +321,12 @@ function cluster(n: number, protons: number, pr: number): Sprite {
   }
   const ext = pr * 1.08 * Math.sqrt(n - 1) + pr * 1.6
   const size = Math.ceil(2 * ext + 2)
-  const canvas = document.createElement('canvas')
-  canvas.width = size * dpr
-  canvas.height = size * dpr
-  const ctx = canvas.getContext('2d')!
-  ctx.scale(dpr, dpr)
-  for (let j = pts.length - 1; j >= 0; j--) {
-    const [kind, x, y] = pts[j]
-    drawGlossyParticle(ctx, kind, size / 2 + x, size / 2 + y, pr)
-  }
-  return { canvas, size }
+  return makeCanvasSprite(size, (ctx) => {
+    for (let j = pts.length - 1; j >= 0; j--) {
+      const [kind, x, y] = pts[j]
+      drawGlossyParticle(ctx, kind, size / 2 + x, size / 2 + y, pr)
+    }
+  })
 }
 
 type SpriteSet = { u: Sprite; n: Sprite } & Record<FragId, Sprite>
@@ -212,10 +335,12 @@ function sprites(k: number): SpriteSet {
   if (!cache || cache.k !== k) {
     const pr = 4 * k
     // symbolic nucleon counts with each nucleus's real proton share
+    // (U-235 and Pu-239 both: ~39 % protons → 12 of 30)
     cache = {
       k,
       sp: {
         u: cluster(30, 12, pr),
+        zr: cluster(13, 5, pr),
         ba: cluster(19, 8, pr),
         kr: cluster(12, 5, pr),
         xe: cluster(18, 7, pr),
@@ -225,10 +350,6 @@ function sprites(k: number): SpriteSet {
     }
   }
   return cache.sp
-}
-
-function blit(ctx: CanvasRenderingContext2D, s: Sprite, x: number, y: number) {
-  ctx.drawImage(s.canvas, x - s.size / 2, y - s.size / 2, s.size, s.size)
 }
 
 // ---------- drawing helpers ----------
@@ -361,13 +482,15 @@ export function drawCloseup(
   W: number,
   H: number,
   alpha: number,
+  fuel: CloseupFuel,
 ) {
   if (alpha <= 0) return
   const s = t - SCENE_START
+  const F = FUELS[fuel]
   const k = Math.min(W, H) / 800
   const sp = sprites(k)
   const spin = t * 0.6
-  const U: AtomLook = { protons: 92, nucleus: sp.u, r0: 34 * k, gap: 13.5 * k }
+  const U: AtomLook = { protons: F.protons, nucleus: sp.u, r0: 34 * k, gap: 13.5 * k }
   const look = (f: FragId): AtomLook => ({
     protons: FRAG[f].protons,
     nucleus: sp[f],
@@ -401,7 +524,7 @@ export function drawCloseup(
   SPLITS.forEach((sp1, idx) => {
     const ax = X(sp1.x)
     const ay = Y(sp1.y)
-    // the uranium atom: calm → wobbling U-236 → gone at its split
+    // the fuel atom: calm → wobbling (one neutron heavier) → gone at its split
     if (s < sp1.splitT + 0.45) {
       const st = s < sp1.hitT ? 0 : easeIn(clamp01((s - sp1.hitT) / (sp1.splitT - sp1.hitT)))
       const fade = s < sp1.splitT ? 1 : 1 - clamp01((s - sp1.splitT) / 0.45)
@@ -411,7 +534,7 @@ export function drawCloseup(
         const hit = s >= sp1.hitT
         tag(
           ctx,
-          `atom ${idx + 1} · uranium-${hit ? 236 : 235}`,
+          `atom ${idx + 1} · ${F.name}-${hit ? F.mass + 1 : F.mass}`,
           ax,
           ay + outerR(U) + 40 * k < H - 20 ? ay + outerR(U) + 20 * k : ay - outerR(U) - 20 * k,
           hit ? AMBER : SLATE,
@@ -442,8 +565,9 @@ export function drawCloseup(
     // the two halves fly apart along the stretch axis, slowing down
     const d = 230 * k * (1 - Math.exp(-q * 1.3))
     const grow = clamp01(q / 0.5)
-    const hv = look(sp1.heavy)
-    const lt = look(sp1.light)
+    const pair = F.pairs[idx]
+    const hv = look(pair.heavy)
+    const lt = look(pair.light)
     const hx = ax + Math.cos(sp1.axis) * d
     const hy = ay + Math.sin(sp1.axis) * d
     const lx = ax - Math.cos(sp1.axis) * d * 1.25 // the lighter half flies faster
@@ -454,8 +578,8 @@ export function drawCloseup(
       const la = 1 - clamp01((q - 2.6) / 0.6)
       ctx.save()
       ctx.globalAlpha *= la
-      tag(ctx, FRAG[sp1.heavy].name, hx, hy - outerR(hv) - 16 * k, AMBER)
-      tag(ctx, FRAG[sp1.light].name, lx, ly + outerR(lt) + 16 * k, AMBER)
+      tag(ctx, FRAG[pair.heavy].name, hx, hy - outerR(hv) - 16 * k, AMBER)
+      tag(ctx, FRAG[pair.light].name, lx, ly + outerR(lt) + 16 * k, AMBER)
       ctx.restore()
     }
     // the freed neutrons

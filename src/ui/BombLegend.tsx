@@ -7,7 +7,10 @@ import {
   CLOUD_TOP_KM,
   damageZones,
   hiroshimas,
+  hiroshimasRounded,
+  REAL_BOMBS,
   tntText,
+  yieldText,
   type BombDesignId,
 } from '../core/fission'
 
@@ -196,9 +199,8 @@ const kmText = (km: number) => (km < 10 ? `${km.toFixed(1)} km` : `${Math.round(
 
 /** Damage on the ground (formerly the canvas legend): power + to-scale zones. */
 export function DamageLegend({ mode }: { mode: BombDesignId }) {
-  const kt = BOMB_DESIGNS[mode].yieldKt
-  if (!kt) return null
-  const power = kt >= 1000 ? `${kt / 1000} megatons` : `${kt} kilotons`
+  if (!BOMB_DESIGNS[mode].yieldKt) return null
+  const power = yieldText(mode)
   return (
     <div className="space-y-1.5">
       <p className="text-amber-200">
@@ -231,7 +233,6 @@ export function CompareTable({ mode }: { mode: BombDesignId }) {
     <div className="space-y-2">
       {rows.map((id) => {
         const d = BOMB_DESIGNS[id]
-        const kt = d.yieldKt ?? 0
         const houses = damageZones(id).find((z) => z.id === 'houses')?.km ?? 0
         const n = hiroshimas(id)
         return (
@@ -243,8 +244,8 @@ export function CompareTable({ mode }: { mode: BombDesignId }) {
           >
             <div className="font-medium text-slate-100">{d.label}</div>
             <div className="text-xs leading-relaxed text-slate-300">
-              💥 {kt >= 1000 ? `${kt / 1000} megatons` : `${kt} kilotons`}
-              {n > 1 ? ` ≈ ${(Math.round(n / 100) * 100).toLocaleString('en-US')} Hiroshimas` : ''}
+              💥 {yieldText(id)}
+              {n > 1 ? ` ≈ ${hiroshimasRounded(id).toLocaleString('en-US')} Hiroshimas` : ''}
               <br />
               🍄 cloud ≈ {CLOUD_TOP_KM[id]} km high
               <br />
@@ -262,6 +263,53 @@ export function CompareTable({ mode }: { mode: BombDesignId }) {
         Fat Man was only a little stronger than Little Boy. Tsar Bomba was thousands of times
         stronger — yet its damage reached only about 15× farther: a blast spreads out in all
         directions, so it gets weaker fast.
+      </p>
+    </div>
+  )
+}
+
+const fmt = (v: number) => (Number.isInteger(v) ? `${v}` : v.toFixed(v < 1 ? 2 : 1))
+
+/** The bombs themselves (last story step): real size, weight and fuel. */
+export function BombsTable({ mode }: { mode?: BombDesignId }) {
+  const rows: BombDesignId[] = ['gun', 'implosion', 'tsar']
+  return (
+    <div className="space-y-2">
+      {rows.map((id) => {
+        const d = BOMB_DESIGNS[id]
+        const r = REAL_BOMBS[id]
+        return (
+          <div
+            key={id}
+            className={`rounded-lg border px-2 py-1.5 ${
+              id === mode ? 'border-amber-500/60 bg-amber-500/10' : 'border-slate-700 bg-slate-900/40'
+            }`}
+          >
+            <div className="font-medium text-slate-100">{d.label}</div>
+            <div className="text-xs leading-relaxed text-slate-300">
+              📏 {fmt(r.lengthM)} m long · {fmt(r.widthM)} m wide
+              <br />
+              ⚖️ {fmt(r.weightT)} tonnes
+              <br />
+              <span
+                aria-hidden
+                className="mr-1 inline-block h-2.5 w-2.5 rounded-full align-middle"
+                style={{ background: 'radial-gradient(circle at 35% 35%, #fde68a, #d97706)' }}
+              />
+              {r.fuel
+                ? `${r.fuel.kg} kg of ${d.fuel.split('-')[0]} — one ball ${Math.round(r.fuel.ballCm)} cm across`
+                : 'fuel amounts: still secret'}
+            </div>
+          </div>
+        )
+      })}
+      <p className="text-xs text-slate-400">
+        The nuclear fuel is tiny next to the bomb. Fat Man&apos;s plutonium was a ball about 9 cm
+        across — the size of a grapefruit. Little Boy&apos;s 64 kg of uranium, pressed into one
+        ball, would be about 19 cm across — a bit smaller than a football (it really was a stack
+        of rings and a cylinder). Everything else is the casing, the explosive, the gun barrel and
+        the electronics. Squeezing is why Fat Man needed 10 times less fuel than Little Boy. Tsar
+        Bomba&apos;s fuel amounts have never been made public.
       </p>
     </div>
   )

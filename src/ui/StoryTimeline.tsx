@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import { storyOrder } from '../stage/FissionStage'
-import { CLOSEUP_CAPTIONS, CLOSEUP_EQUATIONS } from '../stage/fissionCloseup'
-import { CLOUD_TOP_KM, type BombDesignId } from '../core/fission'
+import { closeupStory } from '../stage/fissionCloseup'
+import { BOMB_DESIGNS, CLOUD_TOP_KM, type BombDesignId } from '../core/fission'
 
 // R01 story timeline (right column): every step of one run, top to bottom.
 // The current step is highlighted in the amber caption style and kept in
@@ -18,27 +18,17 @@ const eq = (s: string) => (
   <span className="mt-1 block font-mono text-[12px] text-slate-100">{s}</span>
 )
 
-const CLOSEUP_TITLES = [
-  'A neutron flies in',
-  'Uranium-236 wobbles',
-  'Split!',
-  'Atom 2 is hit',
-  'Atom 2 splits',
-  'Atom 3 splits',
-]
-const CLOSEUP_ICONS = ['🎯', '〰️', '💥', '🎯', '🔁', '🎲']
-
 function storyItem(mode: BombDesignId, id: string): StoryItem {
   if (id.startsWith('closeup')) {
-    const i = Number(id.slice(7))
+    const st = closeupStory(BOMB_DESIGNS[mode].fuel)[Number(id.slice(7))]
     return {
       group: '🔍 Close-up: atoms being hit',
-      icon: CLOSEUP_ICONS[i],
-      title: CLOSEUP_TITLES[i],
+      icon: st.icon,
+      title: st.title,
       text: (
         <>
-          {CLOSEUP_CAPTIONS[i]}
-          {eq(CLOSEUP_EQUATIONS[i])}
+          {st.caption}
+          {eq(st.equation)}
         </>
       ),
     }
@@ -61,7 +51,7 @@ function storyItem(mode: BombDesignId, id: string): StoryItem {
       [
         '📏',
         'Size comparison',
-        'All three bombs side by side, on the same scale. The red rings show where houses were flattened.',
+        'All three explosions side by side, on the same scale. The red rings show where houses were flattened.',
       ],
     ]
     const [icon, title, text] = steps[i]
@@ -70,6 +60,13 @@ function storyItem(mode: BombDesignId, id: string): StoryItem {
   const setup = '🧨 Getting ready'
   const chain = '⚛️ Chain reaction'
   switch (id) {
+    case 'intro':
+      return {
+        group: '📏 The bomb',
+        icon: '🧍',
+        title: 'Your bomb',
+        text: 'Your bomb leaves the lineup and comes closer — next to a grown-up, so you can see how big it really was.',
+      }
     case 'armed':
       return {
         group: setup,
@@ -147,13 +144,16 @@ function storyItem(mode: BombDesignId, id: string): StoryItem {
   }
 }
 
-export function StoryTimeline({
+export const StoryTimeline = memo(function StoryTimeline({
   mode,
   currentId,
+  visible,
   onSeek,
 }: {
   mode: BombDesignId
   currentId: string
+  /** the column is on screen (page shown, Story tab picked) */
+  visible: boolean
   onSeek: (id: string) => void
 }) {
   const order = storyOrder(mode)
@@ -165,7 +165,7 @@ export function StoryTimeline({
 
   // a new run (back to "Ready", or another bomb) follows again
   useEffect(() => {
-    if (currentId === 'armed') setFollowing(true)
+    if (currentId === 'intro' || currentId === 'armed') setFollowing(true)
   }, [currentId, mode])
 
   // only REAL user scrolling (wheel, touch, scroll keys, scrollbar drag)
@@ -193,9 +193,10 @@ export function StoryTimeline({
   }, [])
 
   // pin the current step to the TOP of the scrolling column (scrolls only
-  // that column, never the page)
+  // that column, never the page). While hidden the layout is all zeros, so
+  // wait — and catch up as soon as the column is shown again.
   useEffect(() => {
-    if (!following) return
+    if (!following || !visible) return
     const el = refs.current.get(currentId)
     const box = el?.closest('[data-story-scroll]') as HTMLElement | null
     if (!el || !box) return
@@ -203,7 +204,7 @@ export function StoryTimeline({
     // glide between neighbouring steps; snap on big jumps (timeline clicks)
     const far = Math.abs(top - box.scrollTop) > 400
     box.scrollTo({ top, behavior: far ? 'auto' : 'smooth' })
-  }, [currentId, following])
+  }, [currentId, following, visible])
 
   let lastGroup = ''
   return (
@@ -264,4 +265,4 @@ export function StoryTimeline({
     )}
     </div>
   )
-}
+})

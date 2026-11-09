@@ -5,6 +5,10 @@ import {
   damageZones,
   tntText,
   hiroshimas,
+  hiroshimasRounded,
+  yieldText,
+  REAL_BOMBS,
+  ballDiameterCm,
   formatTinySeconds,
   neutronsFromSplit,
   realChainTime,
@@ -37,6 +41,15 @@ describe('fission rules', () => {
     expect(hiroshimas('gun')).toBe(1)
   })
 
+  it('yield and Hiroshima texts are formatted in one place', () => {
+    expect(yieldText('gun')).toBe('15 kilotons')
+    expect(yieldText('implosion', 'short')).toBe('21 kt')
+    expect(yieldText('tsar')).toBe('50 megatons')
+    expect(yieldText('tsar', 'short')).toBe('50 Mt')
+    expect(hiroshimasRounded('tsar')).toBe(3300)
+    expect(hiroshimasRounded('gun')).toBe(0)
+  })
+
   it('damage radii: Hiroshima-like reference, cube-root scaling for bigger bombs', () => {
     const lb = damageZones('gun')
     expect(lb.map((z) => z.id)).toEqual(['heavy', 'houses', 'burns', 'windows'])
@@ -61,5 +74,16 @@ describe('fission rules', () => {
     expect(formatTinySeconds(8e-7)).toBe('800 billionths of a second')
     expect(formatTinySeconds(2e-6)).toBe('2 millionths of a second')
     expect(realChainTime(80)).toBe('800 billionths of a second')
+  })
+
+  it('real bombs: sizes, and the fuel as one ball of metal', () => {
+    expect(REAL_BOMBS.gun.lengthM).toBe(3)
+    expect(REAL_BOMBS.tsar.lengthM / REAL_BOMBS.gun.lengthM).toBeCloseTo(2.67, 1)
+    // Fat Man's real plutonium core was a 9.2 cm ball
+    expect(REAL_BOMBS.implosion.fuel?.ballCm).toBeCloseTo(9.1, 0)
+    // 64 kg of uranium = a ball about 19 cm across
+    expect(REAL_BOMBS.gun.fuel?.ballCm).toBeCloseTo(18.6, 0)
+    expect(REAL_BOMBS.tsar.fuel).toBeNull()
+    expect(ballDiameterCm(1, 1)).toBeCloseTo(12.4, 1) // 1 litre of water
   })
 })

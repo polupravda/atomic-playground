@@ -1,21 +1,34 @@
-import { useEffect, useRef } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Layer, Shape, Stage } from 'react-konva'
 import Konva from 'konva'
 import { drawGlossyParticle } from './particleStyle'
 import { BLAST_LIFE, drawFuseSpark, drawRealBlast } from './realBlast'
 import {
   CLOSEUP_MAX_ZOOM,
+  CLOSEUP_STEP_COUNT,
   CLOSEUP_TOTAL,
   closeupCamera,
   closeupStep,
   drawCloseup,
 } from './fissionCloseup'
+import { blit, clamp01, easeIn, easeInOut, makeCanvasSprite, type Sprite } from './canvasUtil'
+import {
+  CARGO_M,
+  drawFuel as drawFuelBall,
+  drawLineup,
+  lineupLayout,
+  drawRealShapeExtras,
+  fillBomb,
+  realShapeLayout,
+  strokeBomb,
+} from './bombShapes'
 import type { ParticleKind } from '../state/atomStore'
 import {
   BOMB_DESIGNS,
   neutronsFromSplit,
   damageZones,
   CLOUD_TOP_KM,
+  yieldText,
   type DamageZoneId,
   type BombDesignId,
 } from '../core/fission'
@@ -136,7 +149,7 @@ export interface FissionReport {
   countdown: number
   fusions: number
   fuelTotal: number
-  /** close-up story step (0–3) while phase === 'closeup' */
+  /** close-up story step (0 … CLOSEUP_STEP_COUNT−1) while phase === 'closeup' */
   closeupStep: number
   /** explosion caption step (0 fireball … 4 size comparison) */
   explosionStep: number
@@ -144,6 +157,8 @@ export interface FissionReport {
   storyId: string
   /** explosion scene has settled into the mushroom cloud */
   aftermath: boolean
+  /** the opening lineup (+ zoom to this bomb) is still playing */
+  intro: boolean
 }
 
 interface Nucleus {
@@ -218,30 +233,25 @@ interface Sim {
   closeupDone: boolean
   /** seconds since the gun's explosive fired (null = not fired) */
   blastT: number | null
+  /** s since the bomb was picked (phase stays 'armed'): zoom out of the
+   *  lineup until INTRO_TOTAL, "Ready" until ZOOM_IN_AT, zoom inside until
+   *  INSIDE_AT, a short break, then the countdown starts by itself at
+   *  COUNTDOWN_AT */
+  introT: number
 }
 
 // ---------- sprites (pre-rendered once: 100 nuclei × 7 gradients per frame
 // would be wasteful) ----------
 
-interface Sprite {
-  canvas: HTMLCanvasElement
-  size: number
-}
-
 function makeSprite(parts: Array<[ParticleKind, number, number]>, r: number): Sprite {
-  const dpr = window.devicePixelRatio || 1
   let ext = 0
   for (const [, x, y] of parts) ext = Math.max(ext, Math.hypot(x, y))
   const size = Math.ceil(2 * (ext + r * 1.5) + 2)
-  const canvas = document.createElement('canvas')
-  canvas.width = size * dpr
-  canvas.height = size * dpr
-  const ctx = canvas.getContext('2d')!
-  ctx.scale(dpr, dpr)
-  for (const [kind, x, y] of parts) {
-    drawGlossyParticle(ctx, kind, size / 2 + x, size / 2 + y, r)
-  }
-  return { canvas, size }
+  return makeCanvasSprite(size, (ctx) => {
+    for (const [kind, x, y] of parts) {
+      drawGlossyParticle(ctx, kind, size / 2 + x, size / 2 + y, r)
+    }
+  })
 }
 
 function hexCluster(kinds: ParticleKind[]): Array<[ParticleKind, number, number]> {
@@ -263,23 +273,18 @@ function hexCluster(kinds: ParticleKind[]): Array<[ParticleKind, number, number]
 const RING_R = C * 1.12
 
 function makeRingSprite(rOuter: number, rings: number): Sprite {
-  const dpr = window.devicePixelRatio || 1
   const size = Math.ceil(2 * rOuter + 4)
-  const canvas = document.createElement('canvas')
-  canvas.width = size * dpr
-  canvas.height = size * dpr
-  const ctx = canvas.getContext('2d')!
-  ctx.scale(dpr, dpr)
-  ctx.lineWidth = 1
-  for (let i = 0; i < rings; i++) {
-    const r = rOuter * (1 - i * 0.22)
-    // almost transparent: a hint of the shells, the nuclei stay the focus
-    ctx.strokeStyle = `rgba(56, 189, 248, ${i === 0 ? 0.18 : 0.12})`
-    ctx.beginPath()
-    ctx.arc(size / 2, size / 2, r, 0, Math.PI * 2)
-    ctx.stroke()
-  }
-  return { canvas, size }
+  return makeCanvasSprite(size, (ctx) => {
+    ctx.lineWidth = 1
+    for (let i = 0; i < rings; i++) {
+      const r = rOuter * (1 - i * 0.22)
+      // almost transparent: a hint of the shells, the nuclei stay the focus
+      ctx.strokeStyle = `rgba(56, 189, 248, ${i === 0 ? 0.18 : 0.12})`
+      ctx.beginPath()
+      ctx.arc(size / 2, size / 2, r, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+  })
 }
 
 let sprites: {
@@ -342,12 +347,6 @@ function getSprites() {
   return sprites
 }
 
-function blit(ctx: CanvasRenderingContext2D, s: Sprite, x: number, y: number, alpha = 1) {
-  if (alpha <= 0) return
-  ctx.globalAlpha = alpha
-  ctx.drawImage(s.canvas, x - s.size / 2, y - s.size / 2, s.size, s.size)
-  ctx.globalAlpha = 1
-}
 
 // ---------- sim ----------
 
@@ -411,14 +410,12 @@ function buildSim(mode: BombDesignId): Sim {
     closeup: null,
     closeupDone: false,
     blastT: null,
+    introT: 0,
   }
   placeNuclei(sim)
   return sim
 }
 
-const easeIn = (p: number) => p * p
-const easeInOut = (p: number) => (p < 0.5 ? 2 * p * p : 1 - 2 * (1 - p) * (1 - p))
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
 
 function assemblyProgress(sim: Sim): number {
   if (sim.phase === 'armed' || sim.phase === 'countdown') return 0
@@ -608,9 +605,7 @@ function stepParticles(sim: Sim, dt: number, collide: boolean) {
             sim.phase === 'chain' &&
             sim.splits >= sim.nuclei.length * 0.5
           ) {
-            sim.closeupDone = true
-            sim.closeup = { fx: nu.x, fy: nu.y, t: 0 }
-            sim.phase = 'closeup'
+            startCloseup(sim, nu)
           }
           break
         }
@@ -643,11 +638,25 @@ function stepParticles(sim: Sim, dt: number, collide: boolean) {
   sim.bursts = sim.bursts.filter((b) => b.age < 0.5)
 }
 
+/** freeze the chain and zoom into `nu` for the close-up story */
+function startCloseup(sim: Sim, nu: Nucleus) {
+  sim.closeupDone = true
+  sim.closeup = { fx: nu.x, fy: nu.y, t: 0 }
+  sim.phase = 'closeup'
+}
+
 function step(sim: Sim, dt: number) {
   sim.phaseT += dt
   if (sim.blastT !== null && sim.phase !== 'closeup') sim.blastT += dt
   switch (sim.phase) {
     case 'armed':
+      sim.introT += dt
+      // auto-play: a look at the real bomb, the zoom inside, a short
+      // break — then the countdown starts
+      if (sim.introT >= COUNTDOWN_AT) {
+        sim.phase = 'countdown'
+        sim.phaseT = 0
+      }
       break
     case 'countdown':
       if (sim.phaseT >= COUNTDOWN_STEP * 3) {
@@ -692,6 +701,15 @@ function step(sim: Sim, dt: number) {
           // single neutron got unlucky, the next one from the burst goes
           sim.reinjects++
           injectNeutron(sim)
+        } else if (!sim.closeupDone) {
+          // an unlucky chain that never reached half the nuclei: every run
+          // still shows the close-up (the story timeline promises it), on
+          // the intact nucleus nearest the middle
+          const pool = sim.nuclei.some((n) => n.state === 'whole')
+            ? sim.nuclei.filter((n) => n.state === 'whole')
+            : sim.nuclei
+          const d = (n: Nucleus) => Math.hypot(n.x - sim.cx, n.y - CY)
+          startCloseup(sim, pool.reduce((a, b) => (d(b) < d(a) ? b : a)))
         } else {
           sim.phase = sim.mode === 'tsar' ? 'xray' : 'chainDone'
           sim.phaseT = 0
@@ -732,6 +750,10 @@ function step(sim: Sim, dt: number) {
 const AMBER = 'rgba(251, 191, 36, 0.95)'
 const AMBER_SOFT = 'rgba(251, 191, 36, 0.7)'
 
+// The diagram's dashed casing and part names fade out while the inside
+// diagram shrinks into the bomb's real outline ("Real shape" view).
+let chromeAlpha = 1
+
 function label(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -741,11 +763,15 @@ function label(
   size = 12,
   align: CanvasTextAlign = 'center',
 ) {
+  if (chromeAlpha <= 0) return
+  const prev = ctx.globalAlpha
+  ctx.globalAlpha = prev * chromeAlpha
   ctx.font = `${size}px ui-sans-serif, system-ui, sans-serif`
   ctx.fillStyle = color
   ctx.textAlign = align
   ctx.textBaseline = 'middle'
   ctx.fillText(text, x, y)
+  ctx.globalAlpha = prev
 }
 
 function arrow(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number) {
@@ -790,7 +816,8 @@ const hasFired = (sim: Sim) => sim.phase !== 'armed' && sim.phase !== 'countdown
 
 /** the dashed casing outline, same stroke for every bomb */
 function strokeCasing(ctx: CanvasRenderingContext2D, path: () => void) {
-  ctx.strokeStyle = 'rgba(100, 116, 139, 0.8)'
+  if (chromeAlpha <= 0) return
+  ctx.strokeStyle = `rgba(100, 116, 139, ${0.8 * chromeAlpha})`
   ctx.lineWidth = 1.5
   ctx.setLineDash([7, 6])
   ctx.beginPath()
@@ -1390,6 +1417,10 @@ function drawHeightRuler(ctx: CanvasRenderingContext2D, mode: BombDesignId, t: n
 
 export const COMPARE_T = 8.5
 const COMPARE_DUR = 1.8
+// then, after time to read the comparison, back to the lineup chooser
+const END_T = COMPARE_T + COMPARE_DUR + 10
+const END_FADE = 1.2
+
 const COMPARED: BombDesignId[] = ['gun', 'implosion', 'tsar']
 
 /** which caption the info panel shows (0 fireball … 4 comparison) */
@@ -1621,10 +1652,9 @@ function drawExplosion(ctx: CanvasRenderingContext2D, t: number, mode: BombDesig
       const d = BOMB_DESIGNS[m]
       const name = d.label.replace(/^\S+\s/, '')
       label(ctx, name, cx, GY + 30, m === mode ? AMBER : 'rgba(241, 245, 249, 0.98)', 16)
-      const kt = d.yieldKt ?? 0
       label(
         ctx,
-        `${kt >= 1000 ? `${kt / 1000} Mt` : `${kt} kt`} · cloud ${CLOUD_TOP_KM[m]} km`,
+        `${yieldText(m, 'short')} · cloud ${CLOUD_TOP_KM[m]} km`,
         cx,
         GY + 50,
         'rgba(203, 213, 225, 0.9)',
@@ -1639,6 +1669,156 @@ function drawExplosion(ctx: CanvasRenderingContext2D, t: number, mode: BombDesig
     ctx.fillStyle = `rgba(255, 255, 255, ${1 - t / 0.6})`
     ctx.fillRect(0, 0, W, H)
   }
+  const back = easeInOut(clamp01((t - (END_T - END_FADE)) / END_FADE))
+  if (back > 0) {
+    ctx.fillStyle = `rgba(2, 6, 23, ${back})`
+    ctx.fillRect(0, 0, W, H)
+    drawLineup(ctx, W, H - BUTTON_ZONE, undefined, back)
+  }
+}
+
+// ---------- the real-shape view ----------
+// Every run starts OUTSIDE: the bomb's real outline at real proportions,
+// with a grown-up for scale, and the whole inside diagram shrunk into the
+// part of the body where it really sits (dashed casing + part names
+// hidden). DETONATE zooms in: the outline fades, the diagram grows to fill
+// the canvas and its casing and part names fade back in.
+
+/** the diagram's anchor (its casing centre) and how far it reaches */
+function diagramBox(sim: Sim) {
+  if (sim.mode === 'gun') {
+    const left = sim.cx - RC - GUN_GAP - 80
+    const right = sim.cx + RC + CASE_PAD
+    const x0 = Math.max(4, left - UNIT_GAP - BOX_W)
+    const ax = (left + right) / 2
+    return { ax, ay: CY, left: ax - x0, right: right - ax, half: RC + CASE_PAD }
+  }
+  const g = implosionGeom(sim)
+  if (sim.mode === 'implosion') {
+    const rCase = g.rHarness + CASE_PAD
+    const x0 = Math.max(4, sim.cx - rCase * 1.12 - UNIT_GAP - BOX_W)
+    return { ax: sim.cx, ay: CY, left: sim.cx - x0, right: rCase * 1.12, half: rCase }
+  }
+  const rF = fuelRadius(sim)
+  const left = sim.cx - g.rHarness - CASE_PAD
+  const right = FUEL_CX + rF + CASE_PAD
+  const x0 = Math.max(4, left - UNIT_GAP - BOX_W)
+  const ax = (left + right) / 2
+  return { ax, ay: CY, left: ax - x0, right: right - ax, half: Math.max(g.rHarness, rF) + CASE_PAD }
+}
+
+/** the bomb outline at (x0 = tail, y0 = axis, ppm), with the inside
+ *  diagram shrunk into it. `u`: 1 = fully outside … 0 = zoomed inside
+ *  (the diagram has grown back to fill the canvas). `inner` fades the
+ *  diagram itself (the intro brings it in late). */
+function drawOutlineWithInside(
+  ctx: CanvasRenderingContext2D,
+  sim: Sim,
+  now: number,
+  x0: number,
+  y0: number,
+  ppm: number,
+  u: number,
+  inner = 1,
+) {
+  const mode = sim.mode
+  const cargo = CARGO_M[mode]
+  const box = diagramBox(sim)
+  // shrink so the whole diagram fits the cargo part of the body
+  const k = Math.min(
+    (cargo.halfW * ppm) / Math.max(box.left, box.right),
+    (cargo.halfH * ppm) / box.half,
+  )
+  const tx = x0 + cargo.cx * ppm
+  const kk = 1 + (k - 1) * u
+  ctx.save()
+  ctx.globalAlpha = u
+  fillBomb(ctx, mode, x0, y0, ppm)
+  ctx.restore()
+  if (inner > 0) {
+    ctx.save()
+    ctx.globalAlpha = inner
+    ctx.translate(box.ax + (tx - box.ax) * u, box.ay + (y0 - box.ay) * u)
+    ctx.scale(kk, kk)
+    ctx.translate(-box.ax, -box.ay)
+    chromeAlpha = 1 - clamp01(u / 0.6)
+    drawNuclear(ctx, sim, now)
+    chromeAlpha = 1
+    ctx.restore()
+  }
+  ctx.save()
+  ctx.globalAlpha = u
+  strokeBomb(ctx, mode, x0, y0, ppm)
+  ctx.restore()
+}
+
+// The opening: the bomb picked in the lineup chooser glides + grows into
+// its own "grown-up next to the bomb" view while the others fade away; its
+// inside diagram fades in last. Then READY_HOLD s to look at the real bomb,
+// the zoom inside (ZOOM_IN_T), a short break (ZOOM_BREAK) so kids see the
+// new view — and only then the countdown starts (auto-play, no DETONATE).
+const INTRO_HOLD = 0.25
+const INTRO_ZOOM = 1.8
+const INTRO_TOTAL = INTRO_HOLD + INTRO_ZOOM
+const READY_HOLD = 5
+const ZOOM_IN_AT = INTRO_TOTAL + READY_HOLD
+const ZOOM_IN_T = 1.2
+const INSIDE_AT = ZOOM_IN_AT + ZOOM_IN_T
+const ZOOM_BREAK = 0.8
+const COUNTDOWN_AT = INSIDE_AT + ZOOM_BREAK
+
+/** 1 = the real outside shape … 0 = zoomed inside (follows the sim clock,
+ *  so pausing, rewinding and fast-forwarding stay in step) */
+function outsideAmount(sim: Sim): number {
+  if (sim.phase !== 'armed') return 0
+  return 1 - easeInOut(clamp01((sim.introT - ZOOM_IN_AT) / ZOOM_IN_T))
+}
+
+/** the lineup chooser rows in canvas px (for the click targets over it) */
+export function chooserRows() {
+  const L = lineupLayout(W, H - BUTTON_ZONE)
+  const right = L.x0 + L.right * L.ppm
+  return (Object.keys(L.rows) as BombDesignId[]).map((m) => ({
+    mode: m,
+    left: L.x0 - 14,
+    right: right + 14,
+    top: L.rows[m].nameY - 16,
+    bottom: L.rows[m].groundY + 8,
+  }))
+}
+
+function drawIntro(ctx: CanvasRenderingContext2D, sim: Sim, now: number) {
+  const mode = sim.mode
+  const usableH = H - BUTTON_ZONE
+  const z = easeInOut(clamp01((sim.introT - INTRO_HOLD) / INTRO_ZOOM))
+  const L = lineupLayout(W, usableH)
+  const R = realShapeLayout(mode, W, usableH)
+  drawLineup(ctx, W, usableH, mode, 1 - z, mode)
+  // this bomb: from its lineup row to its own view
+  const ppm = L.ppm * Math.pow(R.ppm / L.ppm, z) // even-feeling zoom
+  const x0 = L.x0 + (R.x0 - L.x0) * z
+  const y0 = L.rows[mode].axisY + (R.y0 - L.rows[mode].axisY) * z
+  drawOutlineWithInside(ctx, sim, now, x0, y0, ppm, 1, clamp01((z - 0.55) / 0.45))
+  ctx.save()
+  ctx.globalAlpha = 1 - clamp01(z / 0.5)
+  drawFuelBall(ctx, mode, x0, y0, ppm)
+  ctx.restore()
+  drawRealShapeExtras(ctx, mode, R, clamp01((z - 0.6) / 0.4))
+}
+
+/** draw the bomb, `u` = 0 inside diagram … 1 real shape */
+function drawBombView(ctx: CanvasRenderingContext2D, sim: Sim, now: number, u: number) {
+  if (sim.phase === 'armed' && sim.introT < INTRO_TOTAL) {
+    drawIntro(ctx, sim, now)
+    return
+  }
+  if (u <= 0) {
+    drawNuclear(ctx, sim, now)
+    return
+  }
+  const lay = realShapeLayout(sim.mode, W, H - BUTTON_ZONE)
+  drawOutlineWithInside(ctx, sim, now, lay.x0, lay.y0, lay.ppm, u)
+  drawRealShapeExtras(ctx, sim.mode, lay, clamp01((u - 0.5) / 0.5))
 }
 
 // ---------- the story timeline ----------
@@ -1647,14 +1827,14 @@ function drawExplosion(ctx: CanvasRenderingContext2D, t: number, mode: BombDesig
 // click on a past step rewinds to that exact moment, and a click on a future
 // step fast-forwards the simulation to it.
 
-const CLOSEUP_STEPS = 6
 const EXPLOSION_STEPS = 5
 
 /** the ordered story steps of one design */
 export function storyOrder(mode: BombDesignId): string[] {
-  const close = Array.from({ length: CLOSEUP_STEPS }, (_, i) => `closeup${i}`)
+  const close = Array.from({ length: CLOSEUP_STEP_COUNT }, (_, i) => `closeup${i}`)
   const boom = Array.from({ length: EXPLOSION_STEPS }, (_, i) => `explosion${i}`)
   return [
+    'intro',
     'armed',
     'countdown',
     'assembling',
@@ -1676,6 +1856,8 @@ function storyId(sim: Sim): string {
       return `closeup${sim.closeup ? closeupStep(sim.closeup.t) : 0}`
     case 'explosion':
       return `explosion${explosionStep(sim.phaseT)}`
+    case 'armed':
+      return sim.introT < INTRO_TOTAL ? 'intro' : 'armed'
     default:
       return sim.phase
   }
@@ -1683,27 +1865,34 @@ function storyId(sim: Sim): string {
 
 // ---------- component ----------
 
-export function FissionStage({
+export const FissionStage = memo(function FissionStage({
   mode,
-  detonateSignal,
-  resetSignal,
   paused,
   seek,
   active,
   onReport,
+  onFinished,
 }: {
-  mode: BombDesignId
-  detonateSignal: number
-  resetSignal: number
+  /** the bomb being shown; null = the lineup chooser */
+  mode: BombDesignId | null
   /** freeze the whole demo (so kids can read the info panel) */
   paused: boolean
   /** jump to a story step (n changes on every click) */
   seek: { id: string; n: number } | null
   active: boolean
   onReport: (r: FissionReport) => void
+  /** the run is over (it faded back to the lineup) */
+  onFinished: () => void
 }) {
   const shapeRef = useRef<Konva.Shape | null>(null)
-  const sim = useRef<Sim>(buildSim(mode))
+  const modeRef = useRef(mode)
+  modeRef.current = mode
+  const onFinishedRef = useRef(onFinished)
+  onFinishedRef.current = onFinished
+  const finishedSent = useRef(false)
+  // build the first sim once (not on every render)
+  const [firstSim] = useState(() => buildSim(mode ?? 'gun'))
+  const sim = useRef<Sim>(firstSim)
   const lastSig = useRef('')
   const onReportRef = useRef(onReport)
   onReportRef.current = onReport
@@ -1734,6 +1923,7 @@ export function FissionStage({
       explosionStep: s.phase === 'explosion' ? explosionStep(s.phaseT) : 0,
       storyId: storyId(s),
       aftermath: s.phase === 'explosion' && s.phaseT > 5,
+      intro: s.phase === 'armed' && s.introT < INTRO_TOTAL,
     }
     const sig = `${r.phase}|${r.splits}|${r.escaped}|${r.generation}|${r.countdown}|${r.fusions}|${r.closeupStep}|${r.explosionStep}|${r.storyId}|${r.aftermath}`
     if (sig !== lastSig.current) {
@@ -1742,30 +1932,24 @@ export function FissionStage({
     }
   }
 
-  // new design or reset → fresh, armed bomb
+  // a bomb picked → fresh bomb, zooming out of the lineup
   useEffect(() => {
-    sim.current = buildSim(mode)
+    finishedSent.current = false
     snaps.current.clear()
     lastStory.current = ''
-    record()
-    report()
+    lastSig.current = ''
+    if (mode) {
+      sim.current = buildSim(mode)
+      record()
+      report()
+    }
     shapeRef.current?.getLayer()?.batchDraw()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, resetSignal])
-
-  useEffect(() => {
-    if (detonateSignal === 0) return
-    if (sim.current.phase !== 'armed') return
-    sim.current.phase = 'countdown'
-    sim.current.phaseT = 0
-    record()
-    report()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detonateSignal])
+  }, [mode])
 
   // timeline click: rewind to a recorded step, or fast-forward to it
   useEffect(() => {
-    if (!seek) return
+    if (!seek || !mode) return
     const order = storyOrder(mode)
     const ti = order.indexOf(seek.id)
     if (ti < 0) return
@@ -1783,9 +1967,11 @@ export function FissionStage({
         // went past it without it ever happening: restart from the latest
         // recorded step before it
         const before = [...snaps.current.keys()].filter((k) => idx(k) < ti).sort((a, b) => idx(b) - idx(a))
-        restore(before[0] ?? 'armed')
+        restore(before[0] ?? 'intro')
       }
-      if (sim.current.phase === 'armed') {
+      // a step after "Ready": skip the rest of the intro, start the countdown
+      if (sim.current.phase === 'armed' && ti > idx('armed')) {
+        sim.current.introT = COUNTDOWN_AT
         sim.current.phase = 'countdown'
         sim.current.phaseT = 0
         record()
@@ -1808,9 +1994,15 @@ export function FissionStage({
     const anim = new Konva.Animation((frame) => {
       if (!frame) return
       const dt = Math.min(0.05, frame.timeDiff / 1000)
+      if (!modeRef.current) return // the chooser: a still picture
       step(sim.current, dt)
       record()
       report()
+      const s = sim.current
+      if (!finishedSent.current && s.phase === 'explosion' && s.phaseT >= END_T) {
+        finishedSent.current = true
+        onFinishedRef.current()
+      }
     }, layer)
     anim.start()
     return () => {
@@ -1829,7 +2021,8 @@ export function FissionStage({
             const ctx = kctx._context as CanvasRenderingContext2D
             ctx.save()
             const s = sim.current
-            if (s.phase === 'explosion') drawExplosion(ctx, s.phaseT, s.mode)
+            if (!modeRef.current) drawLineup(ctx, W, H - BUTTON_ZONE, undefined, 1)
+            else if (s.phase === 'explosion') drawExplosion(ctx, s.phaseT, s.mode)
             else if (s.phase === 'closeup' && s.closeup) {
               // camera zooms into the hit nucleus, then the close view fades in
               const cam = closeupCamera(s.closeup.t)
@@ -1855,12 +2048,12 @@ export function FissionStage({
                 ctx.stroke()
                 ctx.restore()
               }
-              drawCloseup(ctx, s.closeup.t, W, H, cam.sceneAlpha)
-            } else drawNuclear(ctx, s, performance.now())
+              drawCloseup(ctx, s.closeup.t, W, H, cam.sceneAlpha, BOMB_DESIGNS[s.mode].fuel)
+            } else drawBombView(ctx, s, performance.now(), outsideAmount(s))
             ctx.restore()
           }}
         />
       </Layer>
     </Stage>
   )
-}
+})
