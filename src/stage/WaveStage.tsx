@@ -981,6 +981,128 @@ function drawEyeScene(
   )
 }
 
+// ---------- the prism scene (L10: white light unpacked) ----------
+// A beam enters a glass prism. White in → the rainbow fans out onto a
+// screen: the prism only SORTS wavelengths, it adds nothing. The proof is
+// interactive (Newton's experiment): send a PURE color through and it only
+// BENDS — nothing to unpack. Shorter waves are slowed a little more by the
+// glass, so they bend more (the honest hand-wave; full refraction is not
+// told here).
+
+const PRISM_X = W * 0.46
+const PRISM_Y = H * 0.47
+const PRISM_H2 = 95 // apex above / base below the beam line
+const BEAM_Y = PRISM_Y - 10
+const PRISM_LAMP_X = 88
+const SCREEN_X = W - 110
+
+/** downward deviation (rad) after the prism: shorter waves bend more */
+function prismDeviation(nm: number): number {
+  return 0.09 + ((700 - Math.min(700, Math.max(410, nm))) / 290) * 0.3
+}
+
+function drawPrismRay(
+  ctx: CanvasRenderingContext2D,
+  nm: number,
+  alpha: number,
+  pulse: number,
+) {
+  const entry = { x: PRISM_X - 44, y: BEAM_Y }
+  const exit = { x: PRISM_X + 42, y: BEAM_Y + 16 }
+  const dev = prismDeviation(nm)
+  const endX = SCREEN_X - 8
+  const endY = exit.y + Math.tan(dev) * (endX - exit.x)
+  for (const [lw, a] of [
+    [7, 0.18],
+    [2.6, 0.9],
+  ] as const) {
+    ctx.strokeStyle = wavelengthToCss(nm, a * alpha * pulse)
+    ctx.lineWidth = lw
+    ctx.lineCap = 'round'
+    // inside the glass: the colors already part ways
+    ctx.beginPath()
+    ctx.moveTo(entry.x, entry.y)
+    ctx.lineTo(exit.x, exit.y + (dev - 0.2) * 26)
+    ctx.stroke()
+    // out in the air: the fan
+    ctx.beginPath()
+    ctx.moveTo(exit.x, exit.y + (dev - 0.2) * 26)
+    ctx.lineTo(endX, endY)
+    ctx.stroke()
+  }
+  // the stripe where it lands on the screen
+  ctx.fillStyle = wavelengthToCss(nm, 0.95 * alpha)
+  ctx.beginPath()
+  ctx.roundRect(SCREEN_X - 6, endY - 5, 14, 10, 3)
+  ctx.fill()
+}
+
+function drawPrismScene(ctx: CanvasRenderingContext2D, lamp: EyeLampSetting, t: number) {
+  const bundle = eyeLampBundle(lamp)
+  const pulse = 0.9 + 0.1 * Math.sin(t * 3)
+
+  // the lamp (reuses the doorbell's hooded look, facing right)
+  ctx.fillStyle = '#334155'
+  ctx.beginPath()
+  ctx.roundRect(PRISM_LAMP_X - 46, BEAM_Y - 24, 52, 48, 8)
+  ctx.fill()
+  ctx.fillStyle = '#1e293b'
+  ctx.beginPath()
+  ctx.moveTo(PRISM_LAMP_X + 6, BEAM_Y - 24)
+  ctx.lineTo(PRISM_LAMP_X + 26, BEAM_Y - 33)
+  ctx.lineTo(PRISM_LAMP_X + 26, BEAM_Y + 33)
+  ctx.lineTo(PRISM_LAMP_X + 6, BEAM_Y + 24)
+  ctx.closePath()
+  ctx.fill()
+  label(ctx, lamp === 'white' ? 'white lamp' : 'one-color lamp', PRISM_LAMP_X - 20, BEAM_Y + 44)
+
+  // the incoming beam: white = the colors TRAVELLING TOGETHER, so it is
+  // drawn as one white beam; a single color travels alone in its own color
+  for (const [lw, a] of [
+    [8, 0.25],
+    [3, 1],
+  ] as const) {
+    ctx.strokeStyle =
+      lamp === 'white'
+        ? `rgba(248, 250, 252, ${a * 0.85 * pulse})`
+        : wavelengthToCss(lamp, a * 0.9 * pulse)
+    ctx.lineWidth = lw
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(PRISM_LAMP_X + 26, BEAM_Y)
+    ctx.lineTo(PRISM_X - 44, BEAM_Y)
+    ctx.stroke()
+  }
+
+  // the rays through and past the prism (drawn before the glass so the
+  // prism's glassy fill sits over them)
+  for (const nm of bundle) drawPrismRay(ctx, nm, 1, pulse)
+
+  // the glass prism
+  ctx.fillStyle = 'rgba(148, 197, 253, 0.1)'
+  ctx.strokeStyle = '#94a3b8'
+  ctx.lineWidth = 2
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  ctx.moveTo(PRISM_X, PRISM_Y - PRISM_H2)
+  ctx.lineTo(PRISM_X + 78, PRISM_Y + PRISM_H2 * 0.75)
+  ctx.lineTo(PRISM_X - 78, PRISM_Y + PRISM_H2 * 0.75)
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
+  label(ctx, 'glass prism', PRISM_X, PRISM_Y + PRISM_H2 * 0.75 + 16)
+
+  // the screen catching the result
+  ctx.fillStyle = '#1e293b'
+  ctx.strokeStyle = 'rgba(100, 116, 139, 0.9)'
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  ctx.roundRect(SCREEN_X, BEAM_Y - 30, 14, H * 0.42, 4)
+  ctx.fill()
+  ctx.stroke()
+  label(ctx, 'screen', SCREEN_X + 7, BEAM_Y - 44)
+}
+
 function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number) {
   ctx.fillStyle = 'rgba(148, 163, 184, 0.9)'
   ctx.font = '11px ui-sans-serif, system-ui, sans-serif'
@@ -992,7 +1114,7 @@ function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
 // ---------- component ----------
 
 export type WaveView = 'wave' | 'photons'
-export type WaveScene = 'wave' | 'doorbell' | 'lamps' | 'eye'
+export type WaveScene = 'wave' | 'doorbell' | 'lamps' | 'eye' | 'prism'
 
 export const WaveStage = memo(function WaveStage({
   u,
@@ -1002,6 +1124,7 @@ export const WaveStage = memo(function WaveStage({
   lamps,
   eyeObject,
   eyeLamp,
+  prismLamp,
   active,
   onBell,
 }: {
@@ -1018,6 +1141,8 @@ export const WaveStage = memo(function WaveStage({
   /** eye scene: what sits on the table, and what the lamp shines */
   eyeObject: EyeObjectId
   eyeLamp: EyeLampSetting
+  /** prism scene: white or a pure color (Newton's proof) */
+  prismLamp: EyeLampSetting
   active: boolean
   /** doorbell: the bell rang (total ring count) */
   onBell?: (rings: number) => void
@@ -1037,6 +1162,8 @@ export const WaveStage = memo(function WaveStage({
   eyeObjectRef.current = eyeObject
   const eyeLampRef = useRef(eyeLamp)
   eyeLampRef.current = eyeLamp
+  const prismLampRef = useRef(prismLamp)
+  prismLampRef.current = prismLamp
   const onBellRef = useRef(onBell)
   onBellRef.current = onBell
   // the wave's own clock: only advances while the page is visible
@@ -1076,7 +1203,7 @@ export const WaveStage = memo(function WaveStage({
   // redraw immediately on slider moves even while paused/hidden
   useEffect(() => {
     shapeRef.current?.getLayer()?.batchDraw()
-  }, [u, brightness, view, scene, lamps, eyeObject, eyeLamp])
+  }, [u, brightness, view, scene, lamps, eyeObject, eyeLamp, prismLamp])
 
   return (
     <Stage width={W} height={H}>
@@ -1094,6 +1221,8 @@ export const WaveStage = memo(function WaveStage({
               drawLamps(ctx, lampsRef.current)
             } else if (sceneRef.current === 'eye') {
               drawEyeScene(ctx, eyeObjectRef.current, eyeLampRef.current, tRef.current)
+            } else if (sceneRef.current === 'prism') {
+              drawPrismScene(ctx, prismLampRef.current, tRef.current)
             } else {
               drawEmBar(ctx, m)
               if (sceneRef.current === 'doorbell')

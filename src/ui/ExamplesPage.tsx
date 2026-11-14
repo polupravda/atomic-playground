@@ -14,6 +14,7 @@ import { BombsTable, ChainStats, CompareTable, DamageLegend, ParticleLegend } fr
 import { StoryTimeline } from './StoryTimeline'
 import { BombsIcon } from './BombsIcon'
 import { LightExample } from './LightExample'
+import { CosmosExample } from './CosmosExample'
 import { Paras, SectionHeader, type Para } from './Paras'
 
 // R00 — "Atoms in action": a top-level sibling view of practical examples
@@ -23,10 +24,11 @@ import { Paras, SectionHeader, type Para } from './Paras'
 // both examples stay mounted (the hidden one's animation pauses); more
 // examples (power plant, star stuff…) plug in as further tabs.
 
-type ExampleId = 'bomb' | 'light'
+type ExampleId = 'bomb' | 'light' | 'cosmos'
 const EXAMPLES: Array<{ id: ExampleId; label: string }> = [
   { id: 'bomb', label: '☢️ Atomic bomb' },
   { id: 'light', label: '✨ Light & color' },
+  { id: 'cosmos', label: '🌟 Star stuff' },
 ]
 
 /** the example switcher strip, rendered inside every example's header row */
@@ -363,6 +365,9 @@ export function ExamplesPage() {
       </div>
       <div className={example === 'light' ? 'h-full' : 'hidden'}>
         <LightExample active={page === 'examples' && example === 'light'} tabs={tabs} />
+      </div>
+      <div className={example === 'cosmos' ? 'h-full' : 'hidden'}>
+        <CosmosExample active={page === 'examples' && example === 'cosmos'} tabs={tabs} />
       </div>
     </>
   )

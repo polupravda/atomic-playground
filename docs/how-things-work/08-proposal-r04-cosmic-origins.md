@@ -1,9 +1,11 @@
 # Proposal — R04 🌟 Cosmic origins (Atoms in action)
 
-> Status: **approved with answers 2026-11-09** (see Open questions below).
-> The R04 row lives in [01-feature-spec.md](01-feature-spec.md), the steps in
-> [04-roadmap.md](04-roadmap.md) (Milestone 9, 36–36d, todo — ☀️ ships first,
-> 🧒/💍 only after asking).
+> Status: **approved with answers 2026-11-09**; **step 36 (☀️) implemented
+> 2026-11-11** with a "what the Sun is made of" recipe beat added by request
+> (beat 1b below) — awaiting manual test. The R04 row lives in
+> [01-feature-spec.md](01-feature-spec.md), the steps in
+> [04-roadmap.md](04-roadmap.md) (Milestone 9, 36–36d — 🧒/💍 and the
+> origins table still only after asking).
 
 ## One sentence
 
@@ -58,11 +60,22 @@ timeline · payoff hold ~10 s → chooser.
 
 ### ☀️ Why the Sun shines (~90 s)
 
-1. **The place**: the Sun at its real busy surface; a cutaway wedge dives to
-   the core ("15 million degrees — hotter than any bomb, squeezed by the
-   weight of the whole Sun"). Gravity is this story's "explosive shell":
-   the panel says so explicitly — the Tsar Bomba squeezed its fuel with
-   explosives for a microsecond; the Sun squeezes with gravity, forever.
+1. **The place**: the Sun at its real busy surface, with Earth beside it at
+   TRUE scale (109× smaller); the core is "15 million degrees — hotter than
+   any bomb, squeezed by the weight of the whole Sun". Gravity is this
+   story's "explosive shell": the panel says so explicitly — the Tsar Bomba
+   squeezed its fuel with explosives for a microsecond; the Sun squeezes
+   with gravity, forever.
+1b. **What the Sun is made of** (the recipe beat, added 2026-11-11 by
+   request): the Sun's ingredients WEIGHED — out of every 100 kg, 73 kg
+   hydrogen, 25 kg helium, 2 kg everything else — drawn as a growing
+   ingredient bar in the app's colors (hydrogen = proton red, helium =
+   the Sun's gold). Under it, the EVIDENCE fades in: the Sun's dark-line
+   barcode (hydrogen's Balmer lines + helium's 587.6 nm eaten out of the
+   rainbow — R02's and the Light lab's fingerprints, read in reverse).
+   Honest notes: by weight, rounded; by atom count hydrogen is ~92%; the
+   core, after 4.6 billion years, is already about half helium — the story's
+   last close-up beat explains why the recipe slowly changes.
 2. **Zoom to the core** (close-up): bare protons (the electrons were
    stripped long ago — same honest fact as Tsar's heated fuel) rushing and
    bouncing off each other — like charges repel (A22's lesson, back again).

@@ -159,6 +159,19 @@ export const EYE_PHOTOS: WavePhoto[] = [
   },
 ]
 
+/** 🔼 prism scene: the real thing doing the sorting */
+export const PRISM_PHOTOS: WavePhoto[] = [
+  {
+    file: 'em-prism.jpg',
+    caption:
+      'A real glass prism unpacking a lamp\'s light into its colors. The prism adds nothing — every one of those colors was already travelling inside the "white".',
+    creator: 'D-Kuru, Wikimedia Commons',
+    license: 'CC BY-SA 3.0 AT',
+    source:
+      'https://commons.wikimedia.org/wiki/File:Light_dispersion_of_a_mercury-vapor_lamp_with_a_flint_glass_prism_IPNr%C2%B00125.jpg',
+  },
+]
+
 /** 🔦 lamps scene: screens really do mix red, green and blue */
 export const LAMPS_PHOTOS: WavePhoto[] = [
   {

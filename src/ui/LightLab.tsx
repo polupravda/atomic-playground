@@ -36,6 +36,7 @@ import {
   DOORBELL_PHOTOS,
   EYE_PHOTOS,
   LAMPS_PHOTOS,
+  PRISM_PHOTOS,
   WAVE_PHOTOS,
   type WavePhoto,
 } from '../core/wavePhotos'
@@ -52,7 +53,7 @@ const SCENES = [
   { id: 'doorbell', label: '🔔 The doorbell', ready: true },
   { id: 'lamps', label: '🔦 Mixing lamps', ready: true },
   { id: 'eye', label: '👁️ The eye', ready: true },
-  { id: 'prism', label: '🔼 Prism', ready: false },
+  { id: 'prism', label: '🔼 Prism', ready: true },
 ] as const
 
 /** quick-jump chips: one stop per band + the rainbow's classics */
@@ -123,6 +124,7 @@ export function LightLab() {
   // the eye scene: a red apple under white light is the classic opening
   const [eyeObject, setEyeObject] = useState<EyeObjectId>('apple')
   const [eyeLamp, setEyeLamp] = useState<EyeLampSetting>('white')
+  const [prismLamp, setPrismLamp] = useState<EyeLampSetting>('white')
   const [leftTab, setLeftTab] = useState<'photo' | 'info'>('photo')
 
   // L01: dragging the wave stretches it (right = longer)
@@ -344,6 +346,39 @@ export function LightLab() {
           },
         ]
 
+  const rightNowPrism: Para[] =
+    prismLamp === 'white'
+      ? [
+          {
+            icon: '🌈',
+            text: 'WHITE goes in — and the whole rainbow comes out onto the screen. The prism added nothing: all those colors were already travelling together inside the white beam. The prism only SORTS them.',
+          },
+          {
+            icon: '🔽',
+            text: 'Look at the order on the screen: red bends least, violet bends most. The glass slows shorter waves a little more, so they turn a little harder.',
+          },
+        ]
+      : [
+          {
+            icon: '🔦',
+            text: (
+              <>
+                Pure{' '}
+                <strong style={{ color: wavelengthToCss(prismLamp) }}>
+                  {EYE_LAMPS.find((l) => l.nm === prismLamp)?.name ?? colorName(prismLamp)}
+                </strong>{' '}
+                goes in — and only {EYE_LAMPS.find((l) => l.nm === prismLamp)?.name ?? 'that color'}{' '}
+                comes out, just BENT. Nothing fans out: a pure color has no other colors hiding
+                inside it.
+              </>
+            ),
+          },
+          {
+            icon: '🏆',
+            text: 'This is exactly how Newton proved the colors come from the LIGHT, not from the glass: if the prism were painting the light, it would paint a pure color too.',
+          },
+        ]
+
   const rightNow =
     scene === 'doorbell'
       ? rightNowDoorbell
@@ -351,9 +386,11 @@ export function LightLab() {
         ? rightNowLamps
         : scene === 'eye'
           ? rightNowEye
-          : view === 'photons'
-            ? rightNowPhotons
-            : rightNowWave
+          : scene === 'prism'
+            ? rightNowPrism
+            : view === 'photons'
+              ? rightNowPhotons
+              : rightNowWave
 
   const seeingDoorbell: Para[] = [
     {
@@ -404,6 +441,21 @@ export function LightLab() {
     },
   ]
 
+  const seeingPrism: Para[] = [
+    {
+      icon: '⚪',
+      text: 'White light is not a color — it is ALL the wavelengths travelling together. They only look white because they arrive at once.',
+    },
+    {
+      icon: '🔼',
+      text: 'Glass slows light down a little, and it slows shorter waves a little MORE — so every wavelength turns by its own amount, and the bundle fans apart. Sorting, not painting.',
+    },
+    {
+      icon: '🌦️',
+      text: 'A rainbow in the sky is millions of raindrops doing the prism\'s job to sunlight — the same fan, drawn across the whole sky.',
+    },
+  ]
+
   const seeing: Para[] =
     scene === 'doorbell'
       ? seeingDoorbell
@@ -411,6 +463,8 @@ export function LightLab() {
       ? seeingLamps
       : scene === 'eye'
       ? seeingEye
+      : scene === 'prism'
+      ? seeingPrism
       : view === 'photons'
       ? [
           {
@@ -500,6 +554,12 @@ export function LightLab() {
     { icon: '🪨', text: 'The black stone eats every lamp — and warms up the most. Feel a dark car in summer.' },
   ]
 
+  const tipsPrism: Para[] = [
+    { icon: '🔴', text: 'Send pure red through, then pure violet: same prism, different bend — and neither one splits.' },
+    { icon: '🌈', text: 'Back to white: count the stripes on the screen and check the order, red at the top to violet at the bottom.' },
+    { icon: '💿', text: 'At home: the rainbow flashes on a CD, or in the fine spray of a garden hose with the sun behind you — same unpacking.' },
+  ]
+
   const tips =
     scene === 'doorbell'
       ? tipsDoorbell
@@ -507,9 +567,19 @@ export function LightLab() {
         ? tipsLamps
         : scene === 'eye'
           ? tipsEye
-          : tipsWave
+          : scene === 'prism'
+            ? tipsPrism
+            : tipsWave
 
   const trueStory: Para[] = [
+    ...(scene === 'prism'
+      ? ([
+          {
+            icon: '🪟',
+            text: 'In 1666 young Isaac Newton bought a glass prism at a market fair, darkened his room, and let one sunbeam through a hole in the shutter. The wall showed a rainbow — and with a SECOND prism he proved each pure color refuses to split further. The colors were in the sunlight all along.',
+          },
+        ] as Para[])
+      : []),
     ...(scene === 'doorbell'
       ? ([
           {
@@ -588,13 +658,14 @@ export function LightLab() {
         </div>
       </div>
 
-      {/* middle: the canvas (drag = stretch the wave; lamps/eye: no wavelength) */}
+      {/* middle: the canvas. Drag-to-stretch only where a wavelength slider
+          rules the scene (wave machine + doorbell) */}
       <div
         className={`overflow-hidden rounded-xl border border-slate-700 bg-slate-950 ${
-          scene === 'lamps' || scene === 'eye' ? '' : 'cursor-ew-resize'
+          scene === 'wave' || scene === 'doorbell' ? 'cursor-ew-resize' : ''
         }`}
-        onPointerDown={scene === 'lamps' || scene === 'eye' ? undefined : onPointerDown}
-        onPointerMove={scene === 'lamps' || scene === 'eye' ? undefined : onPointerMove}
+        onPointerDown={scene === 'wave' || scene === 'doorbell' ? onPointerDown : undefined}
+        onPointerMove={scene === 'wave' || scene === 'doorbell' ? onPointerMove : undefined}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
@@ -606,6 +677,7 @@ export function LightLab() {
           lamps={lamps}
           eyeObject={eyeObject}
           eyeLamp={eyeLamp}
+          prismLamp={prismLamp}
           active={page === 'light'}
           onBell={setRings}
         />
@@ -670,7 +742,40 @@ export function LightLab() {
         </Card>
         )}
 
-        {scene === 'eye' ? (
+        {scene === 'prism' ? (
+          <Card title="💡 The lamp">
+            <div className="flex flex-wrap gap-1">
+              <button
+                type="button"
+                onClick={() => setPrismLamp('white')}
+                aria-current={prismLamp === 'white' ? 'page' : undefined}
+                className={`rounded-full border px-2.5 py-1 text-xs transition ${
+                  prismLamp === 'white'
+                    ? 'border-slate-200 bg-slate-100 font-medium text-slate-900'
+                    : 'border-slate-600 bg-slate-900/60 text-slate-300 hover:border-slate-400'
+                }`}
+              >
+                ⚪ white
+              </button>
+              {EYE_LAMPS.map((l) => (
+                <button
+                  key={l.nm}
+                  type="button"
+                  onClick={() => setPrismLamp(l.nm)}
+                  aria-current={prismLamp === l.nm ? 'page' : undefined}
+                  className={`rounded-full border px-2.5 py-1 text-xs transition ${
+                    prismLamp === l.nm
+                      ? 'border-slate-200 font-medium text-white'
+                      : 'border-slate-600 bg-slate-900/60 text-slate-300 hover:border-slate-400'
+                  }`}
+                  style={prismLamp === l.nm ? { background: wavelengthToCss(l.nm) } : undefined}
+                >
+                  {l.name}
+                </button>
+              ))}
+            </div>
+          </Card>
+        ) : scene === 'eye' ? (
           <>
             <Card title="What the eye sees">
               <div className="flex items-center gap-3">
@@ -865,7 +970,9 @@ function PhotoColumn({ current, scene }: { current: EmBandId; scene: WaveScene }
         ? LAMPS_PHOTOS.map((ph) => ({ title: 'your screen, up close', ph }))
         : scene === 'eye'
           ? EYE_PHOTOS.map((ph) => ({ title: 'seeing, in real life', ph }))
-          : WAVE_PHOTOS[current].map((ph) => ({ title: `${band.label} — in real life`, ph }))
+          : scene === 'prism'
+            ? PRISM_PHOTOS.map((ph) => ({ title: 'the real thing', ph }))
+            : WAVE_PHOTOS[current].map((ph) => ({ title: `${band.label} — in real life`, ph }))
   return (
     <div className="space-y-3">
       {/* no "slide to see more" coaching line here — guidance lives ONLY in
