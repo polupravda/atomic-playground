@@ -1,4 +1,4 @@
-import { memo, useCallback, useState, type ReactNode } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { PageNav } from './PageNav'
 import {
   LightStage,
@@ -13,61 +13,21 @@ import { Paras, SectionHeader, type Para } from './Paras'
 import { TimelineColumn, type TimelineItem } from './TimelineColumn'
 import { ColorsTable, LightParticleLegend, PhotonStats } from './LightLegend'
 import { LightIcon } from './LightIcon'
+import { FIREWORK_NARRATION } from '../stage/fireworkNarration'
+import { cancelNarration, useDemoNarration } from './useNarration'
+import { NarrationNotice } from './NarrationNotice'
+import { DemoControls, INFO_PANEL } from './DemoControls'
+
+/** each light story's narration scripts, per language */
+const NARRATION: Partial<Record<LightStoryId, { en: Record<string, string> }>> = {
+  firework: { en: FIREWORK_NARRATION },
+}
 
 // R02 — ✨ Light & color: the second "Atoms in action" example. Same page
 // anatomy as the bomb demo: info panel (left) — demo canvas with a chooser
 // (middle) — story timeline / real photos (right). One story so far
 // (🎆 Firework); neon, aurora and the star detective plug in as further
 // chooser rows (steps 34b/34c).
-
-const CHOOSER: Para[] = [
-  {
-    icon: '✨',
-    text: 'Fireworks, neon signs, auroras, and the stars themselves — four completely different lights, all made the SAME way: by electrons jumping inside atoms.',
-  },
-  {
-    icon: '👆',
-    text: 'Pick a light to watch its story. (Only the firework is ready so far — the others are on their way.)',
-  },
-]
-
-function rightNow(r: LightReport): Para[] {
-  const id = r.storyId
-  if (id === 'scene')
-    return [
-      {
-        icon: '🎆',
-        text: 'A firework shell races up and bursts. The sparks glow RED and YELLOW — but why exactly these colors? Nobody painted them…',
-      },
-      { icon: '⏳', text: 'In a moment we dive into one red spark, down to its atoms.' },
-    ]
-  if (id === 'zoom')
-    return [{ icon: '🔍', text: 'Here it comes: zooming into one glowing spark — down to its atoms.' }]
-  if (id.startsWith('closeup')) {
-    return lightCloseupStory()[Number(id.slice(7))]?.panel ?? []
-  }
-  if (id === 'barcode')
-    return [
-      {
-        icon: '🌈',
-        text: 'Now MANY atoms do the dance at random. Watch the strips below: every photon lands on its own line, and each element\'s fingerprint — its BARCODE — appears all by itself, photon by photon.',
-      },
-      {
-        icon: '🔎',
-        text: 'Lithium\'s lines and sodium\'s lines never mix up: an atom can only use its own fixed drops.',
-      },
-    ]
-  return [
-    {
-      icon: '🎇',
-      text: 'Back at the sky: the red stars are lithium atoms, the yellow ones sodium. The colors of a firework were decided inside atoms, long before the fuse was lit.',
-    },
-    {
-      icon: '🧬',
-      text: 'And because every element keeps its own barcode, light can tell us what things are made of — even things nobody can touch. That is the star detective\'s trick (coming soon).',
-    },
-  ]
-}
 
 const HOW_IT_WORKS: Para[] = [
   {
@@ -134,7 +94,6 @@ const STORY_NAMES: Record<LightStoryId, string> = {
   firework: 'Firework',
   neon: 'Neon sign',
   aurora: 'Aurora',
-  star: 'Star detective',
 }
 
 function timelineItems(story: LightStoryId): TimelineItem[] {
@@ -193,14 +152,16 @@ const initialReport: LightReport = {
   naCaught: 0,
 }
 
-export function LightExample({ active, tabs }: { active: boolean; tabs: ReactNode }) {
+export function LightExample({ active }: { active: boolean }) {
   // null = the lineup chooser
   const [story, setStory] = useState<LightStoryId | null>(null)
   const [paused, setPaused] = useState(false)
   const choose = (id: LightStoryId | null) => {
+    cancelNarration() // navigating is a deliberate interruption
     setStory(id)
     setPaused(false)
   }
+  // the auto-return to the chooser does NOT cancel: the payoff line may finish
   const onFinished = useCallback(() => {
     setStory(null)
     setPaused(false)
@@ -208,22 +169,52 @@ export function LightExample({ active, tabs }: { active: boolean; tabs: ReactNod
   const [seek, setSeek] = useState<{ id: string; n: number } | null>(null)
   const [rightTab, setRightTab] = useState<'story' | 'photos'>('story')
   const [report, setReport] = useState<LightReport>(initialReport)
-  const onSeek = useCallback((id: string) => setSeek((prev) => ({ id, n: (prev?.n ?? 0) + 1 })), [])
+  const onSeek = useCallback((id: string) => {
+    cancelNarration()
+    setSeek((prev) => ({ id, n: (prev?.n ?? 0) + 1 }))
+  }, [])
   const running = story !== null
+
+  // 🔊 narration — listen first, then watch (10-narration-strategy.md)
+  const narration = useDemoNarration({
+    storyKey: story,
+    beatId: report.storyId,
+    scripts: story ? (NARRATION[story] ?? null) : null,
+    active,
+    paused,
+  })
 
   return (
     <div className="grid h-full min-h-0 grid-cols-[16rem_minmax(0,1fr)_18rem] grid-rows-[minmax(0,1fr)] gap-x-6">
       {/* left: nav + info panel */}
       <div className="col-start-1 row-start-1 flex min-h-0 flex-col gap-3">
         <PageNav />
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/40 p-3 text-sm leading-relaxed text-slate-300">
-          <SectionHeader first>Right now</SectionHeader>
-          {story === null ? (
-            <Paras items={CHOOSER} className="text-slate-200" />
-          ) : (
+        <DemoControls
+          chooser={
+            <button
+              type="button"
+              onClick={() => choose(null)}
+              disabled={!running}
+              aria-current={running ? undefined : 'page'}
+              title="Go to the light selection screen"
+              className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-medium transition ${
+                running ? 'text-sky-100 hover:bg-sky-600 hover:text-white' : 'cursor-default bg-sky-600 text-white'
+              }`}
+            >
+              <LightIcon className="h-6 w-9 shrink-0" />
+              {running ? 'Choose another light' : 'Choose a light'}
+            </button>
+          }
+        />
+        <div className={INFO_PANEL}>
+          {story !== null && (
             <>
-              <Paras items={rightNow(report)} className="text-slate-200" />
-              <PhotonStats r={report} />
+              {(report.phase === 'barcode' || report.phase === 'payoff') && (
+                <>
+                  <SectionHeader>Live counts</SectionHeader>
+                  <PhotonStats r={report} />
+                </>
+              )}
               <SectionHeader>What the dots mean</SectionHeader>
               <LightParticleLegend />
             </>
@@ -239,36 +230,21 @@ export function LightExample({ active, tabs }: { active: boolean; tabs: ReactNod
         </div>
       </div>
 
-      {/* middle: example switcher + chooser button + demo canvas */}
+      {/* middle: the demo canvas */}
       <div className="col-start-2 row-start-1 flex min-h-0 flex-col items-center gap-2">
-        <div className="flex w-full flex-wrap items-center justify-between gap-2">
-          {tabs}
-          <button
-            type="button"
-            onClick={() => choose(null)}
-            disabled={!running}
-            aria-current={running ? undefined : 'page'}
-            title="Go to the light selection screen"
-            className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-medium transition ${
-              running
-                ? 'border-sky-500/70 bg-slate-800/80 text-sky-100 hover:bg-sky-600 hover:text-white'
-                : 'cursor-default border-slate-700 bg-sky-600 text-white'
-            }`}
-          >
-            <LightIcon className="h-7 w-11 shrink-0" />
-            {running ? 'Choose another light' : 'Choose a light'}
-          </button>
-        </div>
         <div className="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
           <LightStage
             story={story}
             paused={paused}
             seek={seek}
             active={active}
+            timeScale={narration.timeScale}
+            holdBeat={narration.holdBeat}
             onReport={setReport}
             onFinished={onFinished}
           />
           {story === null && <Chooser onChoose={choose} />}
+          <NarrationNotice failed={narration.failed} missingLang={narration.missingLang} />
           {running && (
             <button
               type="button"

@@ -15,6 +15,7 @@ import { blit, clamp01, easeIn, easeInOut, makeCanvasSprite, type Sprite } from 
 import {
   CARGO_M,
   drawFuel as drawFuelBall,
+  LINEUP,
   drawLineup,
   lineupLayout,
   drawRealShapeExtras,
@@ -22,6 +23,7 @@ import {
   realShapeLayout,
   strokeBomb,
 } from './bombShapes'
+import { CARDS_OUT_AT, CARD_STEP, drawIntroCards, preloadPortraits } from './bombIntro'
 import type { ParticleKind } from '../state/atomStore'
 import {
   BOMB_DESIGNS,
@@ -238,6 +240,17 @@ interface Sim {
    *  INSIDE_AT, a short break, then the countdown starts by itself at
    *  COUNTDOWN_AT */
   introT: number
+  /** the sim's own random state: the same state + the same steps give the
+   *  same future, so flow pacing can measure a beat exactly in advance */
+  seed: number
+}
+
+/** the sim's random numbers (mulberry32 on `sim.seed`) */
+function rand(sim: Sim): number {
+  let t = (sim.seed = (sim.seed + 0x6d2b79f5) | 0)
+  t = Math.imul(t ^ (t >>> 15), t | 1)
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
 }
 
 // ---------- sprites (pre-rendered once: 100 nuclei × 7 gradients per frame
@@ -411,6 +424,7 @@ function buildSim(mode: BombDesignId): Sim {
     closeupDone: false,
     blastT: null,
     introT: 0,
+    seed: (Math.random() * 2 ** 32) | 0,
   }
   placeNuclei(sim)
   return sim
@@ -493,11 +507,11 @@ function stepFusion(sim: Sim, dt: number) {
         sim.fusions++
         fp.x = c.x
         fp.y = c.y
-        const ha = Math.random() * Math.PI * 2
+        const ha = rand(sim) * Math.PI * 2
         fp.vx = Math.cos(ha) * C * 1.2
         fp.vy = Math.sin(ha) * C * 1.2
         sim.bursts.push({ x: c.x, y: c.y, age: 0 })
-        const na = Math.random() * Math.PI * 2
+        const na = rand(sim) * Math.PI * 2
         sim.neutrons.push({
           x: c.x,
           y: c.y,
@@ -519,7 +533,7 @@ function stepFusion(sim: Sim, dt: number) {
 
 function injectNeutron(sim: Sim) {
   // the initiator in the middle of the core fires the first neutron
-  const a = Math.random() * Math.PI * 2
+  const a = rand(sim) * Math.PI * 2
   sim.neutrons.push({
     x: sim.cx,
     y: CY,
@@ -541,7 +555,7 @@ function split(sim: Sim, nu: Nucleus) {
   // two unequal fragments (like barium + krypton) fly apart along the
   // stretch axis — their speed is where most of the energy goes (heat)
   const fs = C * 9
-  const jitter = (Math.random() - 0.5) * 0.4
+  const jitter = (rand(sim) - 0.5) * 0.4
   for (const [dir, big] of [
     [1, true],
     [-1, false],
@@ -557,10 +571,10 @@ function split(sim: Sim, nu: Nucleus) {
     })
   }
   sim.bursts.push({ x: nu.x, y: nu.y, age: 0 })
-  const count = neutronsFromSplit(BOMB_DESIGNS[sim.mode].neutronsMean, Math.random())
-  const a0 = Math.random() * Math.PI * 2
+  const count = neutronsFromSplit(BOMB_DESIGNS[sim.mode].neutronsMean, rand(sim))
+  const a0 = rand(sim) * Math.PI * 2
   for (let i = 0; i < count; i++) {
-    const a = a0 + (i * 2 * Math.PI) / count + (Math.random() - 0.5) * 1.2
+    const a = a0 + (i * 2 * Math.PI) / count + (rand(sim) - 0.5) * 1.2
     sim.neutrons.push({
       x: nu.x + Math.cos(a) * NUC_R,
       y: nu.y + Math.sin(a) * NUC_R,
@@ -589,7 +603,7 @@ function stepParticles(sim: Sim, dt: number, collide: boolean) {
         const dx = nu.x - ne.x
         const dy = nu.y - ne.y
         if (dx * dx + dy * dy < HIT_R * HIT_R) {
-          if (!ne.sure && Math.random() >= SPLIT_CHANCE) {
+          if (!ne.sure && rand(sim) >= SPLIT_CHANCE) {
             ne.skip = nu // flew past this one
             continue
           }
@@ -1191,6 +1205,90 @@ function drawFuel(ctx: CanvasRenderingContext2D, sim: Sim, now: number) {
   }
 }
 
+// ---------- emphasis: what the narrator names right now ----------
+
+// While a piece of narration names parts of the bomb ("two pieces of
+// uranium"), those parts pulse with an amber ring and glow — on the idle
+// clock, so it plays while the story itself is held for the voice. Keyed
+// by story beat → piece index → the parts that sentence names.
+type Part = 'bullet' | 'target' | 'core' | 'fuel'
+const EMPHASIS: Record<BombDesignId, Record<string, Part[][]>> = {
+  // "Inside the bomb, two pieces of uranium wait apart." | "Each piece alone is too small…"
+  gun: { armed: [['bullet', 'target'], ['bullet', 'target']] },
+  // "Inside the bomb sits a ball of plutonium…" | "The ball alone is too small…"
+  implosion: { armed: [['core'], ['core']] },
+  // "The first part is a small plutonium bomb…" | "The second part is hydrogen fuel."
+  tsar: { armed: [['core'], ['fuel']] },
+}
+const EMPH_IN = 0.35 // s to fade in
+const EMPH_OUT = 0.6 // s to fade out
+const EMPH_STAGGER = 0.45 // s between rings, so "two pieces" reads as 1, 2
+
+/** what is emphasised now: set by the stage before each draw */
+let emphasis: { parts: Part[]; since: number; until: number | null } = { parts: [], since: 0, until: null }
+
+function partCircle(sim: Sim, part: Part): { x: number; y: number; r: number } | null {
+  const pts =
+    part === 'fuel'
+      ? sim.fuel.map((fp) => pairCenter(sim, fp))
+      : sim.nuclei.filter((n) => part === 'core' || (part === 'bullet') === n.bullet)
+  if (!pts.length) return null
+  const x = pts.reduce((a, p) => a + p.x, 0) / pts.length
+  const y = pts.reduce((a, p) => a + p.y, 0) / pts.length
+  // the core sits tight inside its explosives: hug it, inside the blocks
+  const pad = part === 'core' ? NUC_R * 0.9 : NUC_R * 1.8
+  const r = Math.max(...pts.map((p) => Math.hypot(p.x - x, p.y - y))) + pad
+  return { x, y, r }
+}
+
+function drawEmphasis(ctx: CanvasRenderingContext2D, sim: Sim, now: number) {
+  const e = emphasis
+  if (!e.parts.length) return
+  const t = now / 1000
+  const out = e.until === null ? 1 : 1 - clamp01((t - e.until) / EMPH_OUT)
+  if (out <= 0) return
+  // keep the ring's line the same on screen, whatever the zoom
+  const zoom = Math.hypot(ctx.getTransform().a, ctx.getTransform().b) || 1
+  e.parts.forEach((part, i) => {
+    const c = partCircle(sim, part)
+    if (!c) return
+    const a = clamp01((t - e.since - i * EMPH_STAGGER) / EMPH_IN) * out
+    if (a <= 0) return
+    const beat = 0.5 + 0.5 * Math.sin((t - e.since) * 5.5 - i * 1.2)
+    const tight = part === 'core'
+    const r = c.r * (tight ? 0.97 + 0.04 * beat : 1.02 + 0.07 * beat)
+    ctx.save()
+    const g = ctx.createRadialGradient(c.x, c.y, c.r * 0.3, c.x, c.y, r * 1.15)
+    g.addColorStop(0, `rgba(251, 191, 36, ${(tight ? 0.38 : 0.22) * a * (0.6 + 0.4 * beat)})`)
+    g.addColorStop(1, 'rgba(251, 191, 36, 0)')
+    ctx.fillStyle = g
+    ctx.beginPath()
+    ctx.arc(c.x, c.y, r * 1.15, 0, Math.PI * 2)
+    ctx.fill()
+    // a pale ring on the red explosives, amber elsewhere
+    ctx.strokeStyle = tight ? `rgba(254, 243, 199, ${a * (0.7 + 0.3 * beat)})` : `rgba(251, 191, 36, ${a * (0.65 + 0.35 * beat)})`
+    ctx.lineWidth = (tight ? 4 : 3) / zoom
+    ctx.beginPath()
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
+    ctx.stroke()
+    if (e.parts.length > 1) {
+      // count them: 1, 2
+      const bx = c.x
+      const by = c.y - r - 13 / zoom
+      ctx.fillStyle = `rgba(251, 191, 36, ${a})`
+      ctx.beginPath()
+      ctx.arc(bx, by, 10 / zoom, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = `rgba(15, 23, 42, ${a})`
+      ctx.font = `700 ${13 / zoom}px ui-sans-serif, system-ui, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(String(i + 1), bx, by + 0.5 / zoom)
+    }
+    ctx.restore()
+  })
+}
+
 function drawNuclear(ctx: CanvasRenderingContext2D, sim: Sim, now: number) {
   const s = getSprites()
   if (sim.mode === 'tsar') drawTsarHardware(ctx, sim)
@@ -1227,7 +1325,9 @@ function drawNuclear(ctx: CanvasRenderingContext2D, sim: Sim, now: number) {
       ctx.save()
       ctx.translate(nu.x, nu.y)
       ctx.rotate(nu.axis)
-      const wobble = Math.sin(nu.t * 60) * 0.06
+      // the stretch follows the story (nu.t); the trembling is idle motion
+      // on the wall clock, so a held nucleus keeps wobbling
+      const wobble = Math.sin(t * 60) * 0.06
       ctx.scale(1 + 0.55 * e + wobble, 1 - 0.25 * e - wobble)
       blit(ctx, s.nucleus, 0, 0)
       ctx.restore()
@@ -1260,6 +1360,7 @@ function drawNuclear(ctx: CanvasRenderingContext2D, sim: Sim, now: number) {
     ctx.textBaseline = 'middle'
     ctx.fillText(String(Math.max(1, n)), CX, CY)
   }
+  drawEmphasis(ctx, sim, now)
   // white-out just before the cut to the explosion
   if (sim.phase === 'chainDone' && sim.phaseT > 1.6) {
     ctx.fillStyle = `rgba(255, 255, 255, ${clamp01((sim.phaseT - 1.6) / 0.6)})`
@@ -1486,7 +1587,9 @@ function drawSky(ctx: CanvasRenderingContext2D, t: number) {
 
 /** fireball → mushroom of ONE bomb, drawn around ground zero (CX, GY) in
  *  its own scene scale. `rings` = alpha of its damage rings. */
-function drawCloud(ctx: CanvasRenderingContext2D, t: number, mode: BombDesignId, rings: number) {
+/** `idle`: the cloud's slow billowing — idle motion, it keeps going while
+ *  the narrator holds the story still */
+function drawCloud(ctx: CanvasRenderingContext2D, t: number, mode: BombDesignId, rings: number, idle = t) {
   const { E, GY, RMAX, pxPerKm } = geo(mode)
   const heat = Math.exp(-t / 1.8)
   const R = RMAX * (1 - Math.exp(-t / 0.35))
@@ -1564,7 +1667,7 @@ function drawCloud(ctx: CanvasRenderingContext2D, t: number, mode: BombDesignId,
     for (const [ang, dist, size] of PUFFS) {
       const px = fx + Math.cos(ang) * rx * dist
       const py = fy + Math.sin(ang) * ry * dist + ry * 0.15
-      const pr = R * size * (1 + 0.04 * Math.sin(t * 0.8 + ang * 5))
+      const pr = R * size * (1 + 0.04 * Math.sin(idle * 0.8 + ang * 5))
       const g = ctx.createRadialGradient(px, py - pr * 0.3, 0, px, py, pr)
       g.addColorStop(0, cloudColor(heat * 1.05, 0.9 * pa))
       g.addColorStop(1, cloudColor(heat * 0.7, 0))
@@ -1603,7 +1706,7 @@ function drawCompareRing(ctx: CanvasRenderingContext2D, x: number, GY: number, p
   ctx.restore()
 }
 
-function drawExplosion(ctx: CanvasRenderingContext2D, t: number, mode: BombDesignId) {
+function drawExplosion(ctx: CanvasRenderingContext2D, t: number, mode: BombDesignId, idle = t) {
   drawSky(ctx, t)
   const own = geo(mode)
   const cmp = compareLayout()
@@ -1621,7 +1724,7 @@ function drawExplosion(ctx: CanvasRenderingContext2D, t: number, mode: BombDesig
       ctx.translate(cmp.x[m], GY)
       ctx.scale(f, f)
       ctx.translate(-CX, -GY)
-      drawCloud(ctx, t, m, 0)
+      drawCloud(ctx, t, m, 0, idle)
       ctx.restore()
     }
   }
@@ -1632,7 +1735,7 @@ function drawExplosion(ctx: CanvasRenderingContext2D, t: number, mode: BombDesig
   ctx.translate(x, GY)
   ctx.scale(f, f)
   ctx.translate(-CX, -GY)
-  drawCloud(ctx, t, mode, 1 - c)
+  drawCloud(ctx, t, mode, 1 - c, idle)
   ctx.restore()
 
   // scene scale bar + height ruler fade out as the comparison comes in
@@ -1752,14 +1855,20 @@ function drawOutlineWithInside(
   ctx.restore()
 }
 
-// The opening: the bomb picked in the lineup chooser glides + grows into
-// its own "grown-up next to the bomb" view while the others fade away; its
-// inside diagram fades in last. Then READY_HOLD s to look at the real bomb,
-// the zoom inside (ZOOM_IN_T), a short break (ZOOM_BREAK) so kids see the
-// new view — and only then the countdown starts (auto-play, no DETONATE).
-const INTRO_HOLD = 0.25
+// The opening: the others fade away, the bomb picked in the lineup glides
+// with its card to the top, and the freed canvas shows the facts the
+// narrator tells — name, country, year, team, leader(s) — one animated card
+// at a time (bombIntro.ts). Then the cards leave and the bomb glides +
+// grows into its own "grown-up next to the bomb" view; its inside diagram
+// fades in last. Then READY_HOLD s to look at the real bomb, the zoom
+// inside (ZOOM_IN_T), a short break (ZOOM_BREAK) so kids see the new view
+// — and only then the countdown starts (auto-play, no DETONATE).
+const OTHERS_OUT = [0.2, 1.0] // the other bombs fade
+const CARD_UP = [0.5, 1.5] // the picked card glides to the top
+const INTRO_ZOOM_AT = CARDS_OUT_AT + 0.2
 const INTRO_ZOOM = 1.8
-const INTRO_TOTAL = INTRO_HOLD + INTRO_ZOOM
+/** one watch break per fact, then the cards leave and the zoom plays */
+const INTRO_TOTAL = 6 * CARD_STEP
 const READY_HOLD = 5
 const ZOOM_IN_AT = INTRO_TOTAL + READY_HOLD
 const ZOOM_IN_T = 1.2
@@ -1774,30 +1883,39 @@ function outsideAmount(sim: Sim): number {
   return 1 - easeInOut(clamp01((sim.introT - ZOOM_IN_AT) / ZOOM_IN_T))
 }
 
-/** the lineup chooser rows in canvas px (for the click targets over it) */
+/** the lineup chooser rows in canvas px (for the click targets over it):
+ *  exactly the card frames, like the R02/R04 choosers */
 export function chooserRows() {
   const L = lineupLayout(W, H - BUTTON_ZONE)
-  const right = L.x0 + L.right * L.ppm
-  return (Object.keys(L.rows) as BombDesignId[]).map((m) => ({
+  return (Object.keys(L.cards) as BombDesignId[]).map((m) => ({
     mode: m,
-    left: L.x0 - 14,
-    right: right + 14,
-    top: L.rows[m].nameY - 16,
-    bottom: L.rows[m].groundY + 8,
+    ...L.cards[m],
   }))
 }
 
 function drawIntro(ctx: CanvasRenderingContext2D, sim: Sim, now: number) {
   const mode = sim.mode
+  const t = sim.introT
   const usableH = H - BUTTON_ZONE
-  const z = easeInOut(clamp01((sim.introT - INTRO_HOLD) / INTRO_ZOOM))
   const L = lineupLayout(W, usableH)
   const R = realShapeLayout(mode, W, usableH)
-  drawLineup(ctx, W, usableH, mode, 1 - z, mode)
-  // this bomb: from its lineup row to its own view
+  const span = (a: number[]) => easeInOut(clamp01((t - a[0]) / (a[1] - a[0])))
+  const z = easeInOut(clamp01((t - INTRO_ZOOM_AT) / INTRO_ZOOM))
+  // the other bombs leave; the picked card glides up to the first row
+  drawLineup(ctx, W, usableH, mode, 1 - span(OTHERS_OUT), mode, LINEUP.filter((m) => m !== mode))
+  const dy = (L.cards[LINEUP[0]].top - L.cards[mode].top) * span(CARD_UP)
+  ctx.save()
+  ctx.translate(0, dy)
+  drawLineup(ctx, W, usableH, mode, 1 - z, mode, [mode])
+  ctx.restore()
+  // the facts, in the freed space under it
+  const top = L.cards[LINEUP[0]].bottom + 16
+  drawIntroCards(ctx, mode, t, { x: 18, y: top, w: W - 36, h: usableH - 18 - top }, now / 1000)
+  // this bomb: from its (moved) lineup row to its own view
   const ppm = L.ppm * Math.pow(R.ppm / L.ppm, z) // even-feeling zoom
   const x0 = L.x0 + (R.x0 - L.x0) * z
-  const y0 = L.rows[mode].axisY + (R.y0 - L.rows[mode].axisY) * z
+  const rowY = L.rows[mode].axisY + dy
+  const y0 = rowY + (R.y0 - rowY) * z
   drawOutlineWithInside(ctx, sim, now, x0, y0, ppm, 1, clamp01((z - 0.55) / 0.45))
   ctx.save()
   ctx.globalAlpha = 1 - clamp01(z / 0.5)
@@ -1863,6 +1981,63 @@ function storyId(sim: Sim): string {
   }
 }
 
+// ---------- flow pacing: the chain reaction never stops ----------
+
+// While the narrator tells a flow beat (bombNarration.ts: the chain
+// reaction, from the fuel coming together to the last split), the key
+// animation is not held: it runs in slow motion at ONE steady speed per
+// beat, chosen so the beat ends together with its line — the beat's story
+// time ÷ the line's remaining narration. The sim always advances in fixed
+// steps with its own seeded randomness, so playing a copy ahead measures
+// the beat's remaining story time exactly, random chain or not. The copy
+// is played ahead a slice per frame (LOOK_STEPS_PER_FRAME), so measuring a
+// long chain never stalls the animation; meanwhile the beat runs at the
+// previous speed.
+const STEP_DT = 1 / 120
+const LOOK_MAX_S = 40
+const LOOK_STEPS_PER_FRAME = 60
+/** the speed while the very first flow beat is being measured */
+const FLOW_START_RATE = 0.1
+/** aim to end a hair after the line: the last moment then plays at normal
+ *  speed (unnoticeable), never a hold */
+const FIT_MARGIN_S = 0.2
+/** re-choose the speed only if the picture and the voice drift this far
+ *  apart (a language switch, an audio stall) */
+const FIT_DRIFT_S = 1
+/** the slowest flow: the story never stands fully still */
+const FLOW_MIN = 0.03
+
+interface FlowFit {
+  id: string
+  /** the steady speed of this beat */
+  rate: number
+  /** story seconds left in the beat (known once `look` has finished) */
+  left: number
+  /** the measurement in progress: a copy of the sim from the beat's start
+   *  played ahead (`t` = its story time, counted from the real sim's
+   *  position then), and the story time the real sim has run since */
+  look: { sim: Sim; id: string; t: number; spent: number } | null
+}
+
+const fitRate = (left: number, narration: number) =>
+  Math.min(1, Math.max(FLOW_MIN, left / (narration + FIT_MARGIN_S)))
+
+/** play the measuring copy ahead one slice; true when the beat's end has
+ *  been found (then `f.left` is exact) */
+function lookAhead(f: FlowFit): boolean {
+  const l = f.look!
+  for (let i = 0; i < LOOK_STEPS_PER_FRAME; i++) {
+    if (storyId(l.sim) !== l.id || l.t >= LOOK_MAX_S) {
+      f.left = Math.max(0, l.t - l.spent)
+      f.look = null
+      return true
+    }
+    step(l.sim, STEP_DT)
+    l.t += STEP_DT
+  }
+  return false
+}
+
 // ---------- component ----------
 
 export const FissionStage = memo(function FissionStage({
@@ -1870,6 +2045,10 @@ export const FissionStage = memo(function FissionStage({
   paused,
   seek,
   active,
+  timeScale = 1,
+  holdBeat = false,
+  fit = null,
+  speakingPiece = null,
   onReport,
   onFinished,
 }: {
@@ -1880,6 +2059,19 @@ export const FissionStage = memo(function FissionStage({
   /** jump to a story step (n changes on every click) */
   seek: { id: string; n: number } | null
   active: boolean
+  /** story-time rate: 1 = normal; lower holds the scene in slow motion
+   *  while the narrator talks */
+  timeScale?: number
+  /** science pacing: the narrator still has pieces to say about this
+   *  beat — never move on to the next beat (or finish) yet */
+  holdBeat?: boolean
+  /** flow pacing: seconds until the beat's line ends — the story runs at
+   *  one steady slow speed fitted to it (overrides timeScale); null = no
+   *  flow beat */
+  fit?: (() => number) | null
+  /** which piece of the current beat's line is being said (null = none):
+   *  the parts it names are emphasised (EMPHASIS) */
+  speakingPiece?: number | null
   onReport: (r: FissionReport) => void
   /** the run is over (it faded back to the lineup) */
   onFinished: () => void
@@ -1887,6 +2079,37 @@ export const FissionStage = memo(function FissionStage({
   const shapeRef = useRef<Konva.Shape | null>(null)
   const modeRef = useRef(mode)
   modeRef.current = mode
+  const timeScaleRef = useRef(timeScale)
+  timeScaleRef.current = timeScale
+  const holdBeatRef = useRef(holdBeat)
+  holdBeatRef.current = holdBeat
+  const fitRef = useRef(fit)
+  fitRef.current = fit
+  const speakingPieceRef = useRef(speakingPiece)
+  speakingPieceRef.current = speakingPiece
+  // the emphasis rings: which parts, since when, faded out since when
+  const emph = useRef<{ key: string; parts: Part[]; since: number; until: number | null }>({
+    key: '',
+    parts: [],
+    since: 0,
+    until: null,
+  })
+  /** follow the narrator: start a ring set when a naming piece begins,
+   *  fade it when the piece ends */
+  const updateEmphasis = (s: Sim, t: number) => {
+    const piece = speakingPieceRef.current
+    const id = storyId(s)
+    const parts = piece === null || piece === undefined ? null : EMPHASIS[s.mode][id]?.[piece]
+    const key = parts ? `${id}#${piece}` : ''
+    const e = emph.current
+    if (key && key !== e.key) emph.current = { key, parts: parts!, since: t, until: null }
+    else if (!key && e.key) emph.current = { ...e, key: '', until: t }
+    emphasis = emph.current
+  }
+  // story time not yet stepped (the sim moves in fixed STEP_DT steps)
+  const carry = useRef(0)
+  // flow pacing: the speed chosen for this beat, and its story time left
+  const flow = useRef<FlowFit | null>(null)
   const onFinishedRef = useRef(onFinished)
   onFinishedRef.current = onFinished
   const finishedSent = useRef(false)
@@ -1935,10 +2158,13 @@ export const FissionStage = memo(function FissionStage({
   // a bomb picked → fresh bomb, zooming out of the lineup
   useEffect(() => {
     finishedSent.current = false
+    flow.current = null
+    carry.current = 0
     snaps.current.clear()
     lastStory.current = ''
     lastSig.current = ''
     if (mode) {
+      preloadPortraits(mode)
       sim.current = buildSim(mode)
       record()
       report()
@@ -1954,6 +2180,8 @@ export const FissionStage = memo(function FissionStage({
     const ti = order.indexOf(seek.id)
     if (ti < 0) return
     const idx = (id: string) => order.indexOf(id)
+    flow.current = null
+    carry.current = 0
     const restore = (id: string) => {
       sim.current = structuredClone(snaps.current.get(id)!)
       lastStory.current = id
@@ -1995,11 +2223,56 @@ export const FissionStage = memo(function FissionStage({
       if (!frame) return
       const dt = Math.min(0.05, frame.timeDiff / 1000)
       if (!modeRef.current) return // the chooser: a still picture
-      step(sim.current, dt)
+      let rate = timeScaleRef.current
+      const narration = fitRef.current?.() ?? null
+      let f: FlowFit | null = null
+      if (narration !== null) {
+        const id = storyId(sim.current)
+        f = flow.current
+        if (!f || f.id !== id) {
+          // a new flow beat: start measuring it, keep the last speed meanwhile
+          f = {
+            id,
+            rate: f?.rate ?? FLOW_START_RATE,
+            left: NaN,
+            look: { sim: structuredClone(sim.current), id, t: -carry.current, spent: 0 },
+          }
+          flow.current = f
+        }
+        if (f.look) {
+          if (lookAhead(f)) f.rate = fitRate(f.left, narration)
+        } else if (Math.abs(f.left / f.rate - narration - FIT_MARGIN_S) > FIT_DRIFT_S) {
+          // picture and voice drifted apart: one new steady speed
+          f.rate = fitRate(f.left, narration)
+        }
+        rate = f.rate
+      }
+      const adv = dt * rate
+      // the beat gate: a frame that would leave the beat is undone. Only
+      // copy the sim when this frame can leave it: it takes a step, and
+      // (flow) the beat's measured end is near
+      const gate = holdBeatRef.current
+      const willStep = carry.current + adv >= STEP_DT
+      const farFromEnd = !!f && !f.look && f.left - adv > 2 * STEP_DT
+      const backup = gate && willStep && !farFromEnd ? structuredClone(sim.current) : null
+      const before = backup ? storyId(sim.current) : ''
+      const carryBefore = carry.current
+      carry.current += adv
+      while (carry.current >= STEP_DT) {
+        step(sim.current, STEP_DT)
+        carry.current -= STEP_DT
+      }
+      if (backup && storyId(sim.current) !== before) {
+        sim.current = backup
+        carry.current = carryBefore
+      } else if (f) {
+        if (f.look) f.look.spent += adv
+        else f.left = Math.max(0, f.left - adv)
+      }
       record()
       report()
       const s = sim.current
-      if (!finishedSent.current && s.phase === 'explosion' && s.phaseT >= END_T) {
+      if (!finishedSent.current && !holdBeatRef.current && s.phase === 'explosion' && s.phaseT >= END_T) {
         finishedSent.current = true
         onFinishedRef.current()
       }
@@ -2021,8 +2294,9 @@ export const FissionStage = memo(function FissionStage({
             const ctx = kctx._context as CanvasRenderingContext2D
             ctx.save()
             const s = sim.current
+            updateEmphasis(s, performance.now() / 1000)
             if (!modeRef.current) drawLineup(ctx, W, H - BUTTON_ZONE, undefined, 1)
-            else if (s.phase === 'explosion') drawExplosion(ctx, s.phaseT, s.mode)
+            else if (s.phase === 'explosion') drawExplosion(ctx, s.phaseT, s.mode, performance.now() / 1000)
             else if (s.phase === 'closeup' && s.closeup) {
               // camera zooms into the hit nucleus, then the close view fades in
               const cam = closeupCamera(s.closeup.t)
@@ -2048,7 +2322,9 @@ export const FissionStage = memo(function FissionStage({
                 ctx.stroke()
                 ctx.restore()
               }
-              drawCloseup(ctx, s.closeup.t, W, H, cam.sceneAlpha, BOMB_DESIGNS[s.mode].fuel)
+              // idle motion (electron spin, γ wave) on the wall clock: it keeps
+              // moving while the narrator holds the story still
+              drawCloseup(ctx, s.closeup.t, W, H, cam.sceneAlpha, BOMB_DESIGNS[s.mode].fuel, performance.now() / 1000)
             } else drawBombView(ctx, s, performance.now(), outsideAmount(s))
             ctx.restore()
           }}

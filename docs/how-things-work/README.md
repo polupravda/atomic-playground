@@ -12,6 +12,7 @@ a purely client-side educational toy.
 | [02-tech-stack.md](02-tech-stack.md) | Chosen stack and the reasoning behind each choice, including what was rejected and why. |
 | [03-architecture.md](03-architecture.md) | Code layout, layering rules (core → state → stage/ui), and the animation model. |
 | [04-roadmap.md](04-roadmap.md) | Step-by-step implementation plan with per-feature status. Updated after every implemented + manually tested step. |
+| [10-narration-strategy.md](10-narration-strategy.md) | How demos are narrated: voice, writing rules, listen-first pacing, translations, the audio pipeline. **Source of truth** for every narration script. |
 
 ## Working agreement
 

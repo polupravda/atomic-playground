@@ -10,6 +10,37 @@ export interface CosmosPhotoGroup {
   photos: WavePhoto[]
 }
 
+/** 🧒 You are star stuff */
+export const STARDUST_PHOTO_GROUPS: CosmosPhotoGroup[] = [
+  {
+    title: 'A star that exploded',
+    photos: [
+      {
+        file: 'cosmos-crab.jpg',
+        caption:
+          'The Crab Nebula: the wreck of a star people saw explode in the year 1054. Those glowing streamers are its atoms, sown into space — carbon and oxygen among them.',
+        creator: 'NASA, ESA, J. Hester & A. Loll (Hubble)',
+        license: 'Public domain',
+        source: 'https://commons.wikimedia.org/wiki/File:Crab_Nebula.jpg',
+      },
+    ],
+  },
+  {
+    title: 'Where new worlds grow',
+    photos: [
+      {
+        file: 'cosmos-orion.jpg',
+        caption:
+          'The Orion Nebula — a cloud of old stars\' dust where NEW stars and planets are growing right now. Our Sun and Earth grew from a cloud like this.',
+        creator: 'NASA, ESA, M. Robberto (Hubble)',
+        license: 'Public domain',
+        source: 'https://commons.wikimedia.org/wiki/File:Orion_Nebula_-_Hubble_2006_mosaic_18000.jpg',
+      },
+    ],
+  },
+]
+
+/** ☀️ Why the Sun shines */
 export const COSMOS_PHOTO_GROUPS: CosmosPhotoGroup[] = [
   {
     title: 'The Sun itself',

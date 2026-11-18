@@ -1,4 +1,4 @@
-import { memo, useCallback, useState, type ReactNode } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { PageNav } from './PageNav'
 import {
   CosmosStage,
@@ -8,13 +8,19 @@ import {
   type CosmosReport,
 } from '../stage/CosmosStage'
 import { sunCloseupStory } from '../stage/sunStory'
+import { forgeStory } from '../stage/stardustStory'
+import { STARDUST_SCRIPTS } from '../stage/stardustNarration'
+import { SUN_NARRATION } from '../stage/sunNarration'
+import { cancelNarration, useDemoNarration } from './useNarration'
+import { NarrationNotice } from './NarrationNotice'
+import { DemoControls, INFO_PANEL } from './DemoControls'
+import type { NarrationLang } from '../state/voiceStore'
+import { sunMassDefectFraction } from '../core/cosmos'
 import {
-  PHOTON_ESCAPE_YEARS,
-  SUN_LIGHTER_TONNES_PER_S,
-  SUN_RECIPE,
-  sunMassDefectFraction,
-} from '../core/cosmos'
-import { COSMOS_PHOTO_GROUPS } from '../core/cosmosPhotos'
+  COSMOS_PHOTO_GROUPS,
+  STARDUST_PHOTO_GROUPS,
+  type CosmosPhotoGroup,
+} from '../core/cosmosPhotos'
 import { Paras, SectionHeader, type Para } from './Paras'
 import { TimelineColumn, type TimelineItem } from './TimelineColumn'
 
@@ -23,93 +29,14 @@ import { TimelineColumn, type TimelineItem } from './TimelineColumn'
 // shines (and WHAT it is made of — the recipe beat); star stuff and gold
 // plug in as further chooser rows (steps 36b/36c, to be asked first).
 
-const CHOOSER: Para[] = [
-  {
-    icon: '🌟',
-    text: 'Where atoms COME from: the Sun turning hydrogen into helium and sunshine, the star dust you are made of, and the collisions that forged gold.',
-  },
-  {
-    icon: '👆',
-    text: 'Pick a journey. (Only the Sun\'s is ready so far — the others are on their way.)',
-  },
-]
-
 const defectPct = (sunMassDefectFraction() * 100).toFixed(1)
 
-function rightNow(r: CosmosReport): Para[] {
-  const id = r.storyId
-  if (id === 'sun')
-    return [
-      {
-        icon: '☀️',
-        text: 'Our star: a ball of glowing gas so big that 109 Earths would fit across it — see the little blue dot, drawn at the same scale.',
-      },
-      { icon: '⏳', text: 'First question: what is all that glowing stuff MADE of?' },
-    ]
-  if (id === 'recipe')
-    return [
-      {
-        icon: '🥣',
-        text: (
-          <>
-            The Sun&apos;s recipe, weighed: out of every 100 kg, about{' '}
-            <strong className="text-red-300">{SUN_RECIPE[0].massPct} kg is hydrogen</strong> — the
-            smallest, simplest atom — <strong className="text-amber-300">{SUN_RECIPE[1].massPct} kg
-            helium</strong>, and only {SUN_RECIPE[2].massPct} kg of everything else together.
-          </>
-        ),
-      },
-      {
-        icon: '🔎',
-        text: 'How can anyone know that? Nobody has ever scooped up a spoonful of Sun. The answer is under the bar: the Sun\'s BARCODE. Its own outer gas eats exactly hydrogen\'s and helium\'s colors out of the sunlight — the dark lines are the ingredients\' signatures.',
-      },
-      {
-        icon: '⏳',
-        text: 'Counted by atoms instead of weighed, hydrogen is even more dominant: about 9 of every 10 atoms in the Sun are hydrogen. Next: what all that hydrogen is FOR.',
-      },
-    ]
-  if (id === 'zoom')
-    return [
-      {
-        icon: '🔍',
-        text: 'Diving into the core: 15 million degrees, squeezed by the weight of the whole Sun. Gravity does here what the explosives did in the hydrogen bomb — only gently, and forever.',
-      },
-    ]
-  if (id.startsWith('closeup')) {
-    return sunCloseupStory()[Number(id.slice(7))]?.panel ?? []
-  }
-  if (id === 'scale')
-    return [
-      {
-        icon: '⚖️',
-        text: `Weigh the trade: the FOUR hydrogens that went in are heavier than the ONE helium that came out — about ${defectPct}% of the mass is missing. It didn't get lost: it left as light.`,
-      },
-      {
-        icon: '🌞',
-        text: `The Sun pays this toll everywhere in its core, all the time: it gets about ${(SUN_LIGHTER_TONNES_PER_S / 1e6).toLocaleString('en-US')} million tonnes lighter every second — and that missing weight IS the sunshine. (Scientists write this little fact as E = mc².)`,
-      },
-    ]
-  if (id === 'walk')
-    return [
-      {
-        icon: '🥾',
-        text: `A newborn photon can't just leave: the core is so crowded that it bounces off something every tiny step. Getting OUT takes about ${PHOTON_ESCAPE_YEARS.toLocaleString('en-US')} years of zigzag.`,
-      },
-      {
-        icon: '🚀',
-        text: 'Then space is empty — the last 150 million kilometres to your face take just 8 minutes. Today\'s sunshine was made before the last ice age.',
-      },
-    ]
-  return [
-    {
-      icon: '⛰️',
-      text: 'The energy valley: every nucleus wants to roll downhill. Small ones roll down by JOINING — that is the Sun. Huge ones roll down by SPLITTING — that is the atomic-bomb demo. Both release energy, from opposite slopes of ONE hill.',
-    },
-    {
-      icon: '🧲',
-      text: 'Iron sits at the very bottom: joining it costs energy, splitting it costs energy. Iron is the ash of the universe — and why every star\'s furnace eventually goes out.',
-    },
-  ]
+/** each journey's narration scripts, per language (gold: not yet) */
+const NARRATION: Partial<
+  Record<CosmosJourneyId, Partial<Record<NarrationLang, Record<string, string>>>>
+> = {
+  stardust: STARDUST_SCRIPTS,
+  sun: { en: SUN_NARRATION },
 }
 
 const HOW_IT_WORKS: Para[] = [
@@ -177,17 +104,151 @@ const TRUE_STORY: Para[] = [
   },
 ]
 
+const HOW_STARDUST: Para[] = [
+  {
+    icon: '🏭',
+    text: 'Stars are element factories. When a big star\'s hydrogen is spent, its core gets hot enough to burn the ash: helium fuses into carbon (and later oxygen and more).',
+  },
+  {
+    icon: '💎',
+    text: 'Three heliums → one carbon: 4 + 4 + 4 = 12 nucleons, 2 + 2 + 2 = 6 protons — and six protons IS carbon, the builder\'s first lesson.',
+  },
+  {
+    icon: '💥',
+    text: 'When the star dies — explosively or gently — its atoms are sown into space as a glowing cloud.',
+  },
+  {
+    icon: '🌍',
+    text: 'New stars and planets curdle out of old stars\' dust. The Sun and Earth are second-hand.',
+  },
+  {
+    icon: '♻️',
+    text: 'On a living planet the atoms keep moving: volcano → air → leaf → food → you. Your body borrows star-made atoms and passes them on.',
+  },
+]
+
+const HONEST_STARDUST: Para[] = [
+  {
+    icon: '🎯',
+    text: 'The marked atom\'s path is a STORY, not a record — no one can trace one real atom. But every carbon atom in you really did travel some road like this.',
+  },
+  {
+    icon: '🌬️',
+    text: 'Much of the universe\'s carbon leaves smaller stars gently (a puffed-off glowing shell), not in a supernova. We show the dramatic road; both are real.',
+  },
+  {
+    icon: '⏱️',
+    text: 'The journey squeezes billions of years into a minute — the drift alone took longer than the Earth has existed.',
+  },
+  {
+    icon: '🤏',
+    text: 'Beryllium-8\'s "blink of an eye" is real physics: it survives about a billionth of a billionth of a second, and the universe\'s whole carbon supply squeezes through that blink.',
+  },
+  {
+    icon: '📏',
+    text: 'Stars, nebulas, planets, molecules and the kid are drawn at storybook scale, not a shared one.',
+  },
+]
+
+const TRUE_STARDUST: Para[] = [
+  {
+    icon: '🧒',
+    text: '"We are made of star-stuff" — Carl Sagan\'s famous line. This story is that line, checked and drawn.',
+  },
+  {
+    icon: '🔮',
+    text: 'In 1953 Fred Hoyle PREDICTED that carbon must have a special energy state — otherwise the triple-helium trick could never work and we could not exist. The state was found that same year, exactly where he said.',
+  },
+  {
+    icon: '👀',
+    text: 'In 1054, people in China and Japan watched a "guest star" blaze for weeks. Its wreck is the Crab Nebula in the 📷 panel — a star\'s atoms, still flying.',
+  },
+]
+
 const JOURNEY_NAMES: Record<CosmosJourneyId, string> = {
+  detective: 'Star detective',
   sun: 'Why the Sun shines',
   stardust: 'You are star stuff',
   gold: 'Where gold comes from',
 }
 
 function timelineItems(journey: CosmosJourneyId): TimelineItem[] {
-  const close = sunCloseupStory()
   const eq = (s: string) => (
     <span className="mt-1 block font-mono text-[12px] text-slate-100">{s}</span>
   )
+  if (journey === 'stardust') {
+    const forge = forgeStory()
+    const texts: Record<string, TimelineItem> = {
+      giant: {
+        id: 'giant',
+        group: '🔴 An old star',
+        icon: '🔴',
+        title: 'Long before the Sun',
+        text: 'A giant star, its hydrogen already spent. Its core burns helium now.',
+      },
+      zoom: {
+        id: 'zoom',
+        group: '🔥 The forge',
+        icon: '🔍',
+        title: 'Into its core',
+        text: 'Over 100 million degrees — hot enough to fuse helium itself.',
+      },
+      boom: {
+        id: 'boom',
+        group: '💥 Set free',
+        icon: '💥',
+        title: 'Supernova',
+        text: 'The star explodes and sows its atoms into space. Our carbon rides the blast wave.',
+      },
+      drift: {
+        id: 'drift',
+        group: '🌫️ Adrift',
+        icon: '🌫️',
+        title: 'Millions of years pass',
+        text: 'The atoms drift as a glowing nebula. Nothing happens, beautifully, for ages.',
+      },
+      earth: {
+        id: 'earth',
+        group: '🌍 A new world',
+        icon: '🌍',
+        title: 'The Sun and Earth are born',
+        text: 'The cloud curdles: a new star lights up, dust clumps into planets — our atom lands in the third one.',
+      },
+      alive: {
+        id: 'alive',
+        group: '♻️ Alive',
+        icon: '🌋',
+        title: 'Volcano → leaf → kid',
+        text: 'A volcano breathes the carbon out as CO₂, a leaf keeps it, an apple grows — and gets eaten.',
+      },
+      you: {
+        id: 'you',
+        group: '🧒 The payoff',
+        icon: '🧒',
+        title: 'You are star stuff',
+        text: 'Almost every atom in you was made inside a star. The hydrogen is from the Big Bang itself.',
+      },
+    }
+    return cosmosStoryOrder(journey).map((id) => {
+      if (id.startsWith('forge')) {
+        const st = forge[Number(id.slice(5))]
+        return {
+          id,
+          group: '🔥 The forge',
+          icon: st.icon,
+          title: st.title,
+          text: (
+            <>
+              {st.caption}
+              {eq(st.equation)}
+            </>
+          ),
+        }
+      }
+      return texts[id]
+    })
+  }
+  const close = sunCloseupStory()
   const texts: Record<string, TimelineItem> = {
     sun: {
       id: 'sun',
@@ -254,14 +315,16 @@ function timelineItems(journey: CosmosJourneyId): TimelineItem[] {
 
 const initialReport: CosmosReport = { phase: 'sun', storyId: 'sun', closeupStep: 0 }
 
-export function CosmosExample({ active, tabs }: { active: boolean; tabs: ReactNode }) {
+export function CosmosExample({ active }: { active: boolean }) {
   // null = the lineup chooser
   const [journey, setJourney] = useState<CosmosJourneyId | null>(null)
   const [paused, setPaused] = useState(false)
   const choose = (id: CosmosJourneyId | null) => {
+    cancelNarration() // navigating is a deliberate interruption
     setJourney(id)
     setPaused(false)
   }
+  // the auto-return to the chooser does NOT cancel: the payoff line may finish
   const onFinished = useCallback(() => {
     setJourney(null)
     setPaused(false)
@@ -269,60 +332,70 @@ export function CosmosExample({ active, tabs }: { active: boolean; tabs: ReactNo
   const [seek, setSeek] = useState<{ id: string; n: number } | null>(null)
   const [rightTab, setRightTab] = useState<'story' | 'photos'>('story')
   const [report, setReport] = useState<CosmosReport>(initialReport)
-  const onSeek = useCallback((id: string) => setSeek((prev) => ({ id, n: (prev?.n ?? 0) + 1 })), [])
+  const onSeek = useCallback((id: string) => {
+    cancelNarration()
+    setSeek((prev) => ({ id, n: (prev?.n ?? 0) + 1 }))
+  }, [])
   const running = journey !== null
+
+  // 🔊 narration: the storyteller voice follows the on-screen beats; while
+  // it talks the animation holds in slow motion — listen first, then watch
+  // (docs/how-things-work/10-narration-strategy.md)
+  const narration = useDemoNarration({
+    storyKey: journey,
+    beatId: report.storyId,
+    scripts: journey ? (NARRATION[journey] ?? null) : null,
+    active,
+    paused,
+  })
 
   return (
     <div className="grid h-full min-h-0 grid-cols-[16rem_minmax(0,1fr)_18rem] grid-rows-[minmax(0,1fr)] gap-x-6">
       {/* left: nav + info panel */}
       <div className="col-start-1 row-start-1 flex min-h-0 flex-col gap-3">
         <PageNav />
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/40 p-3 text-sm leading-relaxed text-slate-300">
-          <SectionHeader first>Right now</SectionHeader>
-          {journey === null ? (
-            <Paras items={CHOOSER} className="text-slate-200" />
-          ) : (
-            <Paras items={rightNow(report)} className="text-slate-200" />
-          )}
+        <DemoControls
+          chooser={
+            <button
+              type="button"
+              onClick={() => choose(null)}
+              disabled={!running}
+              aria-current={running ? undefined : 'page'}
+              title="Go to the journey selection screen"
+              className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-medium transition ${
+                running ? 'text-sky-100 hover:bg-sky-600 hover:text-white' : 'cursor-default bg-sky-600 text-white'
+              }`}
+            >
+              <span aria-hidden>🌟</span>
+              {running ? 'Choose another journey' : 'Choose a journey'}
+            </button>
+          }
+        />
+        <div className={INFO_PANEL}>
           <SectionHeader>How it works</SectionHeader>
-          <Paras items={HOW_IT_WORKS} />
+          <Paras items={journey === 'stardust' ? HOW_STARDUST : HOW_IT_WORKS} />
           <SectionHeader>Honest notes</SectionHeader>
-          <Paras items={HONEST} className="text-slate-400" />
+          <Paras items={journey === 'stardust' ? HONEST_STARDUST : HONEST} className="text-slate-400" />
           <SectionHeader>A true story</SectionHeader>
-          <Paras items={TRUE_STORY} />
+          <Paras items={journey === 'stardust' ? TRUE_STARDUST : TRUE_STORY} />
         </div>
       </div>
 
-      {/* middle: example switcher + journey chooser button + demo canvas */}
+      {/* middle: the demo canvas */}
       <div className="col-start-2 row-start-1 flex min-h-0 flex-col items-center gap-2">
-        <div className="flex w-full flex-wrap items-center justify-between gap-2">
-          {tabs}
-          <button
-            type="button"
-            onClick={() => choose(null)}
-            disabled={!running}
-            aria-current={running ? undefined : 'page'}
-            title="Go to the journey selection screen"
-            className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-medium transition ${
-              running
-                ? 'border-sky-500/70 bg-slate-800/80 text-sky-100 hover:bg-sky-600 hover:text-white'
-                : 'cursor-default border-slate-700 bg-sky-600 text-white'
-            }`}
-          >
-            <span aria-hidden>🌟</span>
-            {running ? 'Choose another journey' : 'Choose a journey'}
-          </button>
-        </div>
         <div className="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
           <CosmosStage
             journey={journey}
             paused={paused}
             seek={seek}
             active={active}
+            timeScale={narration.timeScale}
+            holdBeat={narration.holdBeat}
             onReport={setReport}
             onFinished={onFinished}
           />
           {journey === null && <Chooser onChoose={choose} />}
+          <NarrationNotice failed={narration.failed} missingLang={narration.missingLang} />
           {running && (
             <button
               type="button"
@@ -387,17 +460,28 @@ export function CosmosExample({ active, tabs }: { active: boolean; tabs: ReactNo
         <div
           className={`min-h-0 flex-1 overflow-y-auto pr-1 ${rightTab === 'photos' ? '' : 'hidden'}`}
         >
-          <CosmosPhotoPanel />
+          <CosmosPhotoPanel journey={journey} />
         </div>
       </div>
     </div>
   )
 }
 
-const CosmosPhotoPanel = memo(function CosmosPhotoPanel() {
+/** the selected journey's photos; on the chooser, everything */
+const CosmosPhotoPanel = memo(function CosmosPhotoPanel({
+  journey,
+}: {
+  journey: CosmosJourneyId | null
+}) {
+  const groups: CosmosPhotoGroup[] =
+    journey === 'stardust'
+      ? STARDUST_PHOTO_GROUPS
+      : journey === 'sun'
+        ? COSMOS_PHOTO_GROUPS
+        : [...COSMOS_PHOTO_GROUPS, ...STARDUST_PHOTO_GROUPS]
   return (
     <>
-      {COSMOS_PHOTO_GROUPS.map((group, gi) => (
+      {groups.map((group, gi) => (
         <section key={group.title} className={gi === 0 ? '' : 'mt-4'}>
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
             {group.title}

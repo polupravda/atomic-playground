@@ -98,20 +98,24 @@ an example is a whole process that spans many atoms.
 | **R04** | **🌟 Cosmic origins / Star stuff** (approved 2026-11-09, [proposal](08-proposal-r04-cosmic-origins.md)) | Chooser: ☀️ Why the Sun shines (ships first, per review) · 🧒 You are star stuff · 💍 Where gold comes from — watch-only (hands-on beat: ask later) | ☀️ (implemented 2026-11-11): Earth at true scale beside the Sun, **the recipe beat — what the Sun is MADE of** (73 kg H · 25 kg He · 2 kg rest per 100 kg, proven by the Sun's dark-line barcode; added by request, proposal beat 1b), gravity as the Sun's "explosive shell", bare protons repelling (A22), the real 3-step pp-chain in close-up (β⁺ positron reused), the ⚖️ scale beat (4 H outweigh 1 He; the missing 0.7% flashes into photons), photon random walk (~100,000 years out), energy-valley payoff (fusion slope + R01's fission slope, iron at the bottom). 🧒: a marked carbon atom star→supernova→nebula→Earth→CO₂→leaf→child. 💍: neutron-star collision, r-process via the kids' own β⁻ animation, "gold older than the Earth". Ends on the astronomer's periodic table (origins overlay — builder-table toggle: ask after) | E=mc² in the info block, not prominent (per review); neutrino drawn barely-there; carbon's gentle AGB exit in an honest note (dramatic supernova path shown, per review); gold source still debated (2017 kilonova in the true story) |
 | R05+    | *Candidates* | — | Smoke detector (Am-241 alpha), carbon dating (C-14 decay) | — |
 
-## 💡 Light lab — light, waves & photons (L01–L12, added 2026-11-09)
+## 💡 Light lab — light, waves & photons (L01–L13, added 2026-11-09)
 
 A fifth top-level view (PageNav, between 🧪 Bonding lab and 🌍 Atoms in
 action), a BUILDER like the atom builder: the kid drives sliders, toggles and
 scenes — no auto-play, no timeline. It supplies the light theory the R-demos
 lean on (wavelength = color, the EM family, photons). The normative feature
-table **L01–L12** plus the beat-by-beat eye scene live in
+table **L01–L13** plus the beat-by-beat eye and bone-photo scenes live in
 [09-proposal-light-lab.md](09-proposal-light-lab.md) (approved by
 implementation 2026-11-09): L01 wave machine (drag to stretch), L02 color
 readout, L03 beyond the rainbow (log EM bar, γ↔radio), L04 brightness is the
 other knob, L05 wave ⇄ photons signature morph, L06 a photon's punch,
 L07 the doorbell red can't ring (photoelectric), L08 mixing light (RGB),
 L09 how your eye sees a color (lamp → object → eye), L11 the trick lamp,
-L12 three color catchers (stretch). Scenes share the lab's wavelength /
+L12 three color catchers (stretch), L13 the bone photo (added 2026-11-16:
+X-ray packets rain through a hand/dog/suitcase — flesh lets most pass,
+bone swallows, a few scatter — and the shadow photo develops on the film;
+ordinary light proves only X-rays get through). Scenes share the lab's
+wavelength /
 brightness / view controls wherever they make sense. Status per step in
 [04-roadmap.md](04-roadmap.md) Milestone 10.
 

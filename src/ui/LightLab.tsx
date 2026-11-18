@@ -38,8 +38,15 @@ import {
   LAMPS_PHOTOS,
   PRISM_PHOTOS,
   WAVE_PHOTOS,
+  XRAY_SCENE_PHOTOS,
   type WavePhoto,
 } from '../core/wavePhotos'
+import {
+  XRAY_OBJECTS,
+  XRAY_OBJECT_ORDER,
+  type XrayLamp,
+  type XrayObjectId,
+} from '../core/xray'
 import { Paras, SectionHeader, type Para } from './Paras'
 
 // 💡 Light lab (proposal 09, Milestone 10) — a BUILDER like the atom
@@ -54,6 +61,7 @@ const SCENES = [
   { id: 'lamps', label: '🔦 Mixing lamps', ready: true },
   { id: 'eye', label: '👁️ The eye', ready: true },
   { id: 'prism', label: '🔼 Prism', ready: true },
+  { id: 'xray', label: '🩻 Bone photo', ready: true },
 ] as const
 
 /** quick-jump chips: one stop per band + the rainbow's classics */
@@ -125,6 +133,10 @@ export function LightLab() {
   const [eyeObject, setEyeObject] = useState<EyeObjectId>('apple')
   const [eyeLamp, setEyeLamp] = useState<EyeLampSetting>('white')
   const [prismLamp, setPrismLamp] = useState<EyeLampSetting>('white')
+  // the bone photo: a hand under the X-ray tube is the classic opening
+  const [xrayObject, setXrayObject] = useState<XrayObjectId>('hand')
+  const [xrayLamp, setXrayLamp] = useState<XrayLamp>('xray')
+  const [xraySpeed, setXraySpeed] = useState(0.5)
   const [leftTab, setLeftTab] = useState<'photo' | 'info'>('photo')
 
   // L01: dragging the wave stretches it (right = longer)
@@ -379,6 +391,52 @@ export function LightLab() {
           },
         ]
 
+  // the bone-photo scene's live narration
+  const xrayObj = XRAY_OBJECTS[xrayObject]
+  const XRAY_FINDS: Record<XrayObjectId, string> = {
+    hand: 'the bones stay pale — and the ring stays PURE white: metal swallows every single packet',
+    dog: 'the dog\'s whole skeleton appears — skull, spine, ribs, legs and the tail\'s little chain — and the metal tag on its collar glows white',
+    case: 'the keys and scissors glow white, the teddy is a faint ghost — the bag never had to be opened',
+  }
+  const rightNowXray: Para[] =
+    xrayLamp === 'ordinary'
+      ? [
+          {
+            icon: '🔦',
+            text: (
+              <>
+                Ordinary light pours onto {xrayObj.name} — and EVERY packet stops dead at the first
+                surface it meets. Nothing gets inside; the film only learns the outline.
+              </>
+            ),
+          },
+          {
+            icon: '⬜',
+            text: 'Watch the photo: a plain white silhouette on black. No bones, no secrets — ordinary packets are far too weak to punch through anything.',
+          },
+        ]
+      : [
+          {
+            icon: '🩻',
+            text: (
+              <>
+                X-ray packets (drawn ghost-pale — eyes catch nothing of them) rain straight THROUGH
+                the soft parts of {xrayObj.name} as if they were fog — but watch the little flashes:
+                something hidden inside keeps swallowing them, always in the same places.
+              </>
+            ),
+          },
+          {
+            icon: '📸',
+            text: (
+              <>
+                The film darkens wherever packets land — and on the developing photo{' '}
+                {XRAY_FINDS[xrayObject]}.
+              </>
+            ),
+          },
+        ]
+
   const rightNow =
     scene === 'doorbell'
       ? rightNowDoorbell
@@ -388,9 +446,11 @@ export function LightLab() {
           ? rightNowEye
           : scene === 'prism'
             ? rightNowPrism
-            : view === 'photons'
-              ? rightNowPhotons
-              : rightNowWave
+            : scene === 'xray'
+              ? rightNowXray
+              : view === 'photons'
+                ? rightNowPhotons
+                : rightNowWave
 
   const seeingDoorbell: Para[] = [
     {
@@ -456,6 +516,33 @@ export function LightLab() {
     },
   ]
 
+  const seeingXray: Para[] = [
+    {
+      icon: '🌑',
+      text: 'An X-ray photo is a SHADOW picture. The film goes dark wherever packets get THROUGH — the bones look white because they swallowed their packets and their patch of film was never hit.',
+    },
+    {
+      icon: '⚪',
+      text: 'Why draw packets and not one long wave? Because the swallowing happens one packet at a time: each packet meets an atom and is either caught WHOLE or flies on untouched — all or nothing, never half. That game of chance is what the little flashes are playing. It is the wave machine\'s ⚪ photons picture — and each dash still carries its little wave inside.',
+    },
+    {
+      icon: '🦴',
+      text: 'Why bones? They are full of calcium — atoms with 20 electrons each (count them in the atom builder!). Big atoms with many electrons are great catchers; the little hydrogen, carbon and oxygen atoms flesh is made of barely slow a packet down.',
+    },
+    {
+      icon: '👁️',
+      text: 'It is the eye scene\'s exact opposite: your eye makes its picture from the light an object BOUNCES back — the doctor\'s photo is made from the light that got THROUGH.',
+    },
+    {
+      icon: '↩️',
+      text: 'A small share of the packets really does bounce away — in all directions (the sideways sparks). That stray light is why the radiographer steps behind a shielded wall and drapes you in the heavy lead apron.',
+    },
+    {
+      icon: '⚠️',
+      text: 'Honest note: packets strong enough to fly through you (thousands of times a red packet\'s punch — the doorbell\'s heavyweights) can also break molecules on the way. That is why real X-ray photos are quick and rare.',
+    },
+  ]
+
   const seeing: Para[] =
     scene === 'doorbell'
       ? seeingDoorbell
@@ -465,6 +552,8 @@ export function LightLab() {
       ? seeingEye
       : scene === 'prism'
       ? seeingPrism
+      : scene === 'xray'
+      ? seeingXray
       : view === 'photons'
       ? [
           {
@@ -560,6 +649,25 @@ export function LightLab() {
     { icon: '💿', text: 'At home: the rainbow flashes on a CD, or in the fine spray of a garden hose with the sun behind you — same unpacking.' },
   ]
 
+  const tipsXray: Para[] = [
+    {
+      icon: '✨',
+      text: 'Watch the flashes before the photo develops: they keep landing in the same hidden places — the stopping spots ARE the picture.',
+    },
+    {
+      icon: '🔦',
+      text: 'Switch the tube to ordinary light: even blindingly bright, nothing gets past the skin — the photo is only a silhouette. Only X-ray packets punch through.',
+    },
+    {
+      icon: '🐕',
+      text: 'Photograph the dog, then compare with the REAL vet X-ray in the 📷 panel — pets get their bone photos exactly like we do.',
+    },
+    {
+      icon: '💍',
+      text: 'Find the ring on the hand\'s photo. The first X-ray picture ever made (📷 panel) was a hand with a ring too.',
+    },
+  ]
+
   const tips =
     scene === 'doorbell'
       ? tipsDoorbell
@@ -569,9 +677,23 @@ export function LightLab() {
           ? tipsEye
           : scene === 'prism'
             ? tipsPrism
-            : tipsWave
+            : scene === 'xray'
+              ? tipsXray
+              : tipsWave
 
   const trueStory: Para[] = [
+    ...(scene === 'xray'
+      ? ([
+          {
+            icon: '🩻',
+            text: 'Wilhelm Röntgen found X-rays by ACCIDENT in 1895: a screen across his dark lab glowed although his tube was wrapped in black cardboard — something invisible was flying right through it. Weeks later he photographed his wife\'s hand, bones and ring through the skin. He refused to patent the discovery so every hospital could use it — and won the first Nobel Prize in physics ever given (1901).',
+          },
+          {
+            icon: '👟',
+            text: 'For a while X-rays were treated as a toy: shoe shops had machines where kids wiggled their toes and watched their own foot bones while shoes were fitted. They were banned once we understood the hard-punching packets\' price — today\'s quick, rare photos behind shielded walls are the lesson learned.',
+          },
+        ] as Para[])
+      : []),
     ...(scene === 'prism'
       ? ([
           {
@@ -661,7 +783,7 @@ export function LightLab() {
       {/* middle: the canvas. Drag-to-stretch only where a wavelength slider
           rules the scene (wave machine + doorbell) */}
       <div
-        className={`overflow-hidden rounded-xl border border-slate-700 bg-slate-950 ${
+        className={`relative overflow-hidden rounded-xl border border-slate-700 bg-slate-950 ${
           scene === 'wave' || scene === 'doorbell' ? 'cursor-ew-resize' : ''
         }`}
         onPointerDown={scene === 'wave' || scene === 'doorbell' ? onPointerDown : undefined}
@@ -669,6 +791,34 @@ export function LightLab() {
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
+        {/* 🩻 the lamp switch lives ON the canvas, right over the tube */}
+        {scene === 'xray' && (
+          <div
+            className="absolute z-10 flex -translate-x-1/2 gap-1 rounded-full border border-slate-600 bg-slate-900/90 p-0.5 text-xs"
+            style={{ left: '50%', top: 8 }}
+          >
+            {(
+              [
+                ['xray', '🩻 X-rays'],
+                ['ordinary', '💡 ordinary light'],
+              ] as const
+            ).map(([id, text]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setXrayLamp(id)}
+                aria-pressed={xrayLamp === id}
+                className={`whitespace-nowrap rounded-full px-2.5 py-1 transition ${
+                  xrayLamp === id
+                    ? 'bg-sky-600 font-medium text-white'
+                    : 'text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+        )}
         <WaveStage
           u={u}
           brightness={brightness}
@@ -678,6 +828,9 @@ export function LightLab() {
           eyeObject={eyeObject}
           eyeLamp={eyeLamp}
           prismLamp={prismLamp}
+          xrayObject={xrayObject}
+          xrayLamp={xrayLamp}
+          xraySpeed={xraySpeed}
           active={page === 'light'}
           onBell={setRings}
         />
@@ -742,7 +895,39 @@ export function LightLab() {
         </Card>
         )}
 
-        {scene === 'prism' ? (
+        {scene === 'xray' ? (
+          <>
+            <Card title="🩻 On the film">
+              <div className="grid grid-cols-1 gap-1">
+                {XRAY_OBJECT_ORDER.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setXrayObject(id)}
+                    aria-current={xrayObject === id ? 'page' : undefined}
+                    className={`rounded-lg px-2 py-1 text-left text-sm transition ${
+                      xrayObject === id
+                        ? 'bg-sky-600 font-medium text-white'
+                        : 'text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {XRAY_OBJECTS[id].emoji} {XRAY_OBJECTS[id].name}
+                  </button>
+                ))}
+              </div>
+            </Card>
+
+            <Card title="🐢 Ray speed">
+              <LabSlider
+                value={Math.round(xraySpeed * 100)}
+                onChange={(v) => setXraySpeed(v / 100)}
+                max={100}
+                label="Ray speed"
+                rangeClass="bg-gradient-to-r from-slate-500 to-sky-400"
+              />
+            </Card>
+          </>
+        ) : scene === 'prism' ? (
           <Card title="💡 The lamp">
             <div className="flex flex-wrap gap-1">
               <button
@@ -972,7 +1157,9 @@ function PhotoColumn({ current, scene }: { current: EmBandId; scene: WaveScene }
           ? EYE_PHOTOS.map((ph) => ({ title: 'seeing, in real life', ph }))
           : scene === 'prism'
             ? PRISM_PHOTOS.map((ph) => ({ title: 'the real thing', ph }))
-            : WAVE_PHOTOS[current].map((ph) => ({ title: `${band.label} — in real life`, ph }))
+            : scene === 'xray'
+              ? XRAY_SCENE_PHOTOS.map((ph) => ({ title: 'real X-ray photos', ph }))
+              : WAVE_PHOTOS[current].map((ph) => ({ title: `${band.label} — in real life`, ph }))
   return (
     <div className="space-y-3">
       {/* no "slide to see more" coaching line here — guidance lives ONLY in

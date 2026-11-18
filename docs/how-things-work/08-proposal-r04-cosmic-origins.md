@@ -2,10 +2,13 @@
 
 > Status: **approved with answers 2026-11-09**; **step 36 (☀️) implemented
 > 2026-11-11** with a "what the Sun is made of" recipe beat added by request
-> (beat 1b below) — awaiting manual test. The R04 row lives in
+> (beat 1b below); **step 36b (🧒 You are star stuff) implemented
+> 2026-11-14** ("continue to the next cosmic demo" resolved its ask-first
+> gate) — both awaiting manual test; **narration prototype (🧒 story,
+> Web Speech API) added 2026-11-18**, see "Narration" below. The R04 row lives in
 > [01-feature-spec.md](01-feature-spec.md), the steps in
-> [04-roadmap.md](04-roadmap.md) (Milestone 9, 36–36d — 🧒/💍 and the
-> origins table still only after asking).
+> [04-roadmap.md](04-roadmap.md) (Milestone 9; 💍 gold (36c) and the origins
+> table (36d) still only after asking).
 
 ## One sentence
 
@@ -39,6 +42,11 @@ Fourth tab: `{ id: 'cosmos', label: '🌟 Star stuff' }`. Same `16rem | canvas
 timeline, ⏸ Pause, auto-return to chooser.
 
 ## The chooser — three journeys
+
+> **2026-11-18: four rows.** The 🔭 **Star detective** (reading a star's
+> light barcode, designed in proposal 06, step 34c) moved here as the FIRST
+> row, "coming soon": the ☀️ Sun story's recipe beat reads the Sun's
+> barcode, so the barcode story must come before it.
 
 The lineup chooser shows three framed night-sky scenes side by side, each a
 big "▶ Watch it" row:
@@ -140,6 +148,19 @@ language), followed through scenes:
    Earth, and ends on a hand wearing a ring: "the gold in this ring is
    older than the planet it is worn on." Earth's whole gold supply from
    such collisions ≈ a few swimming pools — that's why it's precious.
+
+## Narration (prototype, 2026-11-18)
+
+The 🧒 story pilots demo narration. The strategy — the Kokoro voice, the
+writing rules (explicit one-thought sentences, taught terms like "Super.
+Nova.", written pauses), the listen-first pacing (animation holds while
+the voice talks), the no-fallback rule and the global 🔊 Voice switch —
+lives in [10-narration-strategy.md](10-narration-strategy.md).
+
+Stardust specifics: one line per 📖 beat in `stage/stardustNarration.ts`
+(+ test), audio in `public/narration/stardust/`. Terms the narration
+teaches: beryllium, carbon, supernova, nebula, photosynthesis. If the
+pilot feels right, the other journeys get scripts the same way.
 
 ## The final payoff screen — the astronomer's periodic table
 

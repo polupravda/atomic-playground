@@ -54,6 +54,41 @@ export const BOMB_PHOTO_GROUPS: PhotoGroup[] = [
     ],
   },
   {
+    // also on the canvas: the intro's "their leader" portrait (2026-11-18)
+    title: 'The people who led the work',
+    photos: [
+      {
+        file: 'bomb-oppenheimer.jpg',
+        caption:
+          'Robert Oppenheimer, the physicist who led the Manhattan Project — the team that built Little Boy and Fat Man — around 1944.',
+        creator: 'Los Alamos National Laboratory',
+        license: 'Attribution (Los Alamos National Laboratory)',
+        source: 'https://commons.wikimedia.org/wiki/File:Oppenheimer_Los_Alamos_portrait_(cropped).jpg',
+        tall: true,
+      },
+      {
+        file: 'bomb-khariton.jpg',
+        caption:
+          'Yulii Khariton, who led the Soviet team that designed Tsar Bomba — from a Russian postage stamp of 2004 (cut out, black and white).',
+        creator: 'Russian Post',
+        license: 'Public domain',
+        source: 'https://commons.wikimedia.org/wiki/File:Rus_Stamp_GSS-Hariton.jpg',
+        design: 'tsar',
+        tall: true,
+      },
+      {
+        file: 'bomb-sakharov.jpg',
+        caption:
+          'Andrei Sakharov, a leader of the Tsar Bomba design work, in 1989. Later he spoke out against nuclear tests and won the Nobel Peace Prize.',
+        creator: 'Rob C. Croes, Anefo (Nationaal Archief)',
+        license: 'CC0',
+        source: 'https://commons.wikimedia.org/wiki/File:Andrei_Sakharov_1989_(cropped).jpg',
+        design: 'tsar',
+        tall: true,
+      },
+    ],
+  },
+  {
     title: 'The explosions',
     photos: [
       {

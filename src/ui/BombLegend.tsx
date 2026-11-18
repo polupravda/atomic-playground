@@ -4,6 +4,7 @@ import { ZONE_STYLE, type FissionReport } from '../stage/FissionStage'
 import type { ParticleKind } from '../state/atomStore'
 import {
   BOMB_DESIGNS,
+  BOMB_HISTORY,
   CLOUD_TOP_KM,
   damageZones,
   hiroshimas,
@@ -270,7 +271,8 @@ export function CompareTable({ mode }: { mode: BombDesignId }) {
 
 const fmt = (v: number) => (Number.isInteger(v) ? `${v}` : v.toFixed(v < 1 ? 2 : 1))
 
-/** The bombs themselves (last story step): real size, weight and fuel. */
+/** The bombs themselves (last story step): who built them, what happened
+ *  to them, real size, weight and fuel. */
 export function BombsTable({ mode }: { mode?: BombDesignId }) {
   const rows: BombDesignId[] = ['gun', 'implosion', 'tsar']
   return (
@@ -278,6 +280,7 @@ export function BombsTable({ mode }: { mode?: BombDesignId }) {
       {rows.map((id) => {
         const d = BOMB_DESIGNS[id]
         const r = REAL_BOMBS[id]
+        const h = BOMB_HISTORY[id]
         return (
           <div
             key={id}
@@ -287,6 +290,16 @@ export function BombsTable({ mode }: { mode?: BombDesignId }) {
           >
             <div className="font-medium text-slate-100">{d.label}</div>
             <div className="text-xs leading-relaxed text-slate-300">
+              <img
+                src={`${import.meta.env.BASE_URL}examples/${h.flag}`}
+                alt={`flag of the ${h.countryFull}`}
+                className="mr-1 inline-block h-3 w-auto -translate-y-px border border-slate-500/60 align-middle"
+              />
+              {h.country}, {h.year} · built by {h.builders}
+              <br />
+              {h.used ? '🏙️' : '🧪'} {h.fate}
+            </div>
+            <div className="mt-1 text-xs leading-relaxed text-slate-300">
               📏 {fmt(r.lengthM)} m long · {fmt(r.widthM)} m wide
               <br />
               ⚖️ {fmt(r.weightT)} tonnes

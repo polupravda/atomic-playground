@@ -22,6 +22,19 @@ import {
   reflectedBundle,
   type EyeObjectId,
 } from '../core/seeColors'
+import {
+  AIR_SHADE,
+  FILM_SHADE,
+  MAT_RANK,
+  SCATTER_CHANCE,
+  XRAY_OBJECTS,
+  raySegments,
+  rollFate,
+  type XrayLamp,
+  type XrayMaterial,
+  type XrayObject,
+  type XrayObjectId,
+} from '../core/xray'
 import { easeInOut } from './canvasUtil'
 import { drawGlossyParticle } from './particleStyle'
 
@@ -419,17 +432,25 @@ function stepDoor(door: DoorState, dt: number, m: number, brightness: number) {
 /** one photon packet: a short wave pinched by a Gaussian envelope (beam
  *  packets are capped shorter than the wave view's, so a dense stream never
  *  overlaps into a dashed-looking line) */
-function drawPacketGlyph(ctx: CanvasRenderingContext2D, cx: number, cy: number, m: number, t: number) {
+function drawPacketGlyph(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  m: number,
+  t: number,
+  maxLen = 100,
+  css?: (a: number) => string,
+) {
   const lambda = screenWavelength(m)
-  const len = Math.min(lambda * 1.5, 100)
+  const len = Math.min(lambda * 1.5, maxLen)
   const sigma = len / 2.4
-  const amp = 19
+  const amp = Math.min(19, maxLen * 0.3)
   const phase0 = CREST_SPEED * t
   for (const [lw, alpha] of [
     [8, 0.2],
     [3, 0.95],
   ] as const) {
-    ctx.strokeStyle = waveColor(m, alpha)
+    ctx.strokeStyle = css ? css(alpha) : waveColor(m, alpha)
     ctx.lineWidth = lw
     ctx.lineCap = 'round'
     ctx.beginPath()
@@ -1103,6 +1124,416 @@ function drawPrismScene(ctx: CanvasRenderingContext2D, lamp: EyeLampSetting, t: 
   label(ctx, 'screen', SCREEN_X + 7, BEAM_Y - 44)
 }
 
+// ---------- 🩻 the bone photo (L13: how an X-ray picture is made) ----------
+// An X-ray tube rains ghost-grey packets DOWN through the object onto a film
+// cassette. Each packet's fate is rolled against the materials it crosses
+// (core/xray): flesh lets most pass (soft warm shimmer when one sinks in),
+// bone swallows nearly all (pale pings right where the hidden bones are —
+// the stopping places trace the skeleton before the photo shows it), metal
+// stops everything; stopped packets sometimes BOUNCE off sideways (scatter).
+// Beside the scene, "the photo" develops: a SHADOW picture — the film
+// darkens wherever packets got through, so bones stay pale and the ring
+// stays white. Switching the tube to ordinary light proves why doctors need
+// X-rays: nothing gets past the skin, the photo is only a silhouette.
+
+// packets spawn far enough below the mouth that a glyph's top (~28 px above
+// its centre) never pokes above the machine's edge
+const XRAY_SPAWN_Y = 141
+const XRAY_SPEED = 330
+const XRAY_MOUTH_Y = 96
+// where the tube/bulb stands: the scene column is centred in the space left
+// of the photo panel (the lamp-switch overlay sits at the canvas midline)
+const XRAY_CX = (W - 270) / 2
+
+interface XrayPacket {
+  x: number
+  y: number
+  stopY: number
+  mat: XrayMaterial | null // null = reaches the film
+}
+
+export interface XrayState {
+  key: string
+  packets: XrayPacket[]
+  spawn: number
+  exposure: number // 0–1, the photo developing
+  flashes: Array<{ x: number; y: number; mat: XrayMaterial; age: number }>
+  scatters: Array<{ x: number; y: number; a: number; age: number }>
+  blips: Array<{ x: number; age: number }>
+}
+
+export function newXrayState(): XrayState {
+  return { key: '', packets: [], spawn: 0.2, exposure: 0, flashes: [], scatters: [], blips: [] }
+}
+
+function xrayLayout(obj: XrayObject) {
+  const cx = XRAY_CX // the photo panel lives in the right ~270 px
+  const left = cx - obj.w / 2
+  // anchored to the BOTTOM: the film sits low so the canvas has no dead
+  // stretch under it, and the rain gets the leftover height
+  const top = Math.max(148, H - 92 - obj.h)
+  const filmY = top + obj.h + 20
+  return { cx, left, top, filmY }
+}
+
+/** `speed` is the ray-speed slider as a slow-motion factor: it scales the
+ *  rain (packet flight, spawning, sparks, flashes) but NEVER the photo —
+ *  exposure runs on real time, so the reveal pace stays constant */
+function stepXray(st: XrayState, dt: number, obj: XrayObject, lamp: XrayLamp, speed: number) {
+  const pdt = dt * speed
+  const key = `${obj.id}|${lamp}`
+  if (st.key !== key) {
+    // a new object or a new lamp = a fresh sheet of film
+    st.key = key
+    st.packets = []
+    st.spawn = 0.1
+    st.exposure = 0
+    st.flashes = []
+    st.scatters = []
+    st.blips = []
+  }
+  const { left, top, filmY } = xrayLayout(obj)
+  st.spawn -= pdt
+  while (st.spawn <= 0) {
+    st.spawn += 0.05
+    const x = left - 28 + Math.random() * (obj.w + 56)
+    const fate = rollFate(raySegments(obj, x - left), lamp)
+    st.packets.push({
+      x,
+      y: XRAY_SPAWN_Y,
+      stopY: fate ? top + fate.y : filmY,
+      mat: fate?.mat ?? null,
+    })
+  }
+  const keep: XrayPacket[] = []
+  for (const p of st.packets) {
+    p.y += XRAY_SPEED * pdt
+    if (p.y < p.stopY) {
+      keep.push(p)
+      continue
+    }
+    if (p.mat) {
+      st.flashes.push({ x: p.x, y: p.stopY, mat: p.mat, age: 0 })
+      if ((p.mat === 'bone' || p.mat === 'metal') && Math.random() < SCATTER_CHANCE) {
+        // the small TRUE bounce: scatter, up and sideways out of the scene
+        const a =
+          Math.random() < 0.5
+            ? -(0.25 + 0.55 * Math.random())
+            : -Math.PI + (0.25 + 0.55 * Math.random())
+        st.scatters.push({ x: p.x, y: p.stopY, a, age: 0 })
+      }
+    } else {
+      st.blips.push({ x: p.x, age: 0 })
+    }
+  }
+  st.packets = keep
+  // the photo develops with exposure time (ordinary light exposes faster —
+  // there is nothing subtle to collect, only a silhouette)
+  st.exposure = Math.min(1, st.exposure + dt / (lamp === 'xray' ? 14 : 6))
+  for (const f of st.flashes) f.age += pdt
+  st.flashes = st.flashes.filter((f) => f.age < 0.5)
+  for (const s of st.scatters) {
+    s.x += Math.cos(s.a) * 260 * pdt
+    s.y += Math.sin(s.a) * 260 * pdt
+    s.age += pdt
+  }
+  st.scatters = st.scatters.filter((s) => s.age < 0.9)
+  for (const b of st.blips) b.age += pdt
+  st.blips = st.blips.filter((b) => b.age < 0.35)
+}
+
+const XRAY_M = 1e-10
+const ORDINARY_M = 560e-9
+// packet glyphs are a single bright core with NO outline/halo (feedback
+// 2026-11-16 round 2): the glyph's wide pass is suppressed, and contrast
+// over the object comes from the darkened object fills instead
+const xrayPacketCss = (a: number) =>
+  a < 0.5 ? 'rgba(0, 0, 0, 0)' : 'rgba(232, 238, 245, 0.95)'
+const ordinaryCss = (a: number) =>
+  a < 0.5 ? 'rgba(0, 0, 0, 0)' : 'rgba(255, 246, 214, 0.95)'
+
+/** the object as the scene sees it: skin, fur, suitcase — contents hidden */
+function drawXrayObject(ctx: CanvasRenderingContext2D, obj: XrayObject, left: number, top: number) {
+  ctx.save()
+  ctx.translate(left, top)
+  for (const s of obj.shapes) {
+    if (!s.look) continue
+    ctx.fillStyle = s.look
+    ctx.strokeStyle = s.look
+    if (s.kind === 'circle') {
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
+      ctx.fill()
+    } else if (s.kind === 'rect') {
+      ctx.beginPath()
+      ctx.roundRect(s.x, s.y, s.w, s.h, 4)
+      ctx.fill()
+    } else {
+      ctx.lineWidth = s.r * 2
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(s.x0, s.y0)
+      ctx.lineTo(s.x1, s.y1)
+      ctx.stroke()
+    }
+  }
+  // small friendly decor (drawn only, no material of its own)
+  if (obj.id === 'dog') {
+    ctx.fillStyle = '#0f172a'
+    ctx.beginPath()
+    ctx.arc(280, 90, 3, 0, Math.PI * 2) // eye
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(318, 106, 4.5, 0, Math.PI * 2) // nose
+    ctx.fill()
+  } else if (obj.id === 'case') {
+    ctx.strokeStyle = 'rgba(69, 26, 3, 0.9)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(8, 82)
+    ctx.lineTo(272, 82)
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+const greyCss = (v: number) =>
+  `rgb(${Math.round(235 * v)}, ${Math.round(240 * v)}, ${Math.round(245 * v)})`
+
+/** the photo on the film, developing: a SHADOW picture of the object */
+function drawXrayPhoto(
+  ctx: CanvasRenderingContext2D,
+  obj: XrayObject,
+  lamp: XrayLamp,
+  exposure: number,
+  filmY: number,
+) {
+  const margin = 24
+  const pw = obj.w + 2 * margin
+  const ph = obj.h + 2 * margin
+  const scale = Math.min(236 / pw, (H - 150) / ph, 1)
+  const px0 = W - 20 - pw * scale
+  // sits low, its bottom flush with the film cassette's
+  const py0 = Math.max(96, filmY + 14 - ph * scale)
+  const e = exposure
+  // the film: starts blank, darkens wherever packets land
+  ctx.fillStyle = greyCss(1 - e * (1 - AIR_SHADE))
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.9)'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.roundRect(px0, py0, pw * scale, ph * scale, 6)
+  ctx.fill()
+  ctx.stroke()
+  // the visual link: this IS the cassette's film, lifted out to be looked at
+  const filmRight = xrayLayout(obj).left + obj.w + 35
+  if (px0 - filmRight > 18) {
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)'
+    ctx.lineWidth = 2
+    ctx.setLineDash([6, 5])
+    ctx.beginPath()
+    ctx.moveTo(filmRight + 5, filmY + 7)
+    ctx.lineTo(px0 - 8, filmY + 7)
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.85)'
+    ctx.beginPath()
+    ctx.moveTo(px0 - 3, filmY + 7)
+    ctx.lineTo(px0 - 11, filmY + 2)
+    ctx.lineTo(px0 - 11, filmY + 12)
+    ctx.closePath()
+    ctx.fill()
+  }
+  ctx.save()
+  ctx.beginPath()
+  ctx.roundRect(px0, py0, pw * scale, ph * scale, 6)
+  ctx.clip()
+  ctx.translate(px0 + margin * scale, py0 + margin * scale)
+  ctx.scale(scale, scale)
+  // under ordinary light NOTHING inside the outline reaches the film: the
+  // whole object is one white silhouette, no bones
+  const shade = (mat: XrayMaterial) => (lamp === 'ordinary' ? 1 : FILM_SHADE[mat])
+  const sorted = [...obj.shapes].sort((a, b) => MAT_RANK[a.mat] - MAT_RANK[b.mat])
+  for (const s of sorted) {
+    ctx.fillStyle = greyCss(1 - e * (1 - shade(s.mat)))
+    ctx.strokeStyle = ctx.fillStyle
+    if (s.kind === 'circle') {
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
+      ctx.fill()
+    } else if (s.kind === 'rect') {
+      ctx.fillRect(s.x, s.y, s.w, s.h)
+    } else {
+      ctx.lineWidth = s.r * 2
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(s.x0, s.y0)
+      ctx.lineTo(s.x1, s.y1)
+      ctx.stroke()
+    }
+  }
+  ctx.restore()
+  label(
+    ctx,
+    e < 1 ? 'the photo, developing…' : 'the photo',
+    px0 + (pw * scale) / 2,
+    py0 + ph * scale + 14,
+  )
+}
+
+function drawXrayScene(
+  ctx: CanvasRenderingContext2D,
+  st: XrayState,
+  obj: XrayObject,
+  lamp: XrayLamp,
+  t: number,
+) {
+  const { cx, left, top, filmY } = xrayLayout(obj)
+  const xray = lamp === 'xray'
+  const mouthL = left - 30
+  const mouthR = left + obj.w + 30
+
+  // the faint beam, the device's whole mouth → the film's width
+  ctx.fillStyle = xray ? 'rgba(148, 163, 184, 0.06)' : 'rgba(253, 230, 170, 0.07)'
+  ctx.beginPath()
+  ctx.moveTo(mouthL, XRAY_MOUTH_Y)
+  ctx.lineTo(mouthR, XRAY_MOUTH_Y)
+  ctx.lineTo(left + obj.w + 32, filmY)
+  ctx.lineTo(left - 32, filmY)
+  ctx.closePath()
+  ctx.fill()
+
+  if (xray) {
+    // the X-ray tube: a compact body flaring into a WIDE mouth, so the rain
+    // visibly leaves the machine across the object's whole width
+    ctx.fillStyle = '#334155'
+    ctx.beginPath()
+    ctx.roundRect(cx - 30, 40, 60, 36, 8)
+    ctx.fill()
+    ctx.fillStyle = '#1e293b'
+    ctx.beginPath()
+    ctx.moveTo(cx - 30, 72)
+    ctx.lineTo(cx + 30, 72)
+    ctx.lineTo(mouthR, XRAY_MOUTH_Y)
+    ctx.lineTo(mouthL, XRAY_MOUTH_Y)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = '#0f172a'
+    ctx.fillRect(mouthL, XRAY_MOUTH_Y - 4, mouthR - mouthL, 5)
+    // the mouth's glow, across its whole width
+    const mg = ctx.createLinearGradient(0, XRAY_MOUTH_Y, 0, XRAY_MOUTH_Y + 34)
+    mg.addColorStop(0, 'rgba(148, 163, 184, 0.28)')
+    mg.addColorStop(1, 'rgba(148, 163, 184, 0)')
+    ctx.fillStyle = mg
+    ctx.fillRect(mouthL, XRAY_MOUTH_Y, mouthR - mouthL, 34)
+    label(ctx, 'X-ray tube', cx - 80, 56)
+  } else {
+    // an everyday light bulb on its cord
+    ctx.strokeStyle = '#475569'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(cx, 30)
+    ctx.lineTo(cx, 38)
+    ctx.stroke()
+    ctx.fillStyle = '#64748b'
+    ctx.beginPath()
+    ctx.roundRect(cx - 8, 38, 16, 14, 3)
+    ctx.fill()
+    const bg = ctx.createRadialGradient(cx - 6, 66, 2, cx, 72, 24)
+    bg.addColorStop(0, 'rgba(255, 251, 235, 0.95)')
+    bg.addColorStop(0.6, 'rgba(253, 230, 138, 0.55)')
+    bg.addColorStop(1, 'rgba(217, 180, 80, 0.35)')
+    ctx.fillStyle = bg
+    ctx.strokeStyle = 'rgba(253, 230, 138, 0.8)'
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.arc(cx, 72, 24, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+    // the filament
+    ctx.strokeStyle = '#fbbf24'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(cx - 8, 76)
+    ctx.lineTo(cx - 4, 68)
+    ctx.lineTo(cx, 76)
+    ctx.lineTo(cx + 4, 68)
+    ctx.lineTo(cx + 8, 76)
+    ctx.stroke()
+    // its warm pool of light, wide enough to feed the whole rain
+    const wg = ctx.createRadialGradient(cx, 72, 0, cx, 72, 150)
+    wg.addColorStop(0, 'rgba(253, 240, 200, 0.4)')
+    wg.addColorStop(1, 'rgba(253, 240, 200, 0)')
+    ctx.fillStyle = wg
+    ctx.beginPath()
+    ctx.arc(cx, 72, 150, 0, Math.PI * 2)
+    ctx.fill()
+    label(ctx, 'light bulb', cx - 80, 56)
+  }
+
+  // the object, in the flesh (what is inside stays hidden — the flashes and
+  // the photo do the revealing)
+  label(ctx, obj.name, left + obj.w / 2, top - 12)
+  drawXrayObject(ctx, obj, left, top)
+
+  // the raining packets
+  for (const p of st.packets) {
+    ctx.save()
+    ctx.translate(p.x, p.y)
+    ctx.rotate(Math.PI / 2)
+    if (xray) drawPacketGlyph(ctx, 0, 0, XRAY_M, t, 56, xrayPacketCss)
+    else drawPacketGlyph(ctx, 0, 0, ORDINARY_M, t, 56, ordinaryCss)
+    ctx.restore()
+  }
+
+  // scatter sparks: the few packets that really DO bounce away
+  for (const s of st.scatters) {
+    ctx.save()
+    ctx.globalAlpha *= Math.max(0, 1 - s.age / 0.9)
+    ctx.translate(s.x, s.y)
+    ctx.rotate(s.a)
+    drawPacketGlyph(ctx, 0, 0, XRAY_M, t, 34, xrayPacketCss)
+    ctx.restore()
+  }
+
+  // impact flashes: warm shimmer in soft stuff, pale ping at bone/metal
+  for (const f of st.flashes) {
+    const a = Math.max(0, (0.5 - f.age) / 0.5)
+    if (f.mat === 'bone' || f.mat === 'metal') {
+      ctx.strokeStyle = `rgba(226, 232, 240, ${0.85 * a})`
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(f.x, f.y, 4 + f.age * 44, 0, Math.PI * 2)
+      ctx.stroke()
+    } else {
+      const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 22)
+      g.addColorStop(0, `rgba(253, 186, 116, ${0.4 * a})`)
+      g.addColorStop(1, 'rgba(253, 186, 116, 0)')
+      ctx.fillStyle = g
+      ctx.beginPath()
+      ctx.arc(f.x, f.y, 22, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+
+  // the film cassette; small white blips where packets land
+  const fg = ctx.createLinearGradient(0, filmY, 0, filmY + 14)
+  fg.addColorStop(0, '#475569')
+  fg.addColorStop(0.25, '#1e293b')
+  fg.addColorStop(1, '#0f172a')
+  ctx.fillStyle = fg
+  ctx.beginPath()
+  ctx.roundRect(left - 35, filmY, obj.w + 70, 14, 4)
+  ctx.fill()
+  for (const b of st.blips) {
+    ctx.fillStyle = `rgba(248, 250, 252, ${Math.max(0, (0.35 - b.age) / 0.35) * 0.9})`
+    ctx.fillRect(b.x - 1.5, filmY - 2, 3, 5)
+  }
+  label(ctx, 'film', left + obj.w / 2, filmY + 26)
+
+  // the payoff: the photo, developing beside the scene
+  drawXrayPhoto(ctx, obj, lamp, st.exposure, filmY)
+}
+
 function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number) {
   ctx.fillStyle = 'rgba(148, 163, 184, 0.9)'
   ctx.font = '11px ui-sans-serif, system-ui, sans-serif'
@@ -1114,7 +1545,7 @@ function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
 // ---------- component ----------
 
 export type WaveView = 'wave' | 'photons'
-export type WaveScene = 'wave' | 'doorbell' | 'lamps' | 'eye' | 'prism'
+export type WaveScene = 'wave' | 'doorbell' | 'lamps' | 'eye' | 'prism' | 'xray'
 
 export const WaveStage = memo(function WaveStage({
   u,
@@ -1125,6 +1556,9 @@ export const WaveStage = memo(function WaveStage({
   eyeObject,
   eyeLamp,
   prismLamp,
+  xrayObject,
+  xrayLamp,
+  xraySpeed,
   active,
   onBell,
 }: {
@@ -1143,6 +1577,12 @@ export const WaveStage = memo(function WaveStage({
   eyeLamp: EyeLampSetting
   /** prism scene: white or a pure color (Newton's proof) */
   prismLamp: EyeLampSetting
+  /** 🩻 bone-photo scene: what lies on the film, and which lamp shines */
+  xrayObject: XrayObjectId
+  xrayLamp: XrayLamp
+  /** ray-speed slider 0–1 (slow motion ↔ fast rain); the photo's reveal
+   *  pace is NOT affected */
+  xraySpeed: number
   active: boolean
   /** doorbell: the bell rang (total ring count) */
   onBell?: (rings: number) => void
@@ -1164,6 +1604,13 @@ export const WaveStage = memo(function WaveStage({
   eyeLampRef.current = eyeLamp
   const prismLampRef = useRef(prismLamp)
   prismLampRef.current = prismLamp
+  const xrayObjectRef = useRef(xrayObject)
+  xrayObjectRef.current = xrayObject
+  const xrayLampRef = useRef(xrayLamp)
+  xrayLampRef.current = xrayLamp
+  const xraySpeedRef = useRef(xraySpeed)
+  xraySpeedRef.current = xraySpeed
+  const xrayRef = useRef<XrayState>(newXrayState())
   const onBellRef = useRef(onBell)
   onBellRef.current = onBell
   // the wave's own clock: only advances while the page is visible
@@ -1186,6 +1633,14 @@ export const WaveStage = memo(function WaveStage({
           lastRings.current = doorRef.current.rings
           onBellRef.current?.(doorRef.current.rings)
         }
+      } else if (sceneRef.current === 'xray') {
+        stepXray(
+          xrayRef.current,
+          dt,
+          XRAY_OBJECTS[xrayObjectRef.current],
+          xrayLampRef.current,
+          0.25 + 1.5 * xraySpeedRef.current,
+        )
       } else {
         const target = viewRef.current === 'photons' ? 1 : 0
         const d = dt / MORPH_T
@@ -1203,7 +1658,7 @@ export const WaveStage = memo(function WaveStage({
   // redraw immediately on slider moves even while paused/hidden
   useEffect(() => {
     shapeRef.current?.getLayer()?.batchDraw()
-  }, [u, brightness, view, scene, lamps, eyeObject, eyeLamp, prismLamp])
+  }, [u, brightness, view, scene, lamps, eyeObject, eyeLamp, prismLamp, xrayObject, xrayLamp, xraySpeed])
 
   return (
     <Stage width={W} height={H}>
@@ -1223,6 +1678,14 @@ export const WaveStage = memo(function WaveStage({
               drawEyeScene(ctx, eyeObjectRef.current, eyeLampRef.current, tRef.current)
             } else if (sceneRef.current === 'prism') {
               drawPrismScene(ctx, prismLampRef.current, tRef.current)
+            } else if (sceneRef.current === 'xray') {
+              drawXrayScene(
+                ctx,
+                xrayRef.current,
+                XRAY_OBJECTS[xrayObjectRef.current],
+                xrayLampRef.current,
+                tRef.current,
+              )
             } else {
               drawEmBar(ctx, m)
               if (sceneRef.current === 'doorbell')

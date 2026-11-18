@@ -20,6 +20,12 @@ src/
 Dependency rule: `core` imports nothing from the app; `state` imports `core`;
 `stage` and `ui` import both. Nothing imports from `stage`/`ui` sideways.
 
+Demo narration follows the same layering: scripts per language in
+`stage/<story>Narration.ts`, the global voice/language setting in
+`state/voiceStore.ts`, playback in `ui/useNarration.ts`, pre-rendered audio
+in `public/narration/<story>/<lang>/`. Rules: see
+[10-narration-strategy.md](10-narration-strategy.md).
+
 ## The two animation worlds
 
 1. **DOM (Motion)** — chrome transitions: dialogs, cards, table cells,

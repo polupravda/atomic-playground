@@ -193,5 +193,82 @@ export const REAL_BOMBS: Record<BombDesignId, RealBomb> = {
   tsar: { lengthM: 8.0, widthM: 2.1, weightT: 27, fuel: null },
 }
 
+/** each bomb's name, as the canvas, chooser and narration say it */
+export const BOMB_NAMES: Record<BombDesignId, string> = {
+  gun: 'Little Boy',
+  implosion: 'Fat Man',
+  tsar: 'Tsar Bomba',
+}
+
+/** Who built each bomb, when, where — and what happened to it. Told
+ *  briefly and kid-friendly: the cities' destruction, never the victims
+ *  (the info panel's true story keeps its own, fuller wording). */
+export interface BombHistory {
+  country: string
+  year: number
+  /** the team that built it, in one short phrase */
+  builders: string
+  /** what happened to it, one short phrase for the info panel and canvas */
+  fate: string
+  /** the shortest version, for the chooser card */
+  short: string
+  /** dropped on a city (true) or only ever tested (false) */
+  used: boolean
+  /** the intro's data cards, as the narrator says them: the country in
+   *  full, the team, its leader(s) with a portrait (public/examples/) */
+  countryFull: string
+  /** the country's flag (public/examples/, public-domain SVGs from
+   *  Wikimedia Commons; the Soviet one, not today's Russian one) */
+  flag: string
+  team: string
+  leaders: Array<{ name: string; photo: string }>
+}
+
+const OPPENHEIMER = { name: 'Robert Oppenheimer', photo: 'bomb-oppenheimer.jpg' }
+
+export const BOMB_HISTORY: Record<BombDesignId, BombHistory> = {
+  gun: {
+    country: 'USA',
+    year: 1945,
+    builders: 'the Manhattan Project, led by Robert Oppenheimer',
+    fate: 'dropped on Hiroshima, Japan, 6 August 1945 — the city was destroyed',
+    short: 'dropped on Hiroshima, Japan',
+    used: true,
+    countryFull: 'United States',
+    flag: 'flag-usa.svg',
+    team: 'the Manhattan Project',
+    leaders: [OPPENHEIMER],
+  },
+  implosion: {
+    country: 'USA',
+    year: 1945,
+    builders: 'the Manhattan Project, led by Robert Oppenheimer',
+    fate: 'dropped on Nagasaki, Japan, 9 August 1945 — the city was destroyed',
+    short: 'dropped on Nagasaki, Japan',
+    used: true,
+    countryFull: 'United States',
+    flag: 'flag-usa.svg',
+    team: 'the Manhattan Project',
+    leaders: [OPPENHEIMER],
+  },
+  // the design team was led by Yulii Khariton; Andrei Sakharov oversaw the
+  // design work (and later won the Nobel Peace Prize)
+  tsar: {
+    country: 'Soviet Union',
+    year: 1961,
+    builders: 'Soviet scientists led by Yulii Khariton and Andrei Sakharov',
+    fate: 'only tested, over an empty Arctic island, 30 October 1961 — never used on a city',
+    short: 'only tested — never used on a city',
+    used: false,
+    countryFull: 'Soviet Union',
+    flag: 'flag-ussr.svg',
+    team: 'Soviet scientists',
+    leaders: [
+      { name: 'Yulii Khariton', photo: 'bomb-khariton.jpg' },
+      { name: 'Andrei Sakharov', photo: 'bomb-sakharov.jpg' },
+    ],
+  },
+}
+
 /** A grown-up next to the bombs, for scale (m). */
 export const PERSON_HEIGHT_M = 1.8

@@ -35,7 +35,10 @@ const H = FISSION_H
 const BUTTON_ZONE = 86
 const UH = H - BUTTON_ZONE // usable height above the Pause button
 
-export type LightStoryId = 'firework' | 'neon' | 'aurora' | 'star'
+// (the 🔭 star detective — reading starlight barcodes — moved to the 🌟 Star
+// stuff chooser on 2026-11-18, to come right before ☀️ Why the Sun shines,
+// which uses the barcode)
+export type LightStoryId = 'firework' | 'neon' | 'aurora'
 
 export const LIGHT_STORIES: Array<{
   id: LightStoryId
@@ -46,7 +49,6 @@ export const LIGHT_STORIES: Array<{
   { id: 'firework', label: '🎆 Firework', subtitle: 'lithium red · sodium yellow', ready: true },
   { id: 'neon', label: '🏮 Neon sign', subtitle: 'electricity through neon gas', ready: false },
   { id: 'aurora', label: '🌌 Aurora', subtitle: 'oxygen green, high above', ready: false },
-  { id: 'star', label: '🔭 Star detective', subtitle: 'reading starlight barcodes', ready: false },
 ]
 
 export type LightPhase = 'scene' | 'closeup' | 'barcode' | 'payoff'
@@ -538,7 +540,8 @@ const ROW_M = 18
 const ROW_GAP = 12
 
 export function lightChooserRows(): LightChooserRow[] {
-  const rowH = (UH - 2 * ROW_M - 3 * ROW_GAP) / 4
+  const n = LIGHT_STORIES.length
+  const rowH = (UH - 2 * ROW_M - (n - 1) * ROW_GAP) / n
   return LIGHT_STORIES.map((s, i) => ({
     id: s.id,
     ready: s.ready,
@@ -634,7 +637,8 @@ function drawMiniScene(
     ctx.lineWidth = 2
     ctx.strokeText('NEON', cx, cy + 1)
     ctx.restore()
-  } else if (id === 'aurora') {
+  } else {
+    // aurora
     for (let i = 0; i < 7; i++) {
       const bx = x + w * (0.1 + 0.13 * i) + Math.sin(now * 0.7 + i) * 3
       const bh = h * (0.45 + 0.3 * rnd(i, 9))
@@ -647,40 +651,6 @@ function drawMiniScene(
     }
     ctx.fillStyle = '#060a18'
     ctx.fillRect(x, y + h * 0.86, w, h * 0.14)
-  } else {
-    // star detective: a bright star + a barcode rainbow with dark gaps
-    const sx = cx + w * 0.22
-    const sy = y + h * 0.26
-    for (const [dx, dy] of [
-      [8, 0],
-      [-8, 0],
-      [0, 8],
-      [0, -8],
-    ]) {
-      ctx.strokeStyle = 'rgba(255, 245, 210, 0.8)'
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.moveTo(sx, sy)
-      ctx.lineTo(sx + dx, sy + dy)
-      ctx.stroke()
-    }
-    ctx.fillStyle = 'rgba(255, 245, 210, 0.95)'
-    ctx.beginPath()
-    ctx.arc(sx, sy, 3, 0, Math.PI * 2)
-    ctx.fill()
-    // the rainbow strip with missing lines
-    const rx = cx - w * 0.32
-    const ry = y + h * 0.58
-    const rw = w * 0.62
-    const rh = h * 0.2
-    const g = ctx.createLinearGradient(rx, 0, rx + rw, 0)
-    for (let i = 0; i <= 8; i++) g.addColorStop(i / 8, wavelengthToCss(410 + (i / 8) * 280, 0.85))
-    ctx.fillStyle = g
-    ctx.beginPath()
-    ctx.roundRect(rx, ry, rw, rh, 4)
-    ctx.fill()
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.9)'
-    for (const f of [0.26, 0.47, 0.72]) ctx.fillRect(rx + rw * f, ry, 2.5, rh)
   }
 }
 
@@ -693,6 +663,8 @@ export const LightStage = memo(function LightStage({
   paused,
   seek,
   active,
+  timeScale = 1,
+  holdBeat = false,
   onReport,
   onFinished,
 }: {
@@ -701,12 +673,22 @@ export const LightStage = memo(function LightStage({
   paused: boolean
   seek: { id: string; n: number } | null
   active: boolean
+  /** story-time rate: 1 = normal; lower holds the scene in slow motion
+   *  while the narrator talks */
+  timeScale?: number
+  /** science pacing: the narrator still has pieces to say about this
+   *  beat — never move on to the next beat (or finish) yet */
+  holdBeat?: boolean
   onReport: (r: LightReport) => void
   onFinished: () => void
 }) {
   const shapeRef = useRef<Konva.Shape | null>(null)
   const storyRef = useRef(story)
   storyRef.current = story
+  const timeScaleRef = useRef(timeScale)
+  timeScaleRef.current = timeScale
+  const holdBeatRef = useRef(holdBeat)
+  holdBeatRef.current = holdBeat
   const onFinishedRef = useRef(onFinished)
   onFinishedRef.current = onFinished
   const finishedSent = useRef(false)
@@ -797,11 +779,20 @@ export const LightStage = memo(function LightStage({
       if (!frame) return
       const dt = Math.min(0.05, frame.timeDiff / 1000)
       if (!storyRef.current) return // the chooser: a slow shimmer only
-      step(sim.current, dt)
+      // the beat gate: a frame that would leave the beat is undone. A
+      // held story (the voice talking) takes no step, so needs no copy.
+      const sdt = dt * timeScaleRef.current
+      const gate = holdBeatRef.current
+      if (!gate || sdt > 0) {
+        const backup = gate ? structuredClone(sim.current) : null
+        const before = backup ? storyId(sim.current) : ''
+        step(sim.current, sdt)
+        if (backup && storyId(sim.current) !== before) sim.current = backup
+      }
       record()
       report()
       const s = sim.current
-      if (!finishedSent.current && s.phase === 'payoff' && s.phaseT >= END_T) {
+      if (!finishedSent.current && !holdBeatRef.current && s.phase === 'payoff' && s.phaseT >= END_T) {
         finishedSent.current = true
         onFinishedRef.current()
       }
@@ -852,7 +843,7 @@ export const LightStage = memo(function LightStage({
                   ctx.restore()
                 }
               }
-              drawLightCloseup(ctx, s.phaseT, W, H, cam.sceneAlpha * outA)
+              drawLightCloseup(ctx, s.phaseT, W, H, cam.sceneAlpha * outA, now)
             } else if (s.phase === 'barcode') {
               drawBarcodeRun(ctx, s, now, clamp01(s.phaseT / BARCODE_FADE))
             } else if (s.phase === 'payoff') drawPayoff(ctx, s, now)

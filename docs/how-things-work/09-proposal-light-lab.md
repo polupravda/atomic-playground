@@ -2,12 +2,12 @@
 
 > Status: **approved by implementation 2026-11-09** on the proposed
 > defaults. The L summary lives in [01-feature-spec.md](01-feature-spec.md)
-> (this doc stays the normative L01–L12 table), the steps in
-> [04-roadmap.md](04-roadmap.md) **Milestone 10**. Step 37 (+37b merged: the
-> wave machine incl. the EM bar — the slider needs the bar's context) is
-> implemented, awaiting manual test. The **Open questions below are still
-> open** — V1 scope of the color scenes, doorbell metals, the L12 retina
-> zoom, and lab-vs-demos order. Milestone 9 stays paused meanwhile.
+> (this doc stays the normative L01–L13 table), the steps in
+> [04-roadmap.md](04-roadmap.md) **Milestone 10**. Steps 37–39c (all six
+> original scenes) are implemented, awaiting manual test. **L13 🩻 The bone
+> photo added by request 2026-11-16** (section below) and implemented the
+> same day (step 39e). Still open: the L12 retina zoom ("if wanted") and the
+> second doorbell metal.
 
 ## One sentence
 
@@ -65,6 +65,7 @@ story for light:
 | **L11** | **The trick lamp** (part of the eye scene) | Turn the white lamp to pure blue and point it at the red apple | The apple swallows ALL of it — nothing reaches the eye: the apple looks BLACK. One dim red wave back under a red lamp: red apple again | An object can only bounce colors it is GIVEN — color lives in the light, the object only edits it | Real-world anchor: under old orange sodium street lamps (R02's 589 nm!) cars lose their colors |
 | **L12** | **Three color catchers** (stretch, pairs with L08) | Zoom into the retina after L09 | Three kinds of catcher cells, one tuned reddish, one greenish, one bluish; any arriving wave lights the three up in its own ratio | Eyes measure every color with just THREE sensors — which is exactly why screens get away with only R, G and B lamps (L08) | Heavily simplified (no rods, no overlap curves); drawn as three tuned bells, not biology |
 | **L10** | **White light unpacked** | Scene: a prism | A white beam enters glass, fans into the rainbow; slide a comb of "only red" / "only blue" through to re-select | White light is all the wavelengths travelling together; a prism only SORTS them, adds nothing | Why glass bends blue more is waved at honestly ("blue is slowed a little more") without the full refraction story |
+| **L13** | **The bone photo** (how an X-ray picture is made — detailed section below; added by request 2026-11-16) | Scene: an X-ray tube above (wide-mouthed, so the rain visibly leaves the machine), something to photograph below it (✋ a hand with a ring · 🐕 a dog · 🧳 a suitcase), a film cassette underneath, and "the photo, developing" beside it. Swap objects; flip the lamp switch sitting ON the canvas (at its midline) — 🩻 X-rays, or 💡 ordinary light drawn as an everyday bulb; a 🐢 ray-speed slider slows the rain down to watch single packets (the photo's reveal pace deliberately stays constant) | Ghost-grey X-ray packets rain down THROUGH the object: flesh lets most pass (a few sink in with a soft shimmer), bone swallows nearly all (small flashes right where the hidden bones are — the stopping places trace the skeleton before the photo shows it), metal stops everything, and a few packets visibly BOUNCE off sideways (scatter). The film darkens wherever packets land — so the photo is a SHADOW picture: open film goes black, flesh grey, bone pale, the ring white | An X-ray photo is made of the light that got THROUGH — the eye scene's exact opposite (eyes see what bounces). Bones show up because their heavy calcium atoms (20 electrons each — the builder's own number) are much better catchers than flesh's little H/C/O atoms | Bones mostly SWALLOW X-rays rather than bouncing them (the image is absorption, not reflection) — but a small share really does bounce off in all directions, drawn as the scatter sparks: that is why the radiographer steps behind a shielded wall. Rays drawn ghost-grey (invisible, per the lab's rule); one curtain of rays stands in for the tube spraying the whole object at once |
 
 Scenes (L07–L10) live in the right column's **scene picker** (wave machine ·
 doorbell · lamps · the eye · prism); L01–L06 are the wave-machine scene's
@@ -123,6 +124,101 @@ ARE single drops) would blur into it. Keeping atoms = sharp lines and
 surfaces = bands keeps both demos honest, and the honest note says so in
 kid words.
 
+## The bone photo (L13) — how an X-ray picture is made, beat by beat
+
+Requested 2026-11-16: "show how rays penetrate soft tissues, but bounce away
+from bones, or bounce away partially from some body tissues — and how this
+bouncing and absorption creates an end image."
+
+**One honesty adaptation, stated up front.** In a real radiograph the bones
+do not bounce the rays back — they SWALLOW them (absorption, the eye scene's
+own word): calcium's heavy atoms, 20 electrons each, are far better catchers
+than the lightweight hydrogen/carbon/oxygen atoms flesh is made of. The
+photo is a **shadow picture**: the film darkens wherever rays get THROUGH,
+and the bones stay white because their shadow protected the film. The
+requested "bouncing" survives honestly as **scatter**: a small share of the
+packets really does bounce off in all directions — drawn as occasional
+sparks flying sideways, and anchored in the panel ("that is why the
+radiographer steps behind a shielded wall and you get a heavy apron").
+"Partially" survives as the material ladder: cloth barely shadows the film,
+flesh shadows it a little, bone a lot, metal completely.
+
+Where it fits: the 💡 Light lab, not 🌍 Atoms in action — it is the X-ray
+band's own hands-on scene (the kid swaps objects and lamps and watches the
+consequences live), it closes the loop the lab opened (the EM bar's "how a
+doctor sees bones" anchor, the doorbell's packet punch), and the 📷 column's
+X-ray photos (chest, a dog at the vet, Röntgen's hand) become its evidence.
+
+Layout: the **X-ray tube** top-centre (the lab's hooded lamp, aimed DOWN),
+the **object** below it, the **film cassette** as a flat plate under the
+object, and **"the photo, developing"** as a framed inset at the right —
+blank at first, becoming the finished radiograph as exposure builds. Canvas
+carries name tags only (X-ray tube · hand · film · the photo), per the rules.
+
+What happens, continuously (🩻 X-ray light, the hand):
+
+1. **The rain.** Ghost-grey packets (X-rays are invisible — the lab's
+   existing rule) stream from the tube down through the hand toward the film.
+2. **Through the flesh.** Most packets fly straight through the skin and
+   muscle as if they were fog; now and then one sinks in with a soft warm
+   shimmer (flesh swallows a LITTLE — that is why it shadows the film grey,
+   not white).
+3. **Stopped at the bones.** Inside the hand — where the canvas shows only
+   skin — packets keep stopping with small pale flashes, over and over at the
+   same hidden places. The flashes trace the finger bones before the photo
+   ever shows them: the stopping places ARE the picture.
+4. **The bounce.** Occasionally a stopping packet ricochets off sideways as
+   a scatter spark and leaves the scene — the small true "bounce away".
+5. **The photo develops.** The inset darkens where packets land: the open
+   film around the hand goes black first, the flesh turns grey, the bones
+   stay pale, and the ring on one finger stays pure white (metal stops
+   everything — and it is the quiet homage: the first X-ray photo ever was a
+   hand with a ring).
+6. **The experiments** (the kid's part): the 🐕 dog reveals a whole friendly
+   skeleton — skull, spine, ribs, legs, the tail's little chain — plus the
+   metal tag on its collar glowing white (pets get their bone photos at the
+   vet exactly like we do); the 🧳 suitcase is the airport scanner: cloth
+   barely shadows, the teddy faintly, the keys and scissors glow white —
+   seeing inside WITHOUT opening.
+7. **The proof we need X-rays.** Switch the tube to ⚪ ordinary light: every
+   packet stops at the first surface it meets — even bright light never gets
+   past the skin. The photo shows nothing but a white outline of the whole
+   hand on black: a silhouette, no bones. Only the hard-punching X-ray
+   packets (the doorbell's heavyweights — thousands of times a red packet's
+   punch) can fly through a hand.
+
+The fates are rolled per packet against per-material stopping chances, so
+the radiograph's logic EMERGES from individual packets, never from a script
+(the R01 rule); the developing inset is the accumulated exposure drawn as
+one picture. A safety honest note rides along: packets that punch hard
+enough to fly through you can also break molecules on the way — which is
+why the dentist drapes you in the lead apron and takes only a few quick
+photos a year.
+
+**Feedback round, 2026-11-16 (decisions):**
+
+- 🐍 → 🐕: the snake-after-dinner (canvas object AND the Wellcome photo)
+  replaced by **a dog at the vet** — an eaten animal is an upsetting view
+  for kids. Same lessons kept: a surprise whole skeleton, and metal (the
+  collar's tag, instead of the dinner) glowing white.
+- The rain now visibly leaves the machine: the tube flares into a mouth as
+  wide as the beam, with the glow across it.
+- Packets are a single bright core (round 2 removed the dark outline/halo
+  round 1 added); readability over the object comes from the darkened fills
+  instead, with the skin a pink brown kept well apart from the ring's
+  yellow gold. The scene is bottom-anchored (film low, photo inset flush
+  with it — no dead stretch under the scene), and packets spawn far enough
+  below the mouth that no glyph pokes above the machine's edge.
+- The lamp switch (🩻 X-rays / 💡 ordinary light) sits ON the canvas, over
+  the tube; ordinary light is drawn as an everyday bulb on its cord.
+- **Packets, not waves — kept deliberately** (question raised, answered):
+  the scene's engine is per-photon absorption — ONE packet meets ONE atom
+  and is caught whole or not at all, which is the doorbell's photon lesson
+  and the only honest way to let the image emerge from individual rolls (a
+  continuous wave cannot play an all-or-nothing game). The panel now says
+  the bridge out loud: it is the wave machine's ⚪ photons picture, and each
+  dash still carries its little wave inside.
+
 ## The signature moment
 
 The wave ⇄ photons morph (L05) is this lab's shells ⇄ cloud: never a hard
@@ -170,6 +266,12 @@ the `Wave*`/`LightLab` prefix to stay unambiguous.
 - 👁️ The eye is drawn huge and cartoon-simple (pupil + retina only), and a
   real surface scatters its light in ALL directions — we draw the one bundle
   that happens to reach the eye.
+- 🩻 Bones don't bounce X-rays back — they SWALLOW them; the photo is the
+  shadow of what got through. The few packets that really do bounce
+  (scatter) are the sideways sparks — and the reason for lead aprons.
+- ⚠️ Packets strong enough to fly through you can break molecules on the
+  way — so real X-ray photos are quick, rare, and taken from behind a
+  shielded wall.
 
 ## A true story (drafted)
 
@@ -181,6 +283,15 @@ the `Wave*`/`LightLab` prefix to stay unambiguous.
 - 🔭 William Herschel found invisible light in 1800 with a thermometer: he
   measured just PAST the red end of a rainbow and it got warmer — infrared,
   discovered where nothing visible existed.
+- 🩻 Wilhelm Röntgen found X-rays by ACCIDENT in 1895: a screen across his
+  dark lab glowed although his tube was wrapped in black cardboard. Weeks
+  later he photographed his wife's hand — bones and ring through the skin —
+  refused to patent the discovery so every hospital could use it, and won
+  the first Nobel Prize in physics ever given (1901).
+- 👟 For a while X-rays were treated as a toy: shoe shops had machines where
+  kids wiggled their toes and watched their own foot bones. They were banned
+  once we understood the hard-punching packets' price — today's quick, rare
+  photos are the lesson learned.
 
 ## Cross-links (small follow-up edits, same milestone)
 
@@ -200,6 +311,7 @@ the `Wave*`/`LightLab` prefix to stay unambiguous.
 | 39 | L08 lamps (additive mixing) + screen-pixel inset |
 | 39b | L09/L11 the eye scene (lamp → object → eye, object picker, trick lamp) |
 | 39c | L10 prism · L12 three color catchers (if wanted) |
+| 39e | L13 🩻 the bone photo (X-ray tube, hand/snake/suitcase, scatter sparks, the developing shadow photo, ordinary-light proof; added 2026-11-16) |
 
 Working agreement unchanged: one step at a time, manual browser test, then
 status update. Milestone 9 (34b…36d) resumes after the lab — or interleaved,

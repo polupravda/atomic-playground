@@ -1,7 +1,7 @@
 import { memo, type ReactNode } from 'react'
 import { storyOrder } from '../stage/FissionStage'
 import { closeupStory } from '../stage/fissionCloseup'
-import { BOMB_DESIGNS, CLOUD_TOP_KM, type BombDesignId } from '../core/fission'
+import { BOMB_DESIGNS, BOMB_HISTORY, CLOUD_TOP_KM, type BombDesignId } from '../core/fission'
 import { TimelineColumn } from './TimelineColumn'
 
 // R01 story timeline (right column): the bomb-run steps, rendered by the
@@ -60,13 +60,15 @@ function storyItem(mode: BombDesignId, id: string): StoryItem {
   const setup = '🧨 Getting ready'
   const chain = '⚛️ Chain reaction'
   switch (id) {
-    case 'intro':
+    case 'intro': {
+      const h = BOMB_HISTORY[mode]
       return {
         group: '📏 The bomb',
         icon: '🧍',
         title: 'Your bomb',
-        text: 'Your bomb leaves the lineup and comes closer — next to a grown-up, so you can see how big it really was.',
+        text: `Built in the ${h.country} in ${h.year} by ${h.builders}. It comes closer — next to a grown-up, so you can see how big it really was. It was ${h.fate}.`,
       }
+    }
     case 'armed':
       return {
         group: setup,

@@ -486,11 +486,15 @@ export function drawLightCloseup(
   W: number,
   H: number,
   alpha: number,
+  /** IDLE time: drives motion that carries no story (the electrons'
+   *  spin, wobble and flash jiggle, the photons' wave) — it keeps running
+   *  while the narrator holds the story still */
+  idle = t,
 ) {
   if (alpha <= 0) return
   const s = t - LIGHT_SCENE_START
   const k = Math.min(W, H) / 800
-  const spin = t * 0.5
+  const spin = idle * 0.5
 
   ctx.save()
   ctx.globalAlpha = alpha
@@ -507,8 +511,8 @@ export function drawLightCloseup(
   for (const [i, b] of BYSTANDERS.entries())
     drawBystander(ctx, b.el as 'li' | 'na', X(b.x), Y(b.y), k, spin + i * 2)
 
-  drawJumpAtom(ctx, ATOMS[0], X, Y, k, s, 1, spin, t)
-  drawJumpAtom(ctx, ATOMS[1], X, Y, k, s - ATOM2_PLAY, ATOM2_RATE, spin + 2, t)
+  drawJumpAtom(ctx, ATOMS[0], X, Y, k, s, 1, spin, idle)
+  drawJumpAtom(ctx, ATOMS[1], X, Y, k, s - ATOM2_PLAY, ATOM2_RATE, spin + 2, idle)
 
   // a soft glow across the whole view: we are inside a glowing spark
   const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.7)

@@ -1,0 +1,15 @@
+{
+  "name": "narration-audio",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Dev-side generator: pre-renders the demo narration lines to audio with Kokoro TTS (Apache-2.0). Run `npm run generate` here; output lands in public/narration/.",
+  "scripts": {
+    "generate": "tsx generate.ts"
+  },
+  "devDependencies": {
+    "kokoro-js": "^1.2.1",
+    "msedge-tts": "^2.1.1",
+    "tsx": "^4.19.2"
+  }
+}

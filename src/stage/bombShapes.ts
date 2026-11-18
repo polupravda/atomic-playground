@@ -1,4 +1,5 @@
-import { PERSON_HEIGHT_M, REAL_BOMBS, type BombDesignId } from '../core/fission'
+import { drawFlag } from './canvasImages'
+import { BOMB_HISTORY, BOMB_NAMES, PERSON_HEIGHT_M, REAL_BOMBS, type BombDesignId } from '../core/fission'
 
 // R01 — the bombs' REAL outside shapes, as flat outlines (side view, tail on
 // the left, nose on the right), in metres. Used by
@@ -211,38 +212,59 @@ export function drawRealShapeExtras(
   dimLine(ctx, x0, x0 + L * ppm, groundY + 18)
   text(ctx, sizeText(mode), x0 + (L * ppm) / 2, groundY + 36, AMBER, 13)
   text(ctx, 'real shape · side view · cut open', x0 + (L * ppm) / 2, y0 - HALF_HEIGHT_M[mode] * ppm - 16, AMBER_SOFT, 11)
+  // the history: who built it, when — and what happened to it
+  const h = BOMB_HISTORY[mode]
+  const name = BOMB_NAMES[mode]
+  const top = y0 - HALF_HEIGHT_M[mode] * ppm
+  // the caption with the flag in front, centred together
+  const caption = `${name} · ${h.country}, ${h.year}`
+  ctx.font = `600 16px ui-sans-serif, system-ui, sans-serif`
+  const cw = ctx.measureText(caption).width
+  const flagW = (14 * 1200) / 600 // close enough for centring both flags
+  const cx0 = x0 + (L * ppm) / 2 - (flagW + 8 + cw) / 2
+  const fw = drawFlag(ctx, h.flag, cx0, top - 58, 14)
+  text(ctx, caption, cx0 + fw + 8, top - 58, '#e2e8f0', 16, 'left', '600')
+  text(ctx, `built by ${h.builders}`, x0 + (L * ppm) / 2, top - 38, SOFT, 12)
+  text(ctx, h.fate, x0 + (L * ppm) / 2, groundY + 56, h.used ? SOFT : '#86efac', 12)
   ctx.restore()
 }
 
 // ---------- the lineup (the first view of every run) ----------
 
-const LINEUP: BombDesignId[] = ['gun', 'implosion', 'tsar']
-const LABEL_H = 34 // name line above each bomb
-const ROW_GAP = 26
+export const LINEUP: readonly BombDesignId[] = ['gun', 'implosion', 'tsar']
 const PERSON_SPAN_M = 1.2 // gap + the person, right of the Tsar Bomba
-const TOP = 16 // top margin
+// the chooser card frame — the shared look of the R02/R04 lineup rows
+const CARD_M = 18 // canvas margin
+const CARD_GAP = 14
+const CARD_PAD = 18 // inner side padding
+const NAME_H = 48 // the name line + the history line inside the card
+const FOOT_H = 24 // room under the ground line (person caption, scale bar)
 
-/** where each bomb lies in the lineup: one shared scale, one row each.
- *  `right` = the rows' width in metres (bombs + the grown-up). */
+/** where each bomb lies in the lineup: one framed card per bomb (the
+ *  chooser look shared with R02/R04), the bombs themselves on ONE shared
+ *  scale. `right` = the rows' width in metres (bombs + the grown-up). */
 export function lineupLayout(W: number, usableH: number) {
   const maxL = Math.max(...LINEUP.map((m) => REAL_BOMBS[m].lengthM))
-  const heightM = LINEUP.reduce((s, m) => s + 2 * HALF_HEIGHT_M[m], 0)
-  const avail = usableH - TOP
+  const rowH = (usableH - 2 * CARD_M - (LINEUP.length - 1) * CARD_GAP) / LINEUP.length
+  const innerW = W - 2 * (CARD_M + CARD_PAD)
+  const contentH = rowH - NAME_H - FOOT_H - 8 // 8 = top breathing room
   const ppm = Math.min(
-    (W - 80) / (maxL + PERSON_SPAN_M),
-    (avail - 24 - LINEUP.length * (LABEL_H + ROW_GAP)) / heightM,
+    innerW / (maxL + PERSON_SPAN_M),
+    ...LINEUP.map((m) => contentH / (2 * HALF_HEIGHT_M[m])),
   )
-  const total = heightM * ppm + LINEUP.length * (LABEL_H + ROW_GAP) - ROW_GAP
-  const x0 = Math.max(30, (W - (maxL + PERSON_SPAN_M) * ppm) / 2)
-  let y = TOP + Math.max(0, (avail - total) / 2)
+  const x0 = CARD_M + CARD_PAD + Math.max(0, (innerW - (maxL + PERSON_SPAN_M) * ppm) / 2)
   const rows = {} as Record<BombDesignId, { nameY: number; axisY: number; groundY: number }>
-  for (const m of LINEUP) {
-    const half = HALF_HEIGHT_M[m]
-    const axisY = y + LABEL_H + half * ppm
-    rows[m] = { nameY: y + 10, axisY, groundY: axisY + half * ppm }
-    y = axisY + half * ppm + ROW_GAP
-  }
-  return { ppm, x0, maxL, right: maxL + PERSON_SPAN_M, rows }
+  const cards = {} as Record<
+    BombDesignId,
+    { left: number; top: number; right: number; bottom: number }
+  >
+  LINEUP.forEach((m, i) => {
+    const top = CARD_M + i * (rowH + CARD_GAP)
+    cards[m] = { left: CARD_M, top, right: W - CARD_M, bottom: top + rowH }
+    const axisY = top + 8 + NAME_H + contentH / 2
+    rows[m] = { nameY: top + 24, axisY, groundY: axisY + HALF_HEIGHT_M[m] * ppm }
+  })
+  return { ppm, x0, maxL, right: maxL + PERSON_SPAN_M, rows, cards }
 }
 
 /** the nuclear fuel inside one bomb: one ball of metal at real size, with
@@ -278,7 +300,8 @@ export function drawFuel(ctx: CanvasRenderingContext2D, mode: BombDesignId, x0: 
 
 /** All three bombs on ONE scale, a grown-up beside the biggest, and the
  *  nuclear fuel inside each. \`hide\`: leave out that bomb's outline + fuel
- *  (the caller draws it while it zooms to its own view). */
+ *  (the caller draws it while it zooms to its own view); \`only\`: draw
+ *  just these cards. */
 export function drawLineup(
   ctx: CanvasRenderingContext2D,
   W: number,
@@ -286,19 +309,35 @@ export function drawLineup(
   current: BombDesignId | undefined,
   alpha: number,
   hide?: BombDesignId,
+  only: readonly BombDesignId[] = LINEUP,
 ) {
   if (alpha <= 0) return
-  const { ppm, x0, maxL, rows } = lineupLayout(W, usableH)
+  const { ppm, x0, maxL, rows, cards } = lineupLayout(W, usableH)
   ctx.save()
   ctx.globalAlpha *= alpha
   for (const m of LINEUP) {
+    if (!only.includes(m)) continue
     const r = REAL_BOMBS[m]
     const { nameY, axisY, groundY } = rows[m]
-    const name = m === 'gun' ? 'Little Boy' : m === 'implosion' ? 'Fat Man' : 'Tsar Bomba'
-    text(ctx, name, x0, nameY, m === current ? AMBER : 'rgba(241, 245, 249, 0.98)', 15, 'left', '600')
-    ctx.font = '600 15px ui-sans-serif, system-ui, sans-serif'
+    // the card frame (the R02/R04 chooser look)
+    const card = cards[m]
+    ctx.fillStyle = '#0b1226'
+    ctx.strokeStyle = 'rgba(51, 65, 85, 0.9)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.roundRect(card.left, card.top, card.right - card.left, card.bottom - card.top, 14)
+    ctx.fill()
+    ctx.stroke()
+    const name = BOMB_NAMES[m]
+    const nameX = card.left + CARD_PAD
+    text(ctx, name, nameX, nameY, m === current ? AMBER : '#e2e8f0', 17, 'left', '600')
+    ctx.font = '600 17px ui-sans-serif, system-ui, sans-serif'
     const nameW = ctx.measureText(name).width
-    text(ctx, sizeText(m), x0 + nameW + 12, nameY, SOFT, 12, 'left')
+    text(ctx, sizeText(m), nameX + nameW + 14, nameY + 1, '#94a3b8', 13, 'left')
+    // who, when, and what happened to it
+    const h = BOMB_HISTORY[m]
+    const fw = drawFlag(ctx, h.flag, nameX, nameY + 21, 12)
+    text(ctx, `${h.country}, ${h.year} · ${h.short}`, nameX + fw + 7, nameY + 21, h.used ? '#cbd5e1' : '#86efac', 13, 'left')
     // faint ground line
     ctx.strokeStyle = 'rgba(100, 116, 139, 0.45)'
     ctx.lineWidth = 1

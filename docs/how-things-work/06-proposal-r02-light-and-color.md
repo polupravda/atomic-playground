@@ -55,6 +55,11 @@ button with a "▶ Watch it" pill:
 | 🌌 **Aurora**         | green curtains over a dark horizon                            | oxygen (green + red), nitrogen fringe | particles from the Sun crashing into thin air      |
 | 🔭 **Star detective** | a telescope, a star, a rainbow with dark gaps                 | hydrogen, helium                      | the star's own heat                                |
 
+> **Moved 2026-11-18**: the 🔭 star detective now lives in the 🌟 Star stuff
+> chooser (R04), as its FIRST row — the ☀️ Sun story reads the Sun's
+> barcode, so the barcode story must come before it. The design below is
+> unchanged; it is built there (step 34c).
+
 Picking one auto-plays its whole story (like a bomb run); at the end it holds
 ~10 s on the payoff screen and fades back to the chooser. The "Choose
 another…" button carries a four-scenes mini icon (sibling of `BombsIcon`).

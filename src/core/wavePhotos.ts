@@ -39,13 +39,12 @@ export const WAVE_PHOTOS: Record<EmBandId, WavePhoto[]> = {
         'https://commons.wikimedia.org/wiki/File:Normal_posteroanterior_(PA)_chest_radiograph_(X-ray).jpg',
     },
     {
-      file: 'em-xray-snake.jpg',
+      file: 'em-xray-dog.jpg',
       caption:
-        'An X-ray of a snake that has just swallowed its dinner — you can see the little animal\'s skeleton INSIDE the snake\'s.',
-      creator: 'Wellcome Collection',
-      license: 'CC BY 4.0',
-      source:
-        'https://commons.wikimedia.org/wiki/File:A_snake_in_the_process_of_swallowing_a_small_mammal,_probabl_Wellcome_V0029552.jpg',
+        'A dog\'s X-ray photo from the vet: hip and leg bones, sharp and pale. Pets get their bone photos exactly like we do.',
+      creator: 'Gvolk, Wikimedia Commons',
+      license: 'CC BY-SA 3.0',
+      source: 'https://commons.wikimedia.org/wiki/File:Golden_Doodle_hip_xray_side_view.jpg',
     },
     {
       file: 'em-xray.jpg',
@@ -169,6 +168,20 @@ export const PRISM_PHOTOS: WavePhoto[] = [
     license: 'CC BY-SA 3.0 AT',
     source:
       'https://commons.wikimedia.org/wiki/File:Light_dispersion_of_a_mercury-vapor_lamp_with_a_flint_glass_prism_IPNr%C2%B00125.jpg',
+  },
+]
+
+/** 🩻 bone-photo scene: the three X-ray band photos (they ARE this scene's
+ *  evidence — chest, dog, Röntgen's hand) plus the airport scanner */
+export const XRAY_SCENE_PHOTOS: WavePhoto[] = [
+  ...WAVE_PHOTOS.xray,
+  {
+    file: 'em-xray-baggage.jpg',
+    caption:
+      'The airport scanner\'s screens: a bag photographed with X-rays while it rides the belt — electronics, cables and a water bottle, seen without opening a single zip.',
+    creator: 'Mattes, Wikimedia Commons',
+    license: 'Public domain',
+    source: 'https://commons.wikimedia.org/wiki/File:Luggage_screening_at_VTBS.JPG',
   },
 ]
 

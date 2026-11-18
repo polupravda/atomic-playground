@@ -373,6 +373,7 @@ function drawAtom(
   alpha = 1,
   stretch = 0,
   axis = 0,
+  /** idle time for the stretched nucleus's trembling */
   wobT = 0,
 ) {
   if (alpha <= 0) return
@@ -483,13 +484,17 @@ export function drawCloseup(
   H: number,
   alpha: number,
   fuel: CloseupFuel,
+  /** IDLE time: drives motion that carries no story (the electrons'
+   *  spin, the γ rays' wave) — it keeps running while the narrator holds
+   *  the story still (docs/how-things-work/10-narration-strategy.md) */
+  idle = t,
 ) {
   if (alpha <= 0) return
   const s = t - SCENE_START
   const F = FUELS[fuel]
   const k = Math.min(W, H) / 800
   const sp = sprites(k)
-  const spin = t * 0.6
+  const spin = idle * 0.6
   const U: AtomLook = { protons: F.protons, nucleus: sp.u, r0: 34 * k, gap: 13.5 * k }
   const look = (f: FragId): AtomLook => ({
     protons: FRAG[f].protons,
@@ -528,7 +533,9 @@ export function drawCloseup(
     if (s < sp1.splitT + 0.45) {
       const st = s < sp1.hitT ? 0 : easeIn(clamp01((s - sp1.hitT) / (sp1.splitT - sp1.hitT)))
       const fade = s < sp1.splitT ? 1 : 1 - clamp01((s - sp1.splitT) / 0.45)
-      drawAtom(ctx, U, ax, ay, spin + idx * 1.7, k, fade, st, sp1.axis, s)
+      // how far it is stretched follows the story; its wobble is idle
+      // motion, so a held peanut keeps trembling instead of freezing
+      drawAtom(ctx, U, ax, ay, spin + idx * 1.7, k, fade, st, sp1.axis, idle)
       // name tag only — what is HAPPENING is told in the info panel
       if (s < sp1.splitT && (idx === 0 || s > SPLITS[idx - 1].splitT)) {
         const hit = s >= sp1.hitT
@@ -560,7 +567,7 @@ export function drawCloseup(
     if (q < 1.6) {
       const head = q * 420 * k
       const ga = q < 1.1 ? 1 : 1 - (q - 1.1) / 0.5
-      for (const a of [0.15, 1.75, 3.0, 4.4]) drawGamma(ctx, ax, ay, a + idx * 0.6, head, ga, t, k)
+      for (const a of [0.15, 1.75, 3.0, 4.4]) drawGamma(ctx, ax, ay, a + idx * 0.6, head, ga, idle, k)
     }
     // the two halves fly apart along the stretch axis, slowing down
     const d = 230 * k * (1 - Math.exp(-q * 1.3))
