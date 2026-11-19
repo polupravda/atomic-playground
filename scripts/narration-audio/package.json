@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Dev-side generator: pre-renders the demo narration lines to audio with Kokoro TTS (Apache-2.0). Run `npm run generate` here; output lands in public/narration/.",
   "scripts": {
-    "generate": "tsx generate.ts"
+    "generate": "tsx generate.ts",
+    "tempo": "tsx tempo.ts"
   },
   "devDependencies": {
     "kokoro-js": "^1.2.1",

@@ -24,6 +24,7 @@ import {
   strokeBomb,
 } from './bombShapes'
 import { CARDS_OUT_AT, CARD_STEP, drawIntroCards, preloadPortraits } from './bombIntro'
+import { drifted, fitRate } from './flowPacing'
 import type { ParticleKind } from '../state/atomStore'
 import {
   BOMB_DESIGNS,
@@ -1998,14 +1999,6 @@ const LOOK_MAX_S = 40
 const LOOK_STEPS_PER_FRAME = 60
 /** the speed while the very first flow beat is being measured */
 const FLOW_START_RATE = 0.1
-/** aim to end a hair after the line: the last moment then plays at normal
- *  speed (unnoticeable), never a hold */
-const FIT_MARGIN_S = 0.2
-/** re-choose the speed only if the picture and the voice drift this far
- *  apart (a language switch, an audio stall) */
-const FIT_DRIFT_S = 1
-/** the slowest flow: the story never stands fully still */
-const FLOW_MIN = 0.03
 
 interface FlowFit {
   id: string
@@ -2019,8 +2012,6 @@ interface FlowFit {
   look: { sim: Sim; id: string; t: number; spent: number } | null
 }
 
-const fitRate = (left: number, narration: number) =>
-  Math.min(1, Math.max(FLOW_MIN, left / (narration + FIT_MARGIN_S)))
 
 /** play the measuring copy ahead one slice; true when the beat's end has
  *  been found (then `f.left` is exact) */
@@ -2241,7 +2232,7 @@ export const FissionStage = memo(function FissionStage({
         }
         if (f.look) {
           if (lookAhead(f)) f.rate = fitRate(f.left, narration)
-        } else if (Math.abs(f.left / f.rate - narration - FIT_MARGIN_S) > FIT_DRIFT_S) {
+        } else if (drifted(f.left, f.rate, narration)) {
           // picture and voice drifted apart: one new steady speed
           f.rate = fitRate(f.left, narration)
         }

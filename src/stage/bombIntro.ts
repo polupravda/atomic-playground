@@ -139,19 +139,27 @@ function drawLeaders(ctx: CanvasRenderingContext2D, mode: BombDesignId, b: Box, 
   const leaders = BOMB_HISTORY[mode].leaders
   const labelH = 34 * k
   const nameH = 54 * k
-  const gap = 40 * k
+  const gap = 64 * k // between two leaders' columns (names included)
+  const nameSize = 34 * k
+  ctx.font = `700 ${nameSize}px ${FONT}`
+  const nameW = leaders.map((l) => ctx.measureText(l.name).width)
   let ph = Math.max(60, b.h - labelH - nameH - 10 * k)
-  // two side by side must fit the width too
-  ph = Math.min(ph, (b.w - 40 - (leaders.length - 1) * gap) / leaders.length / 0.75)
+  // each leader's column is as wide as the wider of portrait and name, so
+  // two names never run into each other; everything shrinks to fit
+  const columns = (pw: number) => leaders.map((_, i) => Math.max(pw, nameW[i]))
+  const width = (pw: number) => columns(pw).reduce((a, c) => a + c, 0) + (leaders.length - 1) * gap
+  const fit = Math.min(1, (b.w - 40) / width(ph * 0.75))
+  ph *= fit
   const pw = ph * 0.75
-  const colW = Math.max(pw, (b.w - 40) / leaders.length - gap / 2)
-  const total = leaders.length * pw + (leaders.length - 1) * gap
+  const colW = columns(pw).map((c) => c * fit)
+  const total = colW.reduce((a, c) => a + c, 0) + (leaders.length - 1) * gap
+  const centres = colW.map((c, i) => b.x + (b.w - total) / 2 + colW.slice(0, i).reduce((a, w) => a + w + gap, 0) + c / 2)
   label(ctx, leaders.length > 1 ? 'their leaders' : 'their leader', b.x + b.w / 2, b.y + 20 * k, 16 * k)
   leaders.forEach((l, i) => {
     // a second leader follows the first a moment later
     const { alpha, scale, dy } = pop(t, LEADER_AT + i * 0.45)
     if (alpha <= 0) return
-    const x = b.x + (b.w - total) / 2 + i * (pw + gap)
+    const x = centres[i] - pw / 2
     const y = b.y + labelH
     ctx.save()
     ctx.globalAlpha *= alpha
@@ -179,7 +187,7 @@ function drawLeaders(ctx: CanvasRenderingContext2D, mode: BombDesignId, b: Box, 
     ctx.beginPath()
     ctx.roundRect(x, y, pw, ph, 10)
     ctx.stroke()
-    big(ctx, l.name, x + pw / 2, y + ph + nameH / 2 + 4 * k, 34 * k, colW, '#f8fafc')
+    big(ctx, l.name, centres[i], y + ph + nameH / 2 + 4 * k, nameSize, colW[i], '#f8fafc')
     ctx.restore()
   })
 }

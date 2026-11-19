@@ -246,7 +246,7 @@ once" (`chain`, the close-up's six steps, `chainAfter`, Tsar Bomba's
 hands over to the next. To keep the moment the fuel comes together moving, the
 "critical mass" sentence opens the chain line (it used to close the
 assembling line, which held the finished lump still while it was said).
-Only `FissionStage` supports `fit` so far; a stage that ignores it would
+`FissionStage` and `LightStage` support `fit` (the 🎆 firework's `scene`, `barcode` — "Every photon counts" — and `payoff` flow too, on fixed timings: no look-ahead needed); a stage that ignores it would
 run the beat at normal speed and then hold — add the look-ahead first.
 
 ## Run pacing: a spectacle plays at its own speed
@@ -309,17 +309,40 @@ narrate events, so tell-then-show is right there. The verified 🧒
 reference has no data visuals (its equation sits in the story column, not
 on the canvas) — unchanged.
 
-## One speech rate for every story
+## One tempo for every story
 
-All English stories speak at the reference rate: **2.41 words per second
-of speech** (pauses excluded), measured on the verified 🧒 narration. The
-same voice setting does NOT give the same rate on every text (word
-lengths differ, and splitting into pieces trims Kokoro's own sentence
-pauses), so each story has its own calibrated `enSpeed` in the generator
-— and Kokoro's speed is not proportional to the rate, so calibrate by
-measuring, not by arithmetic. The generator prints each story's rate and
-warns when it drifts more than 3% from the reference. Current: firework
-0.77 → 2.38, Sun 0.78 → 2.34, bombs 0.79 → 2.34–2.35.
+The verified 🧒 star-stuff EN narration sets THE tempo (Elena,
+2026-11-19: no story may sound slower than it). Every English story is
+rendered at the same voice speed as the reference, `EN_SPEED` = 0.8 —
+there is no per-story speed.
+
+History, so it is not repeated: the stories were once "calibrated" to the
+reference's 2.41 words per second with per-story speeds of 0.77–0.79.
+That made the science stories ~6% SLOWER than the reference: their long
+words ("plutonium", "deuterium") mean fewer words per second at the very
+same tempo, so matching words per second slowed the voice down.
+
+The tempo is measured in **syllables per second of speech** (pauses and
+the lead-in taken out) — what the ear hears. The reference reads 3.32;
+the generator prints each story's tempo and flags more than 3% off, and
+`npm run tempo` (in `scripts/narration-audio/`) checks the rendered
+files. A flagged story means checking the text, never changing the speed.
+Measured after the change: Sun +2.2%, firework +2.7%, Little Boy +0.1%,
+Fat Man −0.3%, Tsar Bomba +1.1%.
+
+## Names said the Russian way
+
+Russian names are pronounced the Russian way, not anglicised (Elena,
+2026-11-19: "Андрей Сахаров"). Kokoro cannot do it: by default it says
+"SACK-a-rov" and "YOO-lih-eye", and hand-written phonemes came out
+"severely mispronounced" (tried and dropped the same day). So inside an
+English line the names are spoken by the RU voice, Edge's Svetlana
+(`RU_NAMES` in `generate.ts`: Юлий Харитон, Андрей Сахаров, Царь-бомба),
+level-matched to Kokoro and joined with a 0.1 s breath. Scripts, captions
+and tests keep the English spelling. Approved by ear on 2026-11-19 (the
+voice switch is fine) and in the app: Tsar Bomba's intro, its leaders
+sentence and its ending. `npm run generate -- --test-names <dir>` writes
+listen-test clips of just those pieces when a name is added.
 
 ## Short pieces: the ghost sound
 

@@ -240,6 +240,7 @@ export function LightExample({ active }: { active: boolean }) {
             active={active}
             timeScale={narration.timeScale}
             holdBeat={narration.holdBeat}
+            fit={narration.fit}
             onReport={setReport}
             onFinished={onFinished}
           />

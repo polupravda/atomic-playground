@@ -93,6 +93,12 @@ describe('the narration scripts (bombs, firework, Sun)', () => {
     expect(parseNarrationLine('> One. | Two.')).toEqual({ watchFirst: 0, flow: f, run: true, pieces: ['One.', 'Two.'] })
   })
 
+  it('never freezes the firework or the photon count (flow)', () => {
+    const lines = SCRIPTS.firework
+    const flowing = Object.keys(lines).filter((id) => parseNarrationLine(lines[id]).flow)
+    expect(flowing).toEqual(['scene', 'barcode', 'payoff'])
+  })
+
   it('lets the explosion RUN at full speed: the voice catches up before the size comparison', () => {
     for (const m of BOMB_MODES) {
       const lines = SCRIPTS[bombStoryKey(m)]

@@ -5,11 +5,13 @@
 // sentence, terms named and taught slowly, ' ... ' for a real pause, the
 // repeat without its article. A science-intense story: almost every line
 // is split into information pieces (' | ') — SCIENCE PACING, the voice
-// stops after each piece and the animation shows it.
+// stops after each piece and the animation shows it. The firework itself
+// and the photon count are continuous: FLOW pacing ('~ '), never frozen,
+// played at one steady speed that ends with the line (Elena, 2026-11-18).
 
 export const FIREWORK_NARRATION: Record<string, string> = {
   scene:
-    'Look at the night sky. A firework shell races up, and bursts into red and yellow sparks. | Every spark is a crowd of glowing hot atoms.',
+    '~ Look at the night sky. A firework shell races up, and bursts into red and yellow sparks. | Every spark is a crowd of glowing hot atoms.',
   zoom: 'Let us dive into one red spark, all the way down to its atoms.',
   closeup0:
     'Inside the spark sits an atom called lithium. ... Lithium. | Heat from the burning powder washes over it.',
@@ -22,8 +24,9 @@ export const FIREWORK_NARRATION: Record<string, string> = {
     'Next door sits a sodium atom. ... Sodium. ... It does the same dance. | But its step is taller. So its photon is yellow.',
   barcode:
     // show first: let the first photons land on the strips before explaining them
-    '| Now many atoms flash at random. Every photon lands on its own line. | Slowly, a pattern of lines appears. | It is the element’s fingerprint. Every element has its own.',
+    '~ | Now many atoms flash at random. Every photon lands on its own line. | Slowly, a pattern of lines appears. | It is the element’s fingerprint. Every element has its own.',
   payoff:
-    // show first, 4 s: the red shell bursts at 1.5 s, the yellow one at 2.8 s
-    '|4| Back to the sky. The red sparks are lithium. The yellow sparks are sodium. | No other atom can make exactly these colors.',
+    // show first, 5 s: the red shell bursts at 1.5 s, the yellow one at 2.8 s
+    // of story time — in flow slow motion (×0.66) that is 4.2 s
+    '~ |5| Back to the sky. The red sparks are lithium. The yellow sparks are sodium. | No other atom can make exactly these colors.',
 }

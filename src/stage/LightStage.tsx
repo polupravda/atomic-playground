@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { Layer, Shape, Stage } from 'react-konva'
 import Konva from 'konva'
+import { drifted, fitRate } from './flowPacing'
 import { drawGlossyParticle } from './particleStyle'
 import { clamp01, easeOut } from './canvasUtil'
 import { FISSION_W, FISSION_H } from './FissionStage'
@@ -285,6 +286,30 @@ export function lightStoryOrder(story: LightStoryId): string[] {
   void story // one story so far; neon/aurora/star get their own orders later
   const close = Array.from({ length: 5 }, (_, i) => `closeup${i}`)
   return ['scene', 'zoom', ...close, 'barcode', 'payoff']
+}
+
+/** story seconds until the sim leaves its current beat (the firework's
+ *  beats run on fixed timings; the story ends at END_T) — flow pacing */
+function beatTimeLeft(sim: Sim): number {
+  switch (sim.phase) {
+    case 'scene':
+      return Math.max(0, SCENE_T - sim.phaseT)
+    case 'barcode':
+      return Math.max(0, BARCODE_T - sim.phaseT)
+    case 'payoff':
+      return Math.max(0, PAYOFF_T - sim.phaseT)
+    default: {
+      // the close-up steps: play a copy ahead
+      const id = storyId(sim)
+      const s = structuredClone(sim)
+      let t = 0
+      while (t < 30 && storyId(s) === id) {
+        step(s, 1 / 60)
+        t += 1 / 60
+      }
+      return t
+    }
+  }
 }
 
 function storyId(sim: Sim): string {
@@ -665,6 +690,7 @@ export const LightStage = memo(function LightStage({
   active,
   timeScale = 1,
   holdBeat = false,
+  fit = null,
   onReport,
   onFinished,
 }: {
@@ -679,6 +705,10 @@ export const LightStage = memo(function LightStage({
   /** science pacing: the narrator still has pieces to say about this
    *  beat — never move on to the next beat (or finish) yet */
   holdBeat?: boolean
+  /** flow pacing: seconds until the beat's line ends — the story runs at
+   *  one steady speed fitted to it (overrides timeScale); null = no flow
+   *  beat */
+  fit?: (() => number) | null
   onReport: (r: LightReport) => void
   onFinished: () => void
 }) {
@@ -689,6 +719,10 @@ export const LightStage = memo(function LightStage({
   timeScaleRef.current = timeScale
   const holdBeatRef = useRef(holdBeat)
   holdBeatRef.current = holdBeat
+  const fitRef = useRef(fit)
+  fitRef.current = fit
+  // flow pacing: this beat's steady speed and its story time left
+  const flow = useRef<{ id: string; rate: number; left: number } | null>(null)
   const onFinishedRef = useRef(onFinished)
   onFinishedRef.current = onFinished
   const finishedSent = useRef(false)
@@ -728,6 +762,7 @@ export const LightStage = memo(function LightStage({
   useEffect(() => {
     finishedSent.current = false
     snaps.current.clear()
+    flow.current = null
     lastStory.current = ''
     lastSig.current = ''
     if (story) {
@@ -746,6 +781,7 @@ export const LightStage = memo(function LightStage({
     const ti = order.indexOf(seek.id)
     if (ti < 0) return
     const idx = (id: string) => order.indexOf(id)
+    flow.current = null
     const restore = (id: string) => {
       sim.current = structuredClone(snaps.current.get(id)!)
       lastStory.current = id
@@ -779,15 +815,28 @@ export const LightStage = memo(function LightStage({
       if (!frame) return
       const dt = Math.min(0.05, frame.timeDiff / 1000)
       if (!storyRef.current) return // the chooser: a slow shimmer only
+      let rate = timeScaleRef.current
+      const narration = fitRef.current?.() ?? null
+      let f = flow.current
+      if (narration !== null) {
+        const id = storyId(sim.current)
+        if (!f || f.id !== id) {
+          const left = beatTimeLeft(sim.current)
+          f = { id, left, rate: fitRate(left, narration) }
+          flow.current = f
+        } else if (drifted(f.left, f.rate, narration)) f.rate = fitRate(f.left, narration)
+        rate = f.rate
+      } else f = null
       // the beat gate: a frame that would leave the beat is undone. A
       // held story (the voice talking) takes no step, so needs no copy.
-      const sdt = dt * timeScaleRef.current
+      const sdt = dt * rate
       const gate = holdBeatRef.current
       if (!gate || sdt > 0) {
         const backup = gate ? structuredClone(sim.current) : null
         const before = backup ? storyId(sim.current) : ''
         step(sim.current, sdt)
         if (backup && storyId(sim.current) !== before) sim.current = backup
+        else if (f) f.left = Math.max(0, f.left - sdt)
       }
       record()
       report()

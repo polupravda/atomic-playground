@@ -28,6 +28,7 @@ import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
 import { STARDUST_SCRIPTS } from '../../src/stage/stardustNarration'
 // the line format (pieces ' | ', show-first '| ') — the app's own parser
 import { parseNarrationLine } from '../../src/stage/narrationScript'
+import { syllables } from './tempo'
 import { SUN_NARRATION } from '../../src/stage/sunNarration'
 import { FIREWORK_NARRATION } from '../../src/stage/fireworkNarration'
 import { BOMB_MODES, bombNarration, bombStoryKey } from '../../src/stage/bombNarration'
@@ -62,11 +63,15 @@ const PAUSE_S = 0.5
 // gentle silence before a story's FIRST line, so the voice doesn't
 // startle a child when the volume is up
 const LEAD_IN_S = 1.5
-// the verified 🧒 star-stuff EN narration speaks 2.41 words per second of
-// speech (pauses excluded): every EN story is calibrated to it with its
-// `enSpeed`, so all demos sound equally paced. The generator measures
-// each story and warns when it drifts more than 3%.
-const REF_WORDS_PER_S = 2.41
+// ONE tempo for every EN story: the verified 🧒 star-stuff EN narration's
+// (Elena, 2026-11-18: no story may sound slower than it). Every EN story
+// is rendered at the same voice speed, EN_SPEED — never a per-story speed:
+// "calibrating" words per second once slowed the science stories down by
+// ~6%, because their long words read as fewer words per second at the
+// very same tempo. The tempo is measured in SYLLABLES per second of
+// speech (pauses excluded; `npm run tempo` checks the rendered files);
+// the reference reads 3.32, and a story more than 3% off it is flagged.
+const REF_SYLLABLES_PER_S = 3.32
 
 const OUT_ROOT = resolve(import.meta.dirname, '../../public/narration')
 const AFCONVERT = '/usr/bin/afconvert'
@@ -142,12 +147,71 @@ function readWavPcm16(path: string): Float32Array {
 
 // ---------- the engines, same signature ----------
 
-/** `singleShort`: render short pieces once, the pre-fix way (see STORIES);
- *  `speed`: a per-story Kokoro speed (see STORIES) */
-type Render = (
-  text: string,
-  opts?: { singleShort?: boolean; speed?: number },
-) => Promise<Float32Array>
+// Russian names, said by a Russian voice (Elena, 2026-11-19). Kokoro
+// cannot say them: anglicised by default ("SACK-a-rov"), and hand-written
+// phonemes came out "severely mispronounced". So inside an English line
+// these names are spoken by Edge's Svetlana (the RU voice), level-matched
+// to Kokoro and joined with a short breath. Only the rendering changes —
+// scripts and captions keep the English spelling.
+const RU_NAMES: Array<[RegExp, string]> = [
+  [/\bYulii Khariton\b/g, 'Юлий Харитон'],
+  [/\bAndrei Sakharov\b/g, 'Андрей Сахаров'],
+  [/\bTsar Bomba\b/g, 'Царь-бомба'],
+]
+const NAME_GAP_S = 0.1
+
+const hasRuName = (text: string) => RU_NAMES.some(([re]) => text.search(re) >= 0)
+
+/** loudness of the sounding part of a render */
+function rms(c: Float32Array): number {
+  let sum = 0
+  let n = 0
+  for (const v of c) {
+    if (Math.abs(v) < 0.01) continue
+    sum += v * v
+    n++
+  }
+  return n ? Math.sqrt(sum / n) : 0
+}
+
+/** an English line with Russian names: Kokoro for the English, Svetlana
+ *  for the names (the same loudness), joined with short breaths */
+async function renderWithNames(text: string, en: Render, ru: Render, opts?: { singleShort?: boolean }) {
+  const marks = RU_NAMES.flatMap(([re, cyr]) => [...text.matchAll(re)].map((m) => ({ at: m.index!, len: m[0].length, cyr })))
+  marks.sort((a, b) => a.at - b.at)
+  const parts: Array<{ audio: Float32Array; ru: boolean }> = []
+  const plain = async (t: string) => {
+    // a lone punctuation mark stays with the name before it
+    if (/[\p{L}\d]/u.test(t)) parts.push({ audio: trimSilence(await en(t.trim(), opts)), ru: false })
+  }
+  let at = 0
+  for (const m of marks) {
+    await plain(text.slice(at, m.at))
+    parts.push({ audio: trimSilence(await ru(m.cyr)), ru: true })
+    at = m.at + m.len
+  }
+  await plain(text.slice(at))
+  const enLevel = rms(Float32Array.from(parts.filter((p) => !p.ru).flatMap((p) => [...p.audio]))) || 0.1
+  for (const p of parts) {
+    if (!p.ru) continue
+    const k = enLevel / (rms(p.audio) || enLevel)
+    for (let i = 0; i < p.audio.length; i++) p.audio[i] = Math.max(-1, Math.min(1, p.audio[i] * k))
+  }
+  const gap = new Float32Array(Math.round(SR * NAME_GAP_S))
+  const out: Float32Array[] = []
+  parts.forEach((p, i) => out.push(...(i ? [gap, p.audio] : [p.audio])))
+  const all = new Float32Array(out.reduce((n, c) => n + c.length, 0))
+  let o = 0
+  for (const c of out) {
+    all.set(c, o)
+    o += c.length
+  }
+  console.log(`  (Russian names by ${RU_VOICE}) ${text}`)
+  return all
+}
+
+/** `singleShort`: render short pieces once, the pre-fix way (see STORIES) */
+type Render = (text: string, opts?: { singleShort?: boolean }) => Promise<Float32Array>
 
 /** sounding stretches of a render: [startFrame, endFrame] in 10 ms frames,
  *  split wherever ≥ 30 ms stays below 8% of the peak level */
@@ -217,8 +281,8 @@ async function makeKokoro(): Promise<Render> {
   const tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
     dtype: 'q8',
   })
-  const say = async (text: string, speed = EN_SPEED) => {
-    const audio = await tts.generate(text, { voice: EN_VOICE, speed })
+  const say = async (text: string) => {
+    const audio = await tts.generate(text, { voice: EN_VOICE, speed: EN_SPEED })
     if (audio.sampling_rate !== SR) throw new Error(`unexpected rate ${audio.sampling_rate}`)
     return audio.audio as Float32Array
   }
@@ -226,13 +290,13 @@ async function makeKokoro(): Promise<Render> {
     // short pieces (the taught-term repeats: "Fission.", "Super. Nova.")
     // are rendered doubled and the clean second copy is kept
     const words = text.split(/\s+/).filter((w) => /\p{L}/u.test(w)).length
-    if (words > 3 || opts?.singleShort) return say(text, opts?.speed)
+    if (words > 3 || opts?.singleShort) return say(text)
     // a full stop between the copies guarantees a pause to cut at
     const stop = /[.!?]$/.test(text) ? '' : '.'
-    const kept = secondCopy(await say(`${text}${stop} ${text}`, opts?.speed))
+    const kept = secondCopy(await say(`${text}${stop} ${text}`))
     if (kept) return kept
     console.log(`  (couldn't split the doubled "${text}" — rendered once)`)
-    return say(text, opts?.speed)
+    return say(text)
   }
 }
 
@@ -302,21 +366,15 @@ interface Story {
    *  predates the doubled-render fix; Kokoro is deterministic, so this
    *  reproduces the verified files exactly) */
   singleShort?: Lang[]
-  /** Kokoro (EN) speed for this story, when its text reads faster than the
-   *  reference at EN_SPEED (measured in words per second of speech) */
-  enSpeed?: number
 }
 
 const STORIES: Story[] = [
   // 🧒 star stuff EN is the verified reference narration (2026-11-18)
   { key: 'stardust', scripts: STARDUST_SCRIPTS, frozen: ['en'], singleShort: ['en'] },
-  // calibrated to the reference rate (see REF_WORDS_PER_S): 0.8 read 2.54,
-  // 0.76 read 2.29 (speed and rate aren't proportional) → 0.78
-  { key: 'sun', scripts: { en: SUN_NARRATION }, enSpeed: 0.78 },
-  // measured 2.51 words/s at 0.8 vs the reference 2.41 → 0.77
-  { key: 'firework', scripts: { en: FIREWORK_NARRATION }, enSpeed: 0.77 },
-  // calibrated: 0.8 read 2.49, 0.77 read 2.28 → 0.79
-  ...BOMB_MODES.map((m) => ({ key: bombStoryKey(m), scripts: { en: bombNarration(m) }, enSpeed: 0.79 })),
+  // every other story at the reference's own speed (EN_SPEED): same tempo
+  { key: 'sun', scripts: { en: SUN_NARRATION } },
+  { key: 'firework', scripts: { en: FIREWORK_NARRATION } },
+  ...BOMB_MODES.map((m) => ({ key: bombStoryKey(m), scripts: { en: bombNarration(m) } })),
 ]
 
 async function main() {
@@ -324,7 +382,11 @@ async function main() {
   // `npm run generate ru`, `npm run generate stardust de`; no argument
   // renders every story in every language it has a script for
   const unfreeze = process.argv.includes('--unfreeze')
-  const args = process.argv.slice(2).filter((a) => a !== '--unfreeze')
+  // `--test-names <dir>`: render only the EN pieces with Russian names,
+  // as listen-test files in <dir> — the app's audio is left as it is
+  const ti = process.argv.indexOf('--test-names')
+  const testDir = ti > 0 ? resolve(process.argv[ti + 1]) : null
+  const args = process.argv.slice(2).filter((a, i, all) => a !== '--unfreeze' && a !== '--test-names' && all[i - 1] !== '--test-names')
   const langs = Object.keys(VOICES) as Lang[]
   const storyKeys = STORIES.map((s) => s.key)
   for (const a of args) {
@@ -336,6 +398,38 @@ async function main() {
   mkdirSync(WORK, { recursive: true })
 
   const voices = new Map<Lang, Render>()
+  const voice = async (lang: Lang) => {
+    if (!voices.has(lang)) voices.set(lang, await VOICES[lang].make())
+    return voices.get(lang)!
+  }
+  /** an EN piece: Kokoro, with any Russian names said by Svetlana */
+  const renderEn = async (text: string, opts?: { singleShort?: boolean }) =>
+    hasRuName(text) ? renderWithNames(text, await voice('en'), await voice('ru'), opts) : (await voice('en'))(text, opts)
+
+  if (testDir) {
+    mkdirSync(testDir, { recursive: true })
+    for (const story of STORIES) {
+      const lines = story.scripts.en
+      if (!lines) continue
+      for (const [id, line] of Object.entries(lines)) {
+        for (const [p, piece] of parseNarrationLine(line).pieces.entries()) {
+          if (!hasRuName(piece)) continue
+          const chunks: Float32Array[] = []
+          for (const part of piece.split(/\s*\.\.\.\s*/).filter(Boolean)) chunks.push(trimSilence(await renderEn(part)))
+          const name = `${story.key}-${id}${p ? `-${p + 1}` : ''}`
+          const wav = join(WORK, `${name}.wav`)
+          writeFileSync(wav, wavPcm16(joinWithSilence(chunks)))
+          const out = join(testDir, `${name}.m4a`)
+          rmSync(out, { force: true })
+          execFileSync(AFCONVERT, ['-f', 'm4af', '-d', 'aac', wav, out])
+          console.log(`→ ${out}`)
+        }
+      }
+    }
+    rmSync(WORK, { recursive: true, force: true })
+    return
+  }
+
   for (const story of STORIES.filter((s) => !onlyStories.length || onlyStories.includes(s.key))) {
     for (const lang of langs.filter((l) => !onlyLangs.length || onlyLangs.includes(l))) {
       const lines = story.scripts[lang]
@@ -345,14 +439,12 @@ async function main() {
         continue
       }
       const singleShort = story.singleShort?.includes(lang) ?? false
-      if (!voices.has(lang)) voices.set(lang, await VOICES[lang].make())
-      const render = voices.get(lang)!
+      const render: Render = lang === 'en' ? renderEn : await voice(lang)
       const outDir = join(OUT_ROOT, story.key, lang)
       mkdirSync(outDir, { recursive: true })
-      const speed = lang === 'en' ? story.enSpeed : undefined
-      console.log(`\n[${story.key} · ${lang}] ${VOICES[lang].label}${speed ? ` → this story: speed=${speed}` : ''}`)
+      console.log(`\n[${story.key} · ${lang}] ${VOICES[lang].label}`)
       const order = Object.keys(lines)
-      let words = 0
+      let syl = 0
       let speech = 0
       for (const id of order) {
         // a science line's information pieces (' | ') become one file each:
@@ -364,10 +456,10 @@ async function main() {
         for (const [p, piece] of pieces.entries()) {
           const chunks: Float32Array[] = []
           for (const part of piece.split(/\s*\.\.\.\s*/).filter(Boolean)) {
-            chunks.push(trimSilence(await render(part, { singleShort, speed })))
+            chunks.push(trimSilence(await render(part, { singleShort })))
           }
           let samples = joinWithSilence(chunks)
-          words += piece.split(/\s+/).filter((w) => /\p{L}/u.test(w)).length
+          syl += syllables(piece)
           speech += samples.length / SR - (chunks.length - 1) * PAUSE_S
           if (id === order[0] && p === 0) {
             const lead = new Float32Array(Math.round(SR * LEAD_IN_S))
@@ -385,11 +477,13 @@ async function main() {
           console.log(`${name.padEnd(13)} ${(samples.length / SR).toFixed(1).padStart(5)}s`)
         }
       }
-      const wps = words / speech
-      const note = lang !== 'en' ? '' : Math.abs(wps / REF_WORDS_PER_S - 1) > 0.03
-        ? `  ⚠️ off the reference ${REF_WORDS_PER_S} — adjust this story's enSpeed`
-        : `  (reference ${REF_WORDS_PER_S} ✓)`
-      console.log(`speech rate: ${wps.toFixed(2)} words/s${note}`)
+      if (lang === 'en') {
+        const sps = syl / speech
+        const note = Math.abs(sps / REF_SYLLABLES_PER_S - 1) > 0.03
+          ? `  ⚠️ off the reference ${REF_SYLLABLES_PER_S} — check the text (long pauses, odd words), never the speed`
+          : `  (reference ${REF_SYLLABLES_PER_S} ✓)`
+        console.log(`tempo: ${sps.toFixed(2)} syllables/s${note}`)
+      }
     }
   }
   rmSync(WORK, { recursive: true, force: true })
