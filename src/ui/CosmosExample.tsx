@@ -1,4 +1,5 @@
 import { memo, useCallback, useState } from 'react'
+import { useSpaceToPause } from './useSpaceToPause'
 import { PageNav } from './PageNav'
 import {
   CosmosStage,
@@ -12,6 +13,7 @@ import { forgeStory } from '../stage/stardustStory'
 import { STARDUST_SCRIPTS } from '../stage/stardustNarration'
 import { SUN_SCRIPTS } from '../stage/sunNarration'
 import { DETECTIVE_SCRIPTS } from '../stage/detectiveNarration'
+import { GOLD_SCRIPTS } from '../stage/goldNarration'
 import { cancelNarration, useDemoNarration } from './useNarration'
 import { NarrationNotice } from './NarrationNotice'
 import { DemoControls, INFO_PANEL } from './DemoControls'
@@ -19,6 +21,7 @@ import type { NarrationLang } from '../state/voiceStore'
 import { sunMassDefectFraction } from '../core/cosmos'
 import {
   COSMOS_PHOTO_GROUPS,
+  GOLD_PHOTO_GROUPS,
   STARDUST_PHOTO_GROUPS,
   type CosmosPhotoGroup,
 } from '../core/cosmosPhotos'
@@ -27,17 +30,18 @@ import { TimelineColumn, type TimelineItem } from './TimelineColumn'
 import { FLAT, KEY, TRAY } from './surfaces'
 
 // R04 — 🌟 Cosmic origins: the third "Atoms in action" example. Same page
-// anatomy as the bomb and light demos. One journey so far: ☀️ Why the Sun
-// shines (and WHAT it is made of — the recipe beat); star stuff and gold
-// plug in as further chooser rows (steps 36b/36c, to be asked first).
+// anatomy as the bomb and light demos. Four journeys: 🔭 Star detective,
+// ☀️ Why the Sun shines (and WHAT it is made of — the recipe beat),
+// 🧒 You are star stuff and 💍 Where gold comes from.
 
 const defectPct = (sunMassDefectFraction() * 100).toFixed(1)
 
-/** each journey's narration scripts, per language (gold: not yet) */
+/** each journey's narration scripts, per language */
 const NARRATION: Partial<
   Record<CosmosJourneyId, Partial<Record<NarrationLang, Record<string, string>>>>
 > = {
   detective: DETECTIVE_SCRIPTS,
+  gold: GOLD_SCRIPTS,
   stardust: STARDUST_SCRIPTS,
   sun: SUN_SCRIPTS,
 }
@@ -93,6 +97,80 @@ const TRUE_DETECTIVE: Para[] = [
   {
     icon: '📐',
     text: 'In 1814 Joseph von Fraunhofer mapped hundreds of dark lines in sunlight. The photo panel shows them — the Sun\'s barcode.',
+  },
+]
+
+// 💍 where gold comes from — the info panel
+const HOW_GOLD: Para[] = [
+  {
+    icon: '🔥',
+    text: 'Fire, acids and factories only move atoms around — they never change what an atom IS. That is decided by its protons: 79 protons is gold (type 79 into the builder!).',
+  },
+  {
+    icon: '⚫',
+    text: 'When a giant star collapses, its core can be crushed into a neutron star: more matter than the whole Sun, squeezed into a ball about 20 km across, made almost only of neutrons.',
+  },
+  {
+    icon: '🌀',
+    text: 'Two neutron stars circling each other slowly lose energy as ripples in space itself. They spiral closer, faster and faster, and finally crash.',
+  },
+  {
+    icon: '💥',
+    text: 'The crash flings out a spray of hot matter packed with free neutrons. Small atoms in it swallow neutrons faster than they can fall apart; then neutrons turn into protons, and the atoms climb up the periodic table — to gold, platinum and uranium.',
+  },
+  {
+    icon: '🌍',
+    text: 'That gold drifted through space and mixed into the cloud from which the Sun and the Earth formed, 4.6 billion years ago. Every gold atom on Earth is older than the Earth.',
+  },
+]
+
+const HONEST_GOLD: Para[] = [
+  {
+    icon: '🧪',
+    text: 'People CAN make a few gold atoms — in particle accelerators and nuclear reactors — but only a handful, far too few to see, at a cost far above the gold. No fire, chemistry or factory can.',
+  },
+  {
+    icon: '🥄',
+    text: 'A teaspoon of neutron star weighs roughly a billion tonnes: a mountain about half a kilometre high, not Mount Everest. A neutron star is about 20 km across, like a big city.',
+  },
+  {
+    icon: '⚡',
+    text: 'The stuffing is called rapid neutron capture (the r-process). Really the atoms first swallow neutrons in less than a second, and most neutrons turn into protons just after, as the new atoms settle. We show both at once, slowed down.',
+  },
+  {
+    icon: '❓',
+    text: 'Scientists still argue how much of our gold comes from neutron-star crashes and how much from rare kinds of exploding stars.',
+  },
+  {
+    icon: '⚛️',
+    text: 'In the stuffing scene the atoms have no electron rings, on purpose. The spray is billions of degrees hot: no electron can stay on a nucleus, so the atoms are bare cores with their electrons flying around loose. The electrons settle back into shells days later, when the cloud has cooled. That is why the gold atom in the ring has all 79.',
+  },
+  {
+    icon: '🌋',
+    text: 'Most of the young Earth\'s gold sank deep into its iron core. Much of the gold near the surface may have arrived a little later, inside meteorites — made in the same kind of crash either way.',
+  },
+  {
+    icon: '⏱️',
+    text: 'The year counter is real only at the Earth (4.5 billion years) and the Sun\'s cloud (4.6 billion). How long one nugget sat in rock or rode a river differs for every nugget; there the counter just spins.',
+  },
+  {
+    icon: '🎯',
+    text: 'The hero\'s path is a story, not a record — and stars, atoms, the scale and the city are drawn at storybook scale, not a shared one.',
+  },
+]
+
+const TRUE_GOLD: Para[] = [
+  {
+    icon: '📡',
+    text: 'On 17 August 2017 the LIGO and Virgo detectors felt a ripple in space from two neutron stars crashing 130 million light-years away. Telescopes then found the glow — and read freshly made heavy elements in its light, with the star-detective barcode trick.',
+  },
+  {
+    icon: '💰',
+    text: 'That one crash probably made more gold than the whole Earth weighs.',
+  },
+  {
+    icon: '⚗️',
+    text: 'For centuries alchemists tried to turn lead into gold with fire and potions. They could never succeed: the change has to happen inside the nucleus.',
   },
 ]
 
@@ -239,8 +317,32 @@ const DETECTIVE_STEPS: Record<string, TimelineItem> = {
   discovery: { id: 'discovery', group: '🎈 The payoff', icon: '🎈', title: 'Found in the Sun first', text: 'In 1868 a new yellow line in the Sun\'s light: helium, named after helios, the Sun — found on Earth only in 1895.' },
 }
 
+const GOLD_STEPS: Record<string, TimelineItem> = {
+  ring: { id: 'ring', group: '💍 A question', icon: '💍', title: 'Who made this gold?', text: 'No fire and no factory can make gold. So where did the gold in a ring come from?' },
+  zoom: { id: 'zoom', group: '💍 A question', icon: '🔍', title: 'Our hero: one gold atom', text: 'Zoom into the metal: atoms packed side by side. One gets the amber ring — we follow it.' },
+  rewind: { id: 'rewind', group: '⏪ Back in time', icon: '⏪', title: 'Rewind!', text: 'Ring → nugget in a river → rock → the young, glowing Earth → a dust cloud → dark space. More than 4.6 billion years back.' },
+  stars: { id: 'stars', group: '⚫ Two dead stars', icon: '⚫', title: 'Neutron stars', text: 'What a giant star can leave behind when it dies: a tiny, heavy ball made almost only of neutrons.' },
+  teaspoon: { id: 'teaspoon', group: '⚫ Two dead stars', icon: '🥄', title: 'A teaspoon weighs a mountain', text: 'One teaspoon of neutron star weighs as much as a mountain. The whole star is no wider than a city.' },
+  crash: { id: 'crash', group: '💥 The crash', icon: '💥', title: 'They collide', text: 'They spiral in, faster and faster, and crash. A blinding spray full of free neutrons flies out.' },
+  stuff: {
+    id: 'stuff',
+    group: '💥 The crash',
+    icon: '⚛️',
+    title: 'Stuffed with neutrons',
+    text: (
+      <>
+        Atoms in the spray swallow neutrons; some neutrons turn into protons. Platinum, uranium — and with 79 protons, gold!
+        <span className="mt-1 block font-mono text-[12px] text-slate-100">iron (26 protons) → gold (79 protons)</span>
+      </>
+    ),
+  },
+  forward: { id: 'forward', group: '⏩ Forward again', icon: '⏩', title: 'The long way to a hand', text: 'Drifting for ages → a new cloud → the Sun and the Earth → rock → a river nugget → a ring.' },
+  older: { id: 'older', group: '💍 The payoff', icon: '🌟', title: 'Older than the Earth', text: 'Two dead stars made this gold. The gold in a ring is older than the Earth it is worn on.' },
+}
+
 function timelineItems(journey: CosmosJourneyId): TimelineItem[] {
   if (journey === 'detective') return cosmosStoryOrder(journey).map((id) => DETECTIVE_STEPS[id])
+  if (journey === 'gold') return cosmosStoryOrder(journey).map((id) => GOLD_STEPS[id])
   const eq = (s: string) => (
     <span className="mt-1 block font-mono text-[12px] text-slate-100">{s}</span>
   )
@@ -343,7 +445,7 @@ function timelineItems(journey: CosmosJourneyId): TimelineItem[] {
       id: 'scale',
       group: '⚖️ The missing mass',
       icon: '⚖️',
-      title: '4 in, 1 out — lighter!',
+      title: '4 in, 1 out, lighter!',
       text: `The helium weighs ${defectPct}% less than the four hydrogens. The missing bit left as LIGHT.`,
     },
     walk: {
@@ -405,6 +507,8 @@ export function CosmosExample({ active }: { active: boolean }) {
     setSeek((prev) => ({ id, n: (prev?.n ?? 0) + 1 }))
   }, [])
   const running = journey !== null
+  // ⎵ Space = ⏸ Pause / ▶ Resume while a story plays
+  useSpaceToPause(active && running, () => setPaused((v) => !v))
 
   // 🔊 narration: the storyteller voice follows the on-screen beats; while
   // it talks the animation holds in slow motion — listen first, then watch
@@ -441,14 +545,16 @@ export function CosmosExample({ active }: { active: boolean }) {
         />
         <div className={INFO_PANEL}>
           <SectionHeader>How it works</SectionHeader>
-          <Paras items={journey === 'stardust' ? HOW_STARDUST : journey === 'detective' ? HOW_DETECTIVE : HOW_IT_WORKS} />
+          <Paras items={journey === 'stardust' ? HOW_STARDUST : journey === 'detective' ? HOW_DETECTIVE : journey === 'gold' ? HOW_GOLD : HOW_IT_WORKS} />
           <SectionHeader>Honest notes</SectionHeader>
           <Paras
-            items={journey === 'stardust' ? HONEST_STARDUST : journey === 'detective' ? HONEST_DETECTIVE : HONEST}
+            items={
+              journey === 'stardust' ? HONEST_STARDUST : journey === 'detective' ? HONEST_DETECTIVE : journey === 'gold' ? HONEST_GOLD : HONEST
+            }
             className="text-slate-400"
           />
           <SectionHeader>A true story</SectionHeader>
-          <Paras items={journey === 'stardust' ? TRUE_STARDUST : journey === 'detective' ? TRUE_DETECTIVE : TRUE_STORY} />
+          <Paras items={journey === 'stardust' ? TRUE_STARDUST : journey === 'detective' ? TRUE_DETECTIVE : journey === 'gold' ? TRUE_GOLD : TRUE_STORY} />
         </div>
       </div>
 
@@ -472,6 +578,7 @@ export function CosmosExample({ active }: { active: boolean }) {
             <button
               type="button"
               onClick={() => setPaused((v) => !v)}
+              title="Pause or resume the story (Space)"
               aria-pressed={paused}
               className={`absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 text-sm ${
                 paused
@@ -524,7 +631,7 @@ export function CosmosExample({ active }: { active: boolean }) {
               currentId={report.storyId}
               visible={active && rightTab === 'story'}
               onSeek={onSeek}
-              restartIds={['sun', 'giant', 'star']}
+              restartIds={['sun', 'giant', 'star', 'ring']}
               resetKey={journey}
             />
           )}
@@ -552,7 +659,9 @@ const CosmosPhotoPanel = memo(function CosmosPhotoPanel({
         ? COSMOS_PHOTO_GROUPS.filter((g) => g.title === 'How we know the recipe' || g.title === 'The Sun itself')
         : journey === 'sun'
         ? COSMOS_PHOTO_GROUPS
-        : [...COSMOS_PHOTO_GROUPS, ...STARDUST_PHOTO_GROUPS]
+        : journey === 'gold'
+          ? GOLD_PHOTO_GROUPS
+          : [...COSMOS_PHOTO_GROUPS, ...STARDUST_PHOTO_GROUPS, ...GOLD_PHOTO_GROUPS]
   return (
     <>
       {groups.map((group, gi) => (

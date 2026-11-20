@@ -282,6 +282,8 @@ const fresh = (material: CarbonMaterial) => ({
   pushed: -1,
   // 🔦 light
   torchY: 0,
+  /** the kid has moved the torch: the light result can be explained */
+  torchUsed: false,
   photons: [] as Array<{ t0: number; x0: number; y0: number; target: number; color: number; diamond: boolean }>,
   lastPhoton: 0,
   /** when each free electron last caught a bit of light */
@@ -294,8 +296,12 @@ const fresh = (material: CarbonMaterial) => ({
   pressure: 0,
   heat: 0,
   holding: false,
+  /** a fresh PUSH: 1 → 0 — flashes the squeeze gauge so even a tap shows */
+  bump: 0,
   firing: false,
   told: false,
+  /** the last result reported to the narrator (onResult) */
+  result: '' as string,
   /** which electron each words box points at, chosen once */
   pinnedTo: {} as Record<string, number>,
   /** the scene's clock, for the atoms flying to the paper */
@@ -312,6 +318,7 @@ export function CarbonStage({
   resetKey,
   onBecameDiamond,
   onSheets,
+  onResult,
 }: {
   width: number
   height: number
@@ -324,6 +331,9 @@ export function CarbonStage({
   onBecameDiamond?: () => void
   /** ✏️ how many sheets the pencil has left on the paper */
   onSheets?: (n: number) => void
+  /** a scene's outcome is on screen ('power-graphite', 'push-diamond', …)
+   *  — the narrator explains it (crystalIntros.ts CRYSTAL_RESULTS) */
+  onResult?: (key: string) => void
 }) {
   const st = useRef({ ...fresh(material), reset: resetKey })
   const props = useRef({ scene, material, look })
@@ -358,7 +368,11 @@ export function CarbonStage({
     // ---- graphite or diamond? ----
     let target = props.current.material === 'diamond' ? 1 : 0
     if (scene === 'squeeze') {
-      s.pressure = Math.min(1, Math.max(0, s.pressure + (s.holding ? 0.42 : -0.6) * dt))
+      // holding builds the squeeze; letting go lets it sink back slowly, so
+      // a single tap is SEEN (Elena, 2026-11-20: a tap gave no feedback, so
+      // it wasn't clear you have to keep pressing)
+      s.pressure = Math.min(1, Math.max(0, s.pressure + (s.holding ? 0.42 : -0.25) * dt))
+      s.bump = Math.max(0, s.bump - dt * 2.5)
       if (target === 0 && inDiamondZone(s.pressure, s.heat)) {
         target = 1
         if (!s.told) {
@@ -371,6 +385,31 @@ export function CarbonStage({
     s.phase += Math.sign(target - s.phase) * Math.min(Math.abs(target - s.phase), dt * 0.5)
     const ph = s.phase < 0.5 ? 2 * s.phase * s.phase : 1 - 2 * (1 - s.phase) * (1 - s.phase)
     const isDiamond = s.phase > 0.5
+
+    // 🗣️ the scene's outcome, once it is clearly on screen
+    {
+      const settled = s.phase < 0.02 || s.phase > 0.98
+      const mat = isDiamond ? 'diamond' : 'graphite'
+      const result = !settled
+        ? ''
+        : scene === 'write'
+          ? isDiamond
+            ? s.marks.some((m) => m.tear) ? 'write-diamond' : ''
+            : s.marks.some((m) => !m.tear) ? 'write-graphite' : ''
+          : scene === 'push'
+            ? s.touching ? `push-${mat}` : ''
+            : scene === 'light'
+              ? s.torchUsed ? `light-${mat}` : ''
+              : scene === 'power'
+                ? s.on ? `power-${mat}` : ''
+                : scene === 'squeeze' && isDiamond && s.told
+                  ? 'squeeze-diamond'
+                  : ''
+      if (result && result !== s.result) {
+        s.result = result
+        onResult?.(result)
+      }
+    }
 
     const bg = ctx.createLinearGradient(0, 0, 0, H)
     bg.addColorStop(0, '#060b1a')
@@ -465,7 +504,7 @@ export function CarbonStage({
       else if (s.holding && s.heat < 0.45) top('squeezed hard — but too cold. Drag the fire up!')
       else if (s.heat >= 0.45 && !s.holding) top('hot! Now hold the red PUSH button')
       else if (s.holding) top('harder…')
-      else top('hold PUSH to squeeze · drag the 🔥 to heat')
+      else top('first drag the 🔥 up to heat · then hold PUSH to squeeze')
     }
   })
 
@@ -585,7 +624,7 @@ export function CarbonStage({
     drawPencil(ctx, px, tipY, isDiamond)
     label(ctx, isDiamond ? 'a diamond tip, up close ↓' : 'the pencil tip, up close ↓', px + 24, tipY - 22, '#cbd5e1', 12, '', 'left')
 
-    if (isDiamond) headline(ctx, s.marks.some((m) => m.tear) ? 'nothing comes off the diamond — it only scratches the paper' : 'hold and drag on the paper to write')
+    if (isDiamond) headline(ctx, s.marks.some((m) => m.tear) ? 'diamond leaves no line — it only tears the paper' : 'hold and drag on the paper to write')
     else if (s.marks.some((m) => !m.tear) || s.flying.length)
       headline(ctx, 'atoms slide off the bottom sheet onto the paper — that is your line', `sheets used up: ${s.sheets}`)
     else headline(ctx, 'hold and drag on the paper to write')
@@ -1202,10 +1241,24 @@ export function CarbonStage({
     ctx.beginPath()
     ctx.roundRect(gx, gy, 80, 10, 5)
     ctx.fill()
-    ctx.fillStyle = '#f87171'
-    ctx.beginPath()
-    ctx.roundRect(gx, gy, Math.max(10, 80 * s.pressure), 10, 5)
-    ctx.fill()
+    if (s.pressure > 0.01) {
+      ctx.fillStyle = '#f87171'
+      ctx.beginPath()
+      ctx.roundRect(gx, gy, Math.max(4, 80 * s.pressure), 10, 5)
+      ctx.fill()
+    }
+    // how hard is hard enough (at this heat): a white tick to reach
+    const need = 0.5 + 0.2 * Math.max(0.45, s.heat)
+    ctx.fillStyle = 'rgba(241, 245, 249, 0.85)'
+    ctx.fillRect(gx + 80 * need - 1, gy - 3, 2, 16)
+    // a fresh press flashes the gauge
+    if (s.bump > 0) {
+      ctx.strokeStyle = `rgba(251, 191, 36, ${s.bump})`
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.roundRect(gx - 3, gy - 3, 86, 16, 7)
+      ctx.stroke()
+    }
 
     // the fire control: drag the flame
     const { x0, x1, y } = fire
@@ -1233,10 +1286,18 @@ export function CarbonStage({
     e.currentTarget.setPointerCapture(e.pointerId)
     if (scene === 'write') moveWrite(q, true)
     if (scene === 'push') s.side = q.x < (s.block.min + s.block.max) / 2 ? 'left' : 'right'
-    if (scene === 'light') s.torchY = Math.min(H * 0.8, Math.max(H * 0.15, q.y))
+    if (scene === 'light') {
+      s.torchY = Math.min(H * 0.8, Math.max(H * 0.15, q.y))
+      s.torchUsed = true
+    }
     if (scene === 'power' && Math.hypot(q.x - sw.x, q.y - (sw.y - 14)) < 54) s.on = !s.on
     if (scene === 'squeeze') {
-      if (Math.hypot(q.x - button.x, (q.y - button.y) * 1.4) < button.r + 12) s.holding = true
+      if (Math.hypot(q.x - button.x, (q.y - button.y) * 1.4) < button.r + 12) {
+        s.holding = true
+        // every press squeezes a little at once: the gauge jumps and flashes
+        s.pressure = Math.min(1, s.pressure + 0.1)
+        s.bump = 1
+      }
       else if (Math.abs(q.y - fire.y) < 30 && q.x > fire.x0 - 24 && q.x < fire.x1 + 24) {
         s.firing = true
         s.heat = Math.min(1, Math.max(0, (q.x - fire.x0) / (fire.x1 - fire.x0)))
@@ -1295,7 +1356,10 @@ export function CarbonStage({
       s.yaw = s.ptr.yaw0 + (q.x - s.ptr.x0) / 140
       s.pitch = Math.min(1.3, Math.max(-0.3, s.ptr.pitch0 + (q.y - s.ptr.y0) / 180))
     }
-    if (scene === 'light') s.torchY = Math.min(H * 0.8, Math.max(H * 0.15, q.y))
+    if (scene === 'light') {
+      s.torchY = Math.min(H * 0.8, Math.max(H * 0.15, q.y))
+      s.torchUsed = true
+    }
     if (scene === 'squeeze' && s.firing) s.heat = Math.min(1, Math.max(0, (q.x - fire.x0) / (fire.x1 - fire.x0)))
   }
   const onUp = () => {

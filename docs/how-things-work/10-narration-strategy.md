@@ -25,8 +25,11 @@ it was verified with (`singleShort`, see "Short pieces" below).
 | 🌟 Star stuff | 🔭 Star detective | `stage/detectiveNarration.ts` | science; show first for the rainbow, each barcode card and the 1868 eclipse; flow for the light being caught | EN · DE · RU |
 | 🌟 Star stuff | ☀️ Why the Sun shines | `stage/sunNarration.ts` | science | EN · DE · RU |
 | 🌟 Star stuff | 🧒 You are star stuff | `stage/stardustNarration.ts` | story (the reference) | EN · DE · RU |
+| 🌟 Star stuff | 💍 Where gold comes from | `stage/goldNarration.ts` | science; show first for the ring, the two dead stars and the teaspoon scale; flow for the rewind, the crash, the neutron stuffing and the way forward | EN · DE · RU |
+| ⚡ Power plant | 📖 How a power plant works | `stage/plantNarration.ts` | science; show first for the dot tree and the side-by-side charts; flow for the kettle | EN · DE · RU |
+| 🧊 Crystal lab | a short intro per scene + a spoken **result** when a scene's outcome shows (`<scene>-<material>`, said once each) | `stage/crystalIntros.ts` (`CRYSTAL_INTROS`, `CRYSTAL_RESULTS`) | playground: nothing is held | EN · DE · RU |
 
-Stories not built yet (neon, aurora, gold) get their script when they
+Stories not built yet (neon, aurora) get their script when they
 are built — in every language at once. (The star detective — reading a star's light
 barcode — moved from ✨ Light & color to the FIRST row of the 🌟 Star
 stuff chooser on 2026-11-18: the Sun story uses the barcode, so it must
@@ -90,6 +93,17 @@ storyteller's voice, under these rules:
      nebula."* — unless the phrase is strictly wrong without it. The first,
      teaching mention keeps normal grammar ("This cloud is called a
      nebula"); the repeat is the bare word the child should keep.
+3b. **Name what is on screen** (Elena, 2026-11-20). Kids don't read
+   labels; the voice does for them what labels do for adults. When a new
+   picture appears, the line says what each part IS before what it does:
+   "This is a fuel rod, seen very, very close. Inside are uranium atoms.
+   All around the rod is water." The on-canvas names stay small, for the
+   grown-ups.
+3c. **The picture must explain itself** (same day). A cause and its effect
+   must be visibly connected — the hot rod stands IN the water, heat waves
+   roll out of it, the water next to it shakes first, bubbles are born on
+   its surface — using cartoon exaggeration where needed (shaking marks,
+   big flashes, a growing 🔥), like the 🧊 Crystal lab's squeeze & heat.
 4. **Dramatic pauses are written, not hoped for.** A ` ... ` inside a line
    becomes 0.5 s of real silence (the generator renders the chunks
    separately and joins them — Kokoro itself ignores ellipses).
@@ -328,6 +342,28 @@ the lead-in taken out) — what the ear hears. The reference reads 3.32;
 the generator prints each story's tempo and flags more than 3% off, and
 `npm run tempo` (in `scripts/narration-audio/`) checks the rendered
 files. A flagged story means checking the text, never changing the speed.
+
+**Respellings for the voice (RU).** When the Russian voice stresses a
+word wrong in every spelling — stress marks don't help, and the free
+endpoint rejects `<phoneme>` tags — the generator sends it a respelling
+(`RU_RESPELL` in `generate.ts`) while the script keeps the correct word.
+So far: the whole root нейтро́н- in every form (нейтро́н, -а, -ом, -ы, -ов, -ами …, нейтро́нный …; not нейтри́но) → «нейтро**о**н…» (Elena's pick from
+A/B samples, 2026-11-20: "the best, but not ideal"; the step-up is a
+Russian engine that honors stress, e.g. Silero — CC BY-NC — or
+Chatterbox). It applies to every story automatically (bombs, gold, power plant:
+32 + 2 pieces at the time).
+
+**Every language: one speed for all its stories** (Elena, 2026-11-20: a
+language may have its own speed, but it must not vary from demo to demo).
+One voice and one rate per language for every story — EN Kokoro ×0.8,
+DE Seraphina +0%, RU Svetlana −10% — and `npm run tempo [lang]` checks
+the rendered files in all three languages, two ways: the tempo including
+the gaps between sentences, and the pure VOICE speed with every silence
+cut out (an energy detector on the decoded audio). Audit 2026-11-20: the
+voice speed is within ±5% of star stuff in every story and language (RU
+gold +2.3%); what differs is the gap per sentence, set by how a script is
+written (many short sentences = more gaps; the Crystal lab intros have the
+longest).
 Measured after the change: Sun +2.2%, firework +2.7%, Little Boy +0.1%,
 Fat Man −0.3%, Tsar Bomba +1.1%.
 
@@ -509,7 +545,7 @@ public/narration/<story>/<lang>/<beat>.m4a  what the app plays (+ <beat>-2.m4a �
 Regenerate after any line change: `cd scripts/narration-audio && npm
 install && npm run generate [story…] [lang…]` — no argument renders every
 story in every language it has a script for; `npm run generate sun`,
-`npm run generate ru`, `npm run generate stardust de` narrow it down
+`npm run generate ru`, `npm run generate stardust de` narrow it down; `npx tsx generate.ts <story> <lang> --only beat1,beat2` renders just those beats (the free Edge endpoint drops long runs — and a one-line fix shouldn't re-render a whole story)
 (stories: `stardust`, `sun`, `firework`, `bomb-gun`, `bomb-implosion`,
 `bomb-tsar`; the verified 🧒 English is skipped unless `--unfreeze`). The
 first run downloads the ~90 MB Kokoro model, dev-side

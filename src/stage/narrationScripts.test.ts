@@ -3,7 +3,9 @@ import { BOMB_MODES, bombNarration, bombScripts, bombStoryKey } from './bombNarr
 import { FIREWORK_NARRATION, FIREWORK_SCRIPTS } from './fireworkNarration'
 import { SUN_NARRATION, SUN_SCRIPTS } from './sunNarration'
 import { DETECTIVE_NARRATION, DETECTIVE_SCRIPTS } from './detectiveNarration'
-import { CRYSTAL_INTROS, CRYSTAL_INTRO_SCRIPTS } from './crystalIntros'
+import { GOLD_NARRATION, GOLD_SCRIPTS } from './goldNarration'
+import { PLANT_NARRATION, PLANT_SCRIPTS } from './plantNarration'
+import { CRYSTAL_INTRO_SCRIPTS } from './crystalIntros'
 import { STARDUST_SCRIPTS } from './stardustNarration'
 import { WATCH_BREAK_S, lineMarks, parseNarrationLine } from './narrationScript'
 
@@ -21,7 +23,14 @@ const ORDERS: Record<string, string[]> = {
   firework: ['scene', 'zoom', ...n('closeup', 5), 'barcode', 'payoff'],
   sun: ['sun', 'recipe', 'zoom', ...n('closeup', 4), 'scale', 'walk', 'valley'],
   detective: ['star', 'prism', 'catch', 'hydrogen', 'oxygen', 'helium', 'discovery'],
-  'crystal-lab': ['look', 'write', 'push', 'light', 'power', 'squeeze'],
+  gold: ['ring', 'zoom', 'rewind', 'stars', 'teaspoon', 'crash', 'stuff', 'forward', 'older'],
+  plant: ['remember', 'rods', 'steady', 'heat', 'kettle', 'lights', 'safe', 'waste'],
+  'crystal-lab': [
+    ...['look', 'write', 'push', 'light', 'power', 'squeeze'],
+    // the spoken results (CRYSTAL_RESULTS)
+    ...['write-graphite', 'write-diamond', 'push-graphite', 'push-diamond', 'light-graphite', 'light-diamond'],
+    ...['power-graphite', 'power-diamond', 'squeeze-diamond'],
+  ],
 }
 
 const SCRIPTS: Record<string, Record<string, string>> = {
@@ -29,7 +38,9 @@ const SCRIPTS: Record<string, Record<string, string>> = {
   firework: FIREWORK_NARRATION,
   sun: SUN_NARRATION,
   detective: DETECTIVE_NARRATION,
-  'crystal-lab': CRYSTAL_INTROS,
+  gold: GOLD_NARRATION,
+  plant: PLANT_NARRATION,
+  'crystal-lab': CRYSTAL_INTRO_SCRIPTS.en,
 }
 
 /** every story's scripts in every language (EN is SCRIPTS above) */
@@ -38,6 +49,8 @@ const ALL_LANGS: Record<string, Partial<Record<'en' | 'de' | 'ru', Record<string
   firework: FIREWORK_SCRIPTS,
   sun: SUN_SCRIPTS,
   detective: DETECTIVE_SCRIPTS,
+  gold: GOLD_SCRIPTS,
+  plant: PLANT_SCRIPTS,
   'crystal-lab': CRYSTAL_INTRO_SCRIPTS,
 }
 
@@ -85,7 +98,7 @@ describe('the DE and RU translations (bombs, firework, Sun)', () => {
       for (const [id, line] of Object.entries(langs.ru!)) expect(plain(line), `${key}:${id}`).not.toMatch(homographs)
     }
     const all = Object.values(ALL_LANGS).flatMap((l) => Object.values(l.ru!)).join(' ')
-    for (const term of ['Крити́ческая', 'Цепна́я', 'Деле́ние', 'Уда́рная', 'Гриб', 'Водоро́д', 'Ге́лий', 'Дейте́рий', 'Нейтри́но', 'Си́нтез', 'Ли́тий', 'Фото́н', 'На́трий'])
+    for (const term of ['Крити́ческая', 'Цепна́я', 'Деле́ние', 'Уда́рная', 'Гриб', 'Водоро́д', 'Ге́лий', 'Дейте́рий', 'Нейтри́но', 'Си́нтез', 'Ли́тий', 'Фото́н', 'На́трий', 'Нейтро́нная звезда́.'])
       expect(all, term).toContain(term)
     for (const word of ['ещё', 'всё', 'её', 'учёных', 'жёлтыми', 'отсчёт', 'несётся', 'растёт']) expect(all, word).toContain(word)
   })
@@ -189,6 +202,48 @@ describe('the narration scripts (bombs, firework, Sun)', () => {
     const lines = SCRIPTS.firework
     const flowing = Object.keys(lines).filter((id) => parseNarrationLine(lines[id]).flow)
     expect(flowing).toEqual(['scene', 'barcode', 'payoff'])
+  })
+
+  it('💍 gold: never freezes the rewind, the crash, the stuffing or the way forward (flow)', () => {
+    for (const lines of Object.values(GOLD_SCRIPTS)) {
+      const flowing = Object.keys(lines).filter((id) => parseNarrationLine(lines[id]).flow)
+      expect(flowing).toEqual(['rewind', 'crash', 'stuff', 'forward'])
+    }
+    // the hand, the two dead stars and the balanced scale show before they are named
+    for (const id of ['ring', 'stars', 'teaspoon']) expect(parseNarrationLine(GOLD_NARRATION[id]).watchFirst, id).toBeGreaterThan(0)
+  })
+
+  it('💍 gold: one new term, taught slowly; the question and the aha are said', () => {
+    const all = Object.values(GOLD_NARRATION).join(' ')
+    expect(all).toContain('neutron star. ... Neutron. Star.')
+    expect(all).toContain('who made the gold in this ring?')
+    expect(all).toContain('seventy nine protons')
+    expect(GOLD_NARRATION.older).toContain('older than the Earth it is worn on')
+    // honest: people CAN make a few gold atoms in accelerators — so never
+    // "nobody can make gold", only no fire, no factory
+    expect(all).not.toMatch(/nobody can make gold|you can't make gold|cannot make gold/i)
+    expect(Object.values(GOLD_SCRIPTS.de).join(' ')).toContain('Neutronenstern. ... Neutronen. Stern.')
+  })
+
+  it('⚡ power plant: three new words taught, the honest part said, kettle flows', () => {
+    const all = Object.values(PLANT_NARRATION).join(' ')
+    expect(all).toContain('control rods. ... Control. Rods.')
+    expect(all).toContain('turbine. ... Turbine.')
+    expect(all).toContain('generator. ... Generator.')
+    expect(all).toContain('a very big kettle')
+    expect(PLANT_NARRATION.safe).toContain('can never explode like the bomb')
+    expect(PLANT_NARRATION.waste).toContain('That problem is not solved yet')
+    expect(PLANT_NARRATION.waste).toContain('radioactive. ... Radio. Active.')
+    expect(PLANT_NARRATION.waste).toContain('deep pool of water')
+    expect(PLANT_NARRATION.waste).toContain('steel and concrete')
+    for (const lines of Object.values(PLANT_SCRIPTS)) {
+      expect(Object.keys(lines).filter((id) => parseNarrationLine(lines[id]).flow)).toEqual(['steady', 'kettle'])
+      for (const id of ['remember', 'steady', 'heat']) expect(parseNarrationLine(lines[id]).watchFirst, id).toBeGreaterThan(0)
+    }
+    const de = Object.values(PLANT_SCRIPTS.de).join(' ')
+    for (const t of ['Steuer. Stäbe.', 'Turbine. ... Turbine.', 'Generator. ... Generator.']) expect(de, t).toContain(t)
+    // RU: the two-word term repeated as one phrase (a lone adjective got the wrong stress)
+    expect(Object.values(PLANT_SCRIPTS.ru).join(' ')).toContain('Управля́ющие сте́ржни.')
   })
 
   it('plays the apple-and-kid animation while it is told (flow), in every language', () => {

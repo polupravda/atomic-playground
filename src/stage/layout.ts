@@ -1,13 +1,14 @@
 import { shellCapacity, shellConfiguration } from '../core/atom'
 import type { ParticleKind } from '../state/atomStore'
 
-// The stage fills the viewport height (measured once at load); 46 px covers
-// the page padding (py-5 → 40 px) and container borders. All layout derives
-// from it.
+// The stage fills the viewport height (measured once at load) down to the
+// screen's bottom edge (Elena, 2026-11-20: no gap below the canvases);
+// 22 px covers the page's top padding (pt-5 → 20 px) and the canvas
+// border. All layout derives from it.
 export const STAGE_W = 820
 export const STAGE_H = Math.max(
   640,
-  (typeof window !== 'undefined' ? window.innerHeight : 640) - 46,
+  (typeof window !== 'undefined' ? window.innerHeight : 640) - 22,
 )
 export const BUCKET_Y = STAGE_H - 68
 export const CENTER = { x: STAGE_W / 2, y: (BUCKET_Y - 26) / 2 }

@@ -17,7 +17,8 @@ import { FLAT, KEY } from './surfaces'
 // 24 gap − 2 canvas border
 const W = Math.max(620, Math.min(window.innerWidth, 1440) - 48 - 256 - 24 - 2)
 // full page height: viewport − 40 page padding − 2 canvas border
-const H = Math.max(480, window.innerHeight - 42)
+// down to the screen's bottom edge: 20 px top padding + 2 px border
+const H = Math.max(480, window.innerHeight - 22)
 const R = 20
 const FIELD_BOTTOM = H - 78 // below this line live the trays
 const K = 60000 // Coulomb constant, in pixel units
@@ -502,7 +503,7 @@ export function ChargePlayground() {
             onClick={() => setClearSignal((n) => n + 1)}
             className={`absolute bottom-3 right-3 px-3 py-1.5 text-sm text-slate-300 ${KEY}`}
           >
-            🧹 Clear field
+            ↺ Reset
           </button>
         </div>
       </div>

@@ -110,12 +110,25 @@ in `src/ui/surfaces.ts` — use them instead of hand-written box styles:
 
 - `KEY` — a pressable button: lit top edge, short shadow, 1 px lift on
   hover, 1 px press. Drawer buttons (🧪 Periodic table, 🌡️ States of
-  matter, Light lab scenes), "Choose another …", ⏸ Pause, Reset/Clear.
+  matter, Light lab scenes), "Choose another …", ⏸ Pause, ↺ Reset (one name everywhere: the bonding lab's "Clear table" and the charge playground's "Clear field" became ↺ Reset, 2026-11-20).
 - `CHIP_KEY` — the same key as a small pill (lamp colors, quick jumps).
 - `FLAT` — panels you read and a control's home card: no border, no
   shadow, a faint fill (info panels, readouts, photo cards, the menu).
 - `TRAY` — a sunken tray holding a set of choices (tabs, view toggles,
   languages); the chosen one is the sky fill inside it.
+
+**One way to choose (2026-11-20, Elena):** every "pick one of a few"
+control is `ui/SegmentedSwitch.tsx` — the atom builder's Shells · Cloud ·
+Orbitals look (a `TRAY`, choices side by side, the current one sky; more
+options wrap into a grid with `columns`). No heading over a selector whose
+options name themselves (the "On the table" / "On the film" cards are
+gone). Where selectors live (canvas vs column), the lamp chips and the
+remaining card headings are open: proposals in
+https://claude.ai/artifact/G8KDZ9VucxtgPqpYoJ8EaC (option A recommended:
+everything in the side column, fixed order — how you look → what is on
+stage → sliders → actions → scene buttons). Reset buttons carry ↺.
+Labels stay concise: a heading names the control ("🌈 Wavelength",
+"💡 Brightness"), never with an aside after a dash.
 
 Color keeps one meaning each: sky blue = your current choice; amber = look
 here, happening now; the chooser's ▶ Watch it stays the one solid call to

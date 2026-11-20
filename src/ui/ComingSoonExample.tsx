@@ -11,9 +11,9 @@ import type { ExampleId } from '../state/pageStore'
 // inside the built demos (neon, aurora, gold) — so kids and grown-ups can
 // see what is coming. Nothing here plays.
 
-export type PlannedExampleId = Extract<ExampleId, 'plant' | 'atoms' | 'crystals'>
+export type PlannedExampleId = Extract<ExampleId, 'atoms' | 'crystals'>
 
-type ThumbId = 'plant' | 'operator' | 'candle' | 'tree' | 'diamond' | 'snowflake'
+export type ThumbId = 'plant' | 'operator' | 'candle' | 'tree' | 'diamond' | 'snowflake'
 
 interface PlannedStory {
   thumb: ThumbId
@@ -31,28 +31,6 @@ interface PlannedDemo {
 }
 
 export const PLANNED: Record<PlannedExampleId, PlannedDemo> = {
-  plant: {
-    title: '⚡ Power plant',
-    proposal: 'proposal 07',
-    stories: [
-      {
-        thumb: 'plant',
-        label: '📖 How a power plant works',
-        subtitle: 'a steady chain · steam · the lights at home',
-        about: 'The same chain reaction as the bomb, kept steady: every split causes exactly one next split. Its heat boils water, the steam spins a turbine, and a little town lights up.',
-      },
-      {
-        thumb: 'operator',
-        label: '🕹️ You are the operator',
-        subtitle: 'the control rods are yours',
-        about: 'Push the control rods in and out yourself and keep the chain steady — too few splits and the lights go out, too many and the plant shuts itself down.',
-      },
-    ],
-    how: [
-      { icon: '⚖️', text: 'The physics is the same as the bomb; control is the only difference.' },
-      { icon: '🧯', text: 'Reactor fuel cannot explode like a bomb: it has far too little of the splitting kind of uranium.' },
-    ],
-  },
   atoms: {
     title: '♻️ Atoms never vanish',
     proposal: 'the story designs (doc 12)',
@@ -272,7 +250,8 @@ function drawThumb(ctx: CanvasRenderingContext2D, id: ThumbId, w: number, h: num
   }
 }
 
-function Thumb({ id, w, h }: { id: ThumbId; w: number; h: number }) {
+/** a story's small night-scene picture (also the ⚡ power plant chooser's) */
+export function Thumb({ id, w, h }: { id: ThumbId; w: number; h: number }) {
   const ref = useRef<HTMLCanvasElement | null>(null)
   useEffect(() => {
     const c = ref.current

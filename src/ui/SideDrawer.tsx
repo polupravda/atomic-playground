@@ -10,6 +10,7 @@ export function SideDrawer({
   onClose,
   ariaLabel,
   widthClassName = 'w-[min(100vw,86rem)]',
+  flushBottom = false,
   children,
 }: {
   open: boolean
@@ -18,6 +19,8 @@ export function SideDrawer({
   /** Tailwind width class for the panel; defaults to the near-full-screen
    *  size used by big views like the periodic table. */
   widthClassName?: string
+  /** no bottom padding: a canvas inside runs down to the screen's edge */
+  flushBottom?: boolean
   children: React.ReactNode
 }) {
   useEffect(() => {
@@ -44,7 +47,7 @@ export function SideDrawer({
             role="dialog"
             aria-modal="true"
             aria-label={ariaLabel}
-            className={`fixed right-0 top-0 z-50 flex h-screen ${widthClassName} flex-col overflow-auto border-l border-slate-700 bg-slate-900 p-5 shadow-2xl`}
+            className={`fixed right-0 top-0 z-50 flex h-screen ${widthClassName} flex-col overflow-auto border-l border-slate-700 bg-slate-900 p-5 ${flushBottom ? 'pb-0' : ''} shadow-2xl`}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}

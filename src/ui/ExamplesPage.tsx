@@ -1,4 +1,5 @@
 import { memo, useCallback, useState } from 'react'
+import { useSpaceToPause } from './useSpaceToPause'
 import { PageNav } from './PageNav'
 import { usePageStore } from '../state/pageStore'
 import { FissionStage, chooserRows, type FissionReport } from '../stage/FissionStage'
@@ -9,6 +10,7 @@ import { BombsTable, ChainStats, CompareTable, DamageLegend, ParticleLegend } fr
 import { StoryTimeline } from './StoryTimeline'
 import { BombsIcon } from './BombsIcon'
 import { ComingSoonExample } from './ComingSoonExample'
+import { PlantExample } from './PlantExample'
 import { LightExample } from './LightExample'
 import { CosmosExample } from './CosmosExample'
 import { Paras, SectionHeader, type Para } from './Paras'
@@ -166,7 +168,10 @@ export function ExamplesPage() {
       <div className={example === 'cosmos' ? 'h-full' : 'hidden'}>
         <CosmosExample active={page === 'examples' && example === 'cosmos'} />
       </div>
-      {(['plant', 'atoms', 'crystals'] as const).map((id) => (
+      <div className={example === 'plant' ? 'h-full' : 'hidden'}>
+        <PlantExample active={page === 'examples' && example === 'plant'} />
+      </div>
+      {(['atoms', 'crystals'] as const).map((id) => (
         <div key={id} className={example === id ? 'h-full' : 'hidden'}>
           <ComingSoonExample id={id} />
         </div>
@@ -215,6 +220,8 @@ function BombExample({ active }: { active: boolean }) {
   // texts that need a fuel fall back to Little Boy's on the chooser
   const m = mode ?? 'gun'
   const running = mode !== null
+  // ⎵ Space = ⏸ Pause / ▶ Resume while a story plays
+  useSpaceToPause(active && running, () => setPaused((v) => !v))
 
   return (
     <div className="grid h-full min-h-0 grid-cols-[16rem_minmax(0,1fr)_18rem] grid-rows-[minmax(0,1fr)] gap-x-6">
@@ -306,6 +313,7 @@ function BombExample({ active }: { active: boolean }) {
             <button
               type="button"
               onClick={() => setPaused((v) => !v)}
+              title="Pause or resume the story (Space)"
               aria-pressed={paused}
               className={`absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 text-sm ${
                 paused

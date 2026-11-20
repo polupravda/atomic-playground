@@ -194,7 +194,7 @@ The lab is now ONE block of carbon in six scenes. Built:
     press. The same 63 atoms before and after (each graphite atom takes a
     short trip to its own diamond place, `core/crystals.ts diamondFor`).
 - One color for all carbon atoms (the color difference had no reason).
-- An on-canvas **↺ Reset** in every scene (as 🧹 Clear field in the
+- An on-canvas **↺ Reset** in every scene (as ↺ Reset, formerly 🧹 Clear field, in the
   Charge playground).
 - **Removed:** 🩹 peel a sheet, the depth map ("like 225 km under the
   ground"), ❄️ Snowflake, 🧂 Salt.

@@ -40,6 +40,45 @@ export const STARDUST_PHOTO_GROUPS: CosmosPhotoGroup[] = [
   },
 ]
 
+/** 💍 Where gold comes from (fetched 2026-11-20, resized with sips -Z 560,
+ *  visually checked; all three need their credit line: CC BY) */
+export const GOLD_PHOTO_GROUPS: CosmosPhotoGroup[] = [
+  {
+    title: 'Gold, as the Earth gives it',
+    photos: [
+      {
+        file: 'gold-nugget.jpg',
+        caption:
+          'A real gold nugget from Australia, almost as heavy as a bag of sugar. Every atom of its gold is older than the Earth.',
+        creator: 'James St. John (Field Museum, Chicago)',
+        license: 'CC BY 2.0',
+        source: 'https://commons.wikimedia.org/wiki/File:Gold_nugget_(Australia)_4_(16848647509).jpg',
+      },
+    ],
+  },
+  {
+    title: 'The crash, seen for real',
+    photos: [
+      {
+        file: 'cosmos-neutron-merger.jpg',
+        caption:
+          'An artist\'s picture of two neutron stars crashing together, flinging out a spray of hot matter.',
+        creator: 'University of Warwick / Mark Garlick (ESO)',
+        license: 'CC BY 4.0',
+        source: "https://commons.wikimedia.org/wiki/File:Eso1733s_Artist's_impression_of_merging_neutron_stars.jpg",
+      },
+      {
+        file: 'cosmos-kilonova.jpg',
+        caption:
+          'August 2017: Hubble watched the glow of a real neutron-star crash fade over six days (the small boxes). That glowing cloud was full of freshly made heavy elements, gold among them.',
+        creator: 'NASA, ESA; A. J. Levan, N. R. Tanvir, A. Fruchter, O. Fox',
+        license: 'CC BY 4.0',
+        source: 'https://commons.wikimedia.org/wiki/File:Hubble_observes_first_kilonova.jpg',
+      },
+    ],
+  },
+]
+
 /** ☀️ Why the Sun shines */
 export const COSMOS_PHOTO_GROUPS: CosmosPhotoGroup[] = [
   {

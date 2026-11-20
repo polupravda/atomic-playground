@@ -267,7 +267,7 @@ export function CountsPanel() {
         disabled={protons + neutrons + electrons === 0}
         className={`mt-4 w-full px-3 py-1.5 text-sm text-slate-200 ${KEY}`}
       >
-        Reset atom
+        ↺ Reset atom
       </button>
     </aside>
   )

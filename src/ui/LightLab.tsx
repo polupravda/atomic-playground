@@ -10,7 +10,6 @@ import {
   WaveStage,
   dropRadius,
   type PrismSetup,
-  lampMixCss,
   type EyeLampSetting,
   type LampLevels,
   type WaveScene,
@@ -55,6 +54,7 @@ import {
 } from '../core/xray'
 import { Paras, SectionHeader, type Para } from './Paras'
 import { SideDrawer } from './SideDrawer'
+import { SegmentedSwitch } from './SegmentedSwitch'
 import { CHIP_KEY, FLAT, KEY, TRAY } from './surfaces'
 
 // 💡 Light lab (proposal 09, Milestone 10) — a BUILDER like the atom
@@ -96,38 +96,26 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-/** the lamp's color choices (the eye and prism scenes): every chip shows
- *  its color as a dot — most kids read the dot before the word */
-function LampChips({ value, onChange }: { value: EyeLampSetting; onChange: (v: EyeLampSetting) => void }) {
-  const chip = (id: EyeLampSetting, name: string, css: string) => {
-    const on = value === id
-    return (
-      <button
-        key={String(id)}
-        type="button"
-        onClick={() => onChange(id)}
-        aria-current={on ? 'page' : undefined}
-        className={`flex items-center gap-1.5 rounded-full border py-1 pl-1.5 pr-2.5 text-xs transition ${
-          on
-            ? `border-slate-200 font-medium ${id === 'white' ? 'text-slate-900' : 'text-white'}`
-            : `${CHIP_KEY} text-slate-300`
-        }`}
-        style={on ? { background: css } : undefined}
-      >
-        <span
-          aria-hidden
-          className={`h-3.5 w-3.5 shrink-0 rounded-full ${on ? 'ring-2 ring-white/80' : 'ring-1 ring-slate-500/60'}`}
-          style={{ background: css }}
-        />
-        {name}
-      </button>
-    )
-  }
+/** the lamp's color choices (the eye and prism scenes): the shared
+ *  switch, every option with its color as a dot — most kids read the dot
+ *  before the word. No "The lamp" heading (Elena, 2026-11-20: no heading
+ *  over choices that name themselves); the lamp on the canvas changes
+ *  color as you pick. */
+function LampSwitch({ value, onChange }: { value: EyeLampSetting; onChange: (v: EyeLampSetting) => void }) {
+  const options = [
+    { id: 'white', label: 'white', dot: '#f1f5f9' },
+    // "sodium orange" doesn't fit half a tray: the dot shows the color, the
+    // hover text keeps the full name
+    ...EYE_LAMPS.map((l) => ({ id: String(l.nm), label: l.name.replace(/^sodium /, ''), title: l.name, dot: wavelengthToCss(l.nm) })),
+  ]
   return (
-    <div className="flex flex-wrap gap-1">
-      {chip('white', 'white', '#f1f5f9')}
-      {EYE_LAMPS.map((l) => chip(l.nm, l.name, wavelengthToCss(l.nm)))}
-    </div>
+    <SegmentedSwitch
+      ariaLabel="Lamp color"
+      columns={2}
+      options={options}
+      value={String(value)}
+      onChange={(id) => onChange(id === 'white' ? 'white' : Number(id))}
+    />
   )
 }
 
@@ -164,6 +152,14 @@ function LabSlider({
   )
 }
 
+/** Light lab DRAWER scenes designed in proposal 11 (L14–L16), not built
+ *  yet: listed with the other scene buttons, switched off, "🔜 soon" */
+const PLANNED_SCENES: Array<{ label: string; about: string }> = [
+  { label: '🔬 Microscopes', about: 'why light can only see so small' },
+  { label: '🌅 Blue sky, red sunset', about: 'air bounces blue light around' },
+  { label: '🔦 Lasers', about: 'light that marches in step' },
+]
+
 /** the scenes that open in a drawer over the wave machine (the main view),
  *  like the atom builder's 🌡️ States of matter */
 const DRAWER_SCENES = SCENES.filter((s) => s.id !== 'wave')
@@ -180,7 +176,7 @@ const LAB_W = 256 + 24 + WAVE_W + 2 + 24 + 264
 function drawerFit() {
   const room = Math.min(window.innerWidth - DRAWER_GAP_PX, DRAWER_MAX_PX) - DRAWER_PAD_PX
   const k = Math.min(1, room / LAB_W)
-  return { k, height: (window.innerHeight - 40) / k }
+  return { k, height: (window.innerHeight - 20) / k }
 }
 
 export function LightLab() {
@@ -205,6 +201,19 @@ export function LightLab() {
                 {s.label}
               </button>
             ))}
+            {/* designed, not built yet: the same scene buttons, switched off */}
+            {PLANNED_SCENES.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                disabled
+                title={`${p.about} — coming soon`}
+                className={`flex w-64 items-center justify-between px-4 py-2.5 text-left text-sm text-slate-200 ${KEY}`}
+              >
+                <span>{p.label}</span>
+                <span className="text-xs text-slate-400">🔜 soon</span>
+              </button>
+            ))}
           </div>
         }
       />
@@ -214,13 +223,14 @@ export function LightLab() {
         ariaLabel={openScene ? `${openScene.label.slice(openScene.label.indexOf(' ') + 1)} — Light lab scene` : 'Light lab scene'}
         // = DRAWER_GAP_PX / DRAWER_MAX_PX (Tailwind needs the literal class)
         widthClassName="w-[min(calc(100vw_-_96px),1376px)]"
+        flushBottom
       >
         {openScene && (
           // a fresh lab for the scene: its own knobs, its own canvas —
           // scaled to the drawer
           <div
             className="overflow-hidden"
-            style={{ width: LAB_W * drawerFit().k, height: window.innerHeight - 40 }}
+            style={{ width: LAB_W * drawerFit().k, height: window.innerHeight - 20 }}
           >
           <div
             style={{
@@ -1037,53 +1047,28 @@ function LightLabView({
         {top}
 
         {scene === 'wave' && (
-        <Card title="Two pictures of the same light">
-          <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
-            {(
-              [
-                ['wave', '🌊 Wave'],
-                ['photons', '⚪ Photons'],
-              ] as const
-            ).map(([id, text]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setView(id)}
-                aria-pressed={view === id}
-                className={`flex-1 rounded-md px-2 py-1 transition ${
-                  view === id
-                    ? 'bg-sky-600 font-medium text-white'
-                    : 'text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {text}
-              </button>
-            ))}
-          </div>
-        </Card>
+          <SegmentedSwitch
+            ariaLabel="Wave or photons"
+            options={[
+              { id: 'wave', label: '🌊 Wave' },
+              { id: 'photons', label: '⚪ Photons' },
+            ]}
+            value={view}
+            onChange={setView}
+          />
         )}
 
         {scene === 'xray' ? (
           <>
-            <Card title="🩻 On the film">
-              <div className="grid grid-cols-1 gap-1">
-                {XRAY_OBJECT_ORDER.map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setXrayObject(id)}
-                    aria-current={xrayObject === id ? 'page' : undefined}
-                    className={`rounded-lg px-2 py-1 text-left text-sm transition ${
-                      xrayObject === id
-                        ? 'bg-sky-600 font-medium text-white'
-                        : 'text-slate-300 hover:bg-slate-700'
-                    }`}
-                  >
-                    {XRAY_OBJECTS[id].emoji} {XRAY_OBJECTS[id].name}
-                  </button>
-                ))}
-              </div>
-            </Card>
+            <SegmentedSwitch
+              ariaLabel="What lies on the film"
+              options={XRAY_OBJECT_ORDER.map((id) => ({
+                id,
+                label: `${XRAY_OBJECTS[id].emoji} ${XRAY_OBJECTS[id].name.replace(/^an? /, '')}`,
+              }))}
+              value={xrayObject}
+              onChange={setXrayObject}
+            />
 
             <Card title="🐢 Ray speed">
               <LabSlider
@@ -1097,116 +1082,62 @@ function LightLabView({
           </>
         ) : scene === 'prism' ? (
           <>
-            <Card title="🔍 What the light goes through">
-              <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
-                {(
-                  [
-                    ['prism', '🔼 Prism'],
-                    ['drop', '💧 Raindrop'],
-                  ] as const
-                ).map(([id, text]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setPrism((p) => ({ ...p, shape: id }))}
-                    aria-pressed={prism.shape === id}
-                    className={`flex-1 rounded-lg px-2 py-1 transition ${
-                      prism.shape === id ? 'bg-sky-600 font-medium text-white' : 'text-slate-300 hover:bg-slate-700'
-                    }`}
-                  >
-                    {text}
-                  </button>
-                ))}
-              </div>
-              {prism.shape === 'prism' && (
-                <>
-                  <div className="mb-1 mt-3 text-xs text-slate-400">made of</div>
-                  <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
-                    {(
-                      [
-                        ['glass', '🪟 glass'],
-                        ['water', '💧 water'],
-                        ['diamond', '💎 diamond'],
-                      ] as const
-                    ).map(([id, text]) => (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => setPrism((p) => ({ ...p, material: id }))}
-                        aria-pressed={prism.material === id}
-                        className={`flex-1 rounded-lg px-1 py-1 text-xs transition ${
-                          prism.material === id ? 'bg-sky-600 font-medium text-white' : 'text-slate-300 hover:bg-slate-700'
-                        }`}
-                      >
-                        {text}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setPrism((p) => ({ ...p, angle: 0 }))}
-                    className={`mt-3 w-full px-3 py-1.5 text-sm text-slate-200 ${KEY}`}
-                  >
-                    ↺ Straighten the prism
-                  </button>
-                </>
-              )}
-              {prism.shape === 'drop' && (
+            <SegmentedSwitch
+              ariaLabel="Prism or raindrop"
+              options={[
+                { id: 'prism', label: '🔼 Prism' },
+                { id: 'drop', label: '💧 Raindrop' },
+              ]}
+              value={prism.shape}
+              onChange={(shape) => setPrism((p) => ({ ...p, shape }))}
+            />
+            {prism.shape === 'prism' && (
+              <>
+                <SegmentedSwitch
+                  ariaLabel="What the prism is made of"
+                  options={[
+                    // plain words: three emoji labels don't fit one row
+                    { id: 'glass', label: 'glass' },
+                    { id: 'water', label: 'water' },
+                    { id: 'diamond', label: 'diamond' },
+                  ]}
+                  value={prism.material}
+                  onChange={(material) => setPrism((p) => ({ ...p, material }))}
+                />
                 <button
                   type="button"
-                  onClick={() => setPrism((p) => ({ ...p, impact: DEFAULT_PRISM.impact }))}
-                  className={`mt-3 w-full px-3 py-1.5 text-sm text-slate-200 ${KEY}`}
+                  onClick={() => setPrism((p) => ({ ...p, angle: 0 }))}
+                  className={`w-64 px-3 py-1.5 text-sm text-slate-200 ${KEY}`}
                 >
-                  🌈 Aim at the rainbow spot
+                  ↺ Straighten the prism
                 </button>
-              )}
-            </Card>
-            <Card title="💡 The lamp">
-              <LampChips value={prismLamp} onChange={setPrismLamp} />
-            </Card>
+              </>
+            )}
+            {prism.shape === 'drop' && (
+              <button
+                type="button"
+                onClick={() => setPrism((p) => ({ ...p, impact: DEFAULT_PRISM.impact }))}
+                className={`w-64 px-3 py-1.5 text-sm text-slate-200 ${KEY}`}
+              >
+                🌈 Aim at the rainbow spot
+              </button>
+            )}
+            <LampSwitch value={prismLamp} onChange={setPrismLamp} />
           </>
         ) : scene === 'eye' ? (
           <>
-            <Card title="🍎 On the table">
-              <div className="grid grid-cols-1 gap-1">
-                {EYE_OBJECT_ORDER.map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setEyeObject(id)}
-                    aria-current={eyeObject === id ? 'page' : undefined}
-                    className={`rounded-lg px-2 py-1 text-left text-sm transition ${
-                      eyeObject === id
-                        ? 'bg-sky-600 font-medium text-white'
-                        : 'text-slate-300 hover:bg-slate-700'
-                    }`}
-                  >
-                    {EYE_OBJECTS[id].emoji} {EYE_OBJECTS[id].name}
-                  </button>
-                ))}
-              </div>
-            </Card>
+            <SegmentedSwitch
+              ariaLabel="What the lamp shines on"
+              columns={2}
+              options={EYE_OBJECT_ORDER.map((id) => ({ id, label: `${EYE_OBJECTS[id].emoji} ${EYE_OBJECTS[id].name}` }))}
+              value={eyeObject}
+              onChange={setEyeObject}
+            />
 
-            <Card title="💡 The lamp">
-              <LampChips value={eyeLamp} onChange={setEyeLamp} />
-            </Card>
+            <LampSwitch value={eyeLamp} onChange={setEyeLamp} />
           </>
         ) : scene === 'lamps' ? (
           <>
-            <Card title="The light you built">
-              <div className="flex items-center gap-3">
-                <span
-                  aria-hidden
-                  className="h-10 w-10 shrink-0 rounded-lg border border-slate-600"
-                  style={{ background: lampMixCss(lamps) }}
-                />
-                <div className="text-sm leading-snug">
-                  <div className="font-medium text-slate-100">the middle of the wall</div>
-                  <div className="text-xs text-slate-400">where all the lamps overlap</div>
-                </div>
-              </div>
-            </Card>
-
             <Card title="🔦 The three lamps">
               {(
                 [
@@ -1230,29 +1161,7 @@ function LightLabView({
           </>
         ) : (
           <>
-            <Card title="The light you built">
-              <div className="flex items-center gap-3">
-                <span
-                  aria-hidden
-                  className="h-10 w-10 shrink-0 rounded-lg border border-slate-600"
-                  style={{
-                    background: visible ? wavelengthToCss(nm) : '#1e293b',
-                    opacity: visible ? 0.35 + 0.65 * brightness : 1,
-                  }}
-                />
-                <div className="text-sm leading-snug">
-                  <div className="font-medium text-slate-100">
-                    {visible ? `${colorName(nm)} light` : band.label}
-                  </div>
-                  <div className="text-xs text-slate-400">
-                    1 wave = {formatWavelength(m)}
-                    {visible ? '' : ' · invisible'}
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            <Card title="🌈 Wavelength — stretch the wave">
+            <Card title="🌈 Wavelength">
               <LabSlider
                 value={Math.round(u * 1000)}
                 onChange={(v) => setU(v / 1000)}
@@ -1274,7 +1183,7 @@ function LightLabView({
               </div>
             </Card>
 
-            <Card title="💡 Brightness — the other knob">
+            <Card title="💡 Brightness">
               <LabSlider
                 value={Math.round(brightness * 100)}
                 onChange={(v) => setBrightness(Math.max(0.1, v / 100))}
@@ -1320,7 +1229,7 @@ function PhotoColumn({ current, scene }: { current: EmBandId; scene: WaveScene }
             ? PRISM_PHOTOS.map((ph) => ({ title: 'the real thing', ph }))
             : scene === 'xray'
               ? XRAY_SCENE_PHOTOS.map((ph) => ({ title: 'real X-ray photos', ph }))
-              : WAVE_PHOTOS[current].map((ph) => ({ title: `${band.label} — in real life`, ph }))
+              : WAVE_PHOTOS[current].map((ph) => ({ title: `${band.label}, in real life`, ph }))
   return (
     <div className="space-y-3">
       {/* no "slide to see more" coaching line here — guidance lives ONLY in

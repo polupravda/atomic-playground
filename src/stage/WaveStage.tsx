@@ -62,7 +62,8 @@ const PAGE_W = Math.min(window.innerWidth, 1440)
 // page frame − 48 padding − 16rem info − 16.5rem controls (scrollbar) −
 // 2×24 gaps − 2 border
 export const WAVE_W = Math.max(620, PAGE_W - 48 - 256 - 264 - 48 - 2)
-export const WAVE_H = Math.max(480, window.innerHeight - 42)
+// down to the screen's bottom edge: 20 px top padding + 2 px border
+export const WAVE_H = Math.max(480, window.innerHeight - 22)
 const W = WAVE_W
 // the canvas height: WAVE_H on the page; a Light lab drawer may draw a
 // taller canvas (setHeight — every layout constant below that follows the

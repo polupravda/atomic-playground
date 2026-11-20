@@ -5,7 +5,7 @@ import { create } from 'zustand'
 export type AppPage = 'builder' | 'charges' | 'bonding' | 'crystal' | 'light' | 'examples'
 
 /** the demos inside 🌍 Atoms in action — sub-items of the main menu */
-/** the demos inside 🎬 Stories; plant · atoms (candle + tree) · crystals are planned
+/** the demos inside 🎬 Stories; atoms (candle + tree) · crystals are planned
  *  (ComingSoonExample: inactive thumbnails only) */
 export type ExampleId = 'bomb' | 'light' | 'cosmos' | 'plant' | 'atoms' | 'crystals'
 

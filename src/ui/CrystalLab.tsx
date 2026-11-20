@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from 'react'
 import { PageNav } from './PageNav'
 import { SideDrawer } from './SideDrawer'
+import { SegmentedSwitch } from './SegmentedSwitch'
 import { Paras, SectionHeader, type Para } from './Paras'
 import { NarrationLangSwitch, VoiceSwitch } from './VoiceSwitch'
 import { interruptNarration, useDemoNarration } from './useNarration'
-import { FLAT, KEY, TRAY } from './surfaces'
+import { FLAT, KEY } from './surfaces'
 import { usePageStore } from '../state/pageStore'
 import { WAVE_H, WAVE_W } from '../stage/WaveStage'
 import { CarbonStage, type CarbonLook, type CarbonMaterial, type CarbonScene } from '../stage/CarbonStage'
@@ -39,34 +40,7 @@ const LAB_W = 256 + 24 + WAVE_W + 2 + 24 + 264
 function drawerFit() {
   const room = Math.min(window.innerWidth - DRAWER_GAP_PX, DRAWER_MAX_PX) - DRAWER_PAD_PX
   const k = Math.min(1, room / LAB_W)
-  return { k, height: (window.innerHeight - 40) / k }
-}
-
-function Card({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className={`w-64 p-3 ${FLAT}`}>
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</h3>
-      {children}
-    </div>
-  )
-}
-
-function Choice<T extends string>({ options, value, onChange, className = 'grid grid-cols-2' }: { options: Array<{ id: T; label: string }>; value: T; onChange: (v: T) => void; className?: string }) {
-  return (
-    <div className={`${className} gap-1 p-1 text-sm ${TRAY}`}>
-      {options.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          onClick={() => onChange(o.id)}
-          aria-pressed={value === o.id}
-          className={`rounded-lg px-2.5 py-1.5 text-left transition ${value === o.id ? 'bg-sky-600 font-medium text-white' : 'text-slate-300 hover:bg-slate-700'}`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  )
+  return { k, height: (window.innerHeight - 20) / k }
 }
 
 // ---------- 📷 the real things, under the drawer buttons ----------
@@ -145,7 +119,7 @@ const INFO: Record<CarbonScene, SceneInfo> = {
       { icon: '✏️', text: 'The block is the very tip of a pencil, seen up close. Its carbon atoms lie in flat sheets.' },
       { icon: '📄', text: 'The sheets barely hold on to each other. Rub the tip on paper and atoms slide off the bottom sheet and stay on the paper. Those grey dots are your line!' },
       { icon: '⬇️', text: 'When the bottom sheet is used up, the sheets above move down, and the next one takes its turn.' },
-      { icon: '💎', text: 'With a diamond tip nothing comes off: every atom is held from four sides. It only scratches the paper.' },
+      { icon: '💎', text: 'Graphite draws a line. Diamond does not: nothing comes off it, because every atom is held from four sides. Its hard tip only tears the paper.' },
     ],
     honest: [
       { icon: '🔍', text: 'Here a sheet is used up quickly and only a few atoms fall, so you can follow each one. A real pencil line is thousands of sheets thick.' },
@@ -204,16 +178,19 @@ export function CrystalLab() {
   const [look, setLook] = useState<CarbonLook>('sticks')
   const openScene = DRAWER_SCENES.find((s) => s.id === open)
 
-  // 🔊 one short intro per scene
+  // 🔊 one short intro per scene, then each RESULT explained as it shows
+  // (the bulb lights, the sheet slides… — CarbonStage reports it)
+  const [result, setResult] = useState<string | null>(null)
   useDemoNarration({
     storyKey: CRYSTAL_INTRO_KEY,
-    beatId: open ?? 'look',
+    beatId: result ?? open ?? 'look',
     scripts: CRYSTAL_INTRO_SCRIPTS,
     active,
     paused: false,
   })
   const show = (scene: CarbonScene | null) => {
     interruptNarration() // the next scene's intro starts at once
+    setResult(null)
     setOpen(scene)
   }
 
@@ -224,6 +201,7 @@ export function CrystalLab() {
         active={active && open === null}
         look={look}
         onLook={setLook}
+        onResult={setResult}
         bottom={
           <>
             <div className="flex flex-col gap-2">
@@ -243,9 +221,10 @@ export function CrystalLab() {
         ariaLabel={openScene ? `${openScene.label.slice(openScene.label.indexOf(' ') + 1)} — Crystal lab scene` : 'Crystal lab scene'}
         // = DRAWER_GAP_PX / DRAWER_MAX_PX (Tailwind needs the literal class)
         widthClassName="w-[min(calc(100vw_-_96px),1376px)]"
+        flushBottom
       >
         {openScene && (
-          <div className="overflow-hidden" style={{ width: LAB_W * drawerFit().k, height: window.innerHeight - 40 }}>
+          <div className="overflow-hidden" style={{ width: LAB_W * drawerFit().k, height: window.innerHeight - 20 }}>
             <div style={{ width: LAB_W, height: drawerFit().height, transform: `scale(${drawerFit().k})`, transformOrigin: 'top left' }}>
               <CrystalView
                 key={openScene.id}
@@ -253,6 +232,7 @@ export function CrystalLab() {
                 active={active}
                 inDrawer
                 look={look}
+                onResult={setResult}
                 canvasHeight={Math.floor(drawerFit().height) - 2}
                 top={<h2 className="pr-8 text-lg font-semibold text-slate-100">{openScene.label}</h2>}
               />
@@ -272,6 +252,7 @@ function CrystalView({
   inDrawer = false,
   look,
   onLook,
+  onResult,
   canvasHeight = WAVE_H,
   top,
   bottom,
@@ -282,6 +263,8 @@ function CrystalView({
   /** ⚛️ atoms or ⚪ balls and sticks — chosen on the main view only */
   look: CarbonLook
   onLook?: (l: CarbonLook) => void
+  /** a result is on screen: the narrator explains it */
+  onResult?: (key: string) => void
   canvasHeight?: number
   top?: ReactNode
   bottom?: ReactNode
@@ -296,8 +279,8 @@ function CrystalView({
       icon: material === 'diamond' ? '💎' : '✏️',
       text:
         material === 'diamond'
-          ? 'On the table: diamond. The same carbon atoms, locked into a grid.'
-          : 'On the table: graphite, the grey stuff inside a pencil. Carbon atoms in flat sheets.',
+          ? 'Diamond: the same carbon atoms, locked into a grid.'
+          : 'Graphite, the grey stuff inside a pencil: carbon atoms in flat sheets.',
     },
     ...(scene === 'write' && sheets > 0 && material === 'graphite'
       ? [{ icon: '📄', text: `Your line has used up ${sheets} ${sheets === 1 ? 'sheet' : 'sheets'} so far.` }]
@@ -357,6 +340,7 @@ function CrystalView({
           resetKey={resetKey}
           onBecameDiamond={() => setMaterial('diamond')}
           onSheets={setSheets}
+          onResult={onResult}
         />
         {/* the view switch lives ON the canvas — the 🩻 X-ray scene's pill */}
         {scene === 'look' && onLook && (
@@ -389,19 +373,18 @@ function CrystalView({
         </button>
       </div>
 
-      {/* right: the scene's title (drawer), what is on the table, the drawers */}
+      {/* right: the scene's title (drawer), which carbon, the drawers */}
       <div className="flex h-full min-h-0 w-[16.5rem] shrink-0 flex-col gap-4">
         {top}
-        <Card title="On the table">
-          <Choice
-            options={[
-              { id: 'graphite', label: '✏️ Graphite' },
-              { id: 'diamond', label: '💎 Diamond' },
-            ]}
-            value={material}
-            onChange={setMaterial}
-          />
-        </Card>
+        <SegmentedSwitch
+          ariaLabel="Which carbon"
+          options={[
+            { id: 'graphite', label: '✏️ Graphite' },
+            { id: 'diamond', label: '💎 Diamond' },
+          ]}
+          value={material}
+          onChange={setMaterial}
+        />
         {bottom}
       </div>
     </div>

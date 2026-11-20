@@ -85,7 +85,8 @@ const W = Math.max(
   Math.min(window.innerWidth, 1440) - 48 - 256 - 224 - 48 - 2,
 )
 // full page height: viewport − 40 page padding − 2 canvas border
-const H = Math.max(480, window.innerHeight - 42)
+// down to the screen's bottom edge: 20 px top padding + 2 px border
+const H = Math.max(480, window.innerHeight - 22)
 const FIELD_BOTTOM = H - 88
 const TRAY_TOKEN_Y = H - 48
 
@@ -1071,7 +1072,7 @@ export function BondingLab() {
               onClick={() => setClearSignal((n) => n + 1)}
               className={`mt-auto shrink-0 px-3 py-1.5 text-sm text-slate-300 ${KEY}`}
             >
-              🧹 Clear table
+              ↺ Reset
             </button>
           </div>
           <div className="col-start-1 row-start-1 flex min-h-0 flex-col gap-3">

@@ -16,8 +16,10 @@ import { FORGE_TOTAL, forgeStep } from './stardustStory'
 import { ENERGY_VALLEY, SUN_RECIPE } from '../core/cosmos'
 import { wavelengthToCss } from '../core/spectra'
 import { DETECTIVE_ORDER, DETECTIVE_T, drawDetective, type DetectivePhase } from './detectiveScenes'
+import { GOLD_ORDER, GOLD_T, drawGold, type GoldPhase } from './goldScenes'
 
-// R04 — 🌟 Cosmic origins demo canvas. One story so far: ☀️ "Why the Sun
+// R04 — 🌟 Cosmic origins demo canvas (🔭 star detective, 🧒 star stuff and
+// 💍 gold draw from their own modules). ☀️ "Why the Sun
 // shines" (+ WHAT the Sun is made of — the recipe beat), told with R01/R02's
 // machinery (auto-play, Pause, snapshot story timeline):
 //   1. the Sun in space, with Earth drawn to scale
@@ -52,12 +54,15 @@ export const COSMOS_JOURNEYS: Array<{
   { id: 'detective', label: '🔭 Star detective', subtitle: 'reading starlight barcodes', ready: true },
   { id: 'sun', label: '☀️ Why the Sun shines', subtitle: 'and what it is made of', ready: true },
   { id: 'stardust', label: '🧒 You are star stuff', subtitle: 'a carbon atom\'s journey', ready: true },
-  { id: 'gold', label: '💍 Where gold comes from', subtitle: 'colliding neutron stars', ready: false },
+  // built 2026-11-20 (goldScenes.ts): told backwards from the ring
+  { id: 'gold', label: '💍 Where gold comes from', subtitle: 'colliding neutron stars', ready: true },
 ]
 
 export type CosmosPhase =
   // 🔭 star detective (detectiveScenes.ts)
   | DetectivePhase
+  // 💍 where gold comes from (goldScenes.ts)
+  | GoldPhase
   // ☀️ why the Sun shines
   | 'sun'
   | 'recipe'
@@ -103,7 +108,14 @@ interface Sim {
 function buildSim(journey: CosmosJourneyId): Sim {
   return {
     journey,
-    phase: journey === 'stardust' ? 'giant' : journey === 'detective' ? DETECTIVE_ORDER[0] : 'sun',
+    phase:
+      journey === 'stardust'
+        ? 'giant'
+        : journey === 'detective'
+          ? DETECTIVE_ORDER[0]
+          : journey === 'gold'
+            ? GOLD_ORDER[0]
+            : 'sun',
     phaseT: 0,
   }
 }
@@ -118,6 +130,12 @@ function step(sim: Sim, dt: number) {
     const i = DETECTIVE_ORDER.indexOf(sim.phase as DetectivePhase)
     const next = DETECTIVE_ORDER[i + 1]
     if (next && sim.phaseT >= DETECTIVE_T[sim.phase as DetectivePhase]) advance(next)
+    return
+  }
+  if (sim.journey === 'gold') {
+    const i = GOLD_ORDER.indexOf(sim.phase as GoldPhase)
+    const next = GOLD_ORDER[i + 1]
+    if (next && sim.phaseT >= GOLD_T[sim.phase as GoldPhase]) advance(next)
     return
   }
   if (sim.journey === 'stardust') {
@@ -138,6 +156,7 @@ function step(sim: Sim, dt: number) {
 
 export function cosmosStoryOrder(journey: CosmosJourneyId): string[] {
   if (journey === 'detective') return [...DETECTIVE_ORDER]
+  if (journey === 'gold') return [...GOLD_ORDER]
   if (journey === 'stardust') {
     return ['giant', 'zoom', 'forge0', 'forge1', 'boom', 'drift', 'earth', 'alive', 'you']
   }
@@ -1472,7 +1491,8 @@ export const CosmosStage = memo(function CosmosStage({
       const done =
         (s.phase === 'valley' && s.phaseT >= END_T) ||
         (s.phase === 'you' && s.phaseT >= YOU_T) ||
-        (s.phase === 'discovery' && s.phaseT >= DETECTIVE_T.discovery)
+        (s.phase === 'discovery' && s.phaseT >= DETECTIVE_T.discovery) ||
+        (s.phase === 'older' && s.phaseT >= GOLD_T.older)
       if (!finishedSent.current && !holdBeatRef.current && done) {
         finishedSent.current = true
         onFinishedRef.current()
@@ -1499,6 +1519,7 @@ export const CosmosStage = memo(function CosmosStage({
             IDLE = now
             if (!journeyRef.current) drawLineup(ctx)
             else if (s.journey === 'detective') drawDetective(ctx, s.phase as DetectivePhase, s.phaseT, W, UH, now)
+            else if (s.journey === 'gold') drawGold(ctx, s.phase as GoldPhase, s.phaseT, W, UH, H, now)
             else if (s.phase === 'sun') drawSunScene(ctx)
             else if (s.phase === 'recipe') drawRecipeScene(ctx, s.phaseT)
             else if (s.phase === 'giant') drawGiantScene(ctx)

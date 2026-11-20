@@ -7,8 +7,9 @@
 > gate) — both awaiting manual test; **narration prototype (🧒 story,
 > Web Speech API) added 2026-11-18**, see "Narration" below. The R04 row lives in
 > [01-feature-spec.md](01-feature-spec.md), the steps in
-> [04-roadmap.md](04-roadmap.md) (Milestone 9; 💍 gold (36c) and the origins
-> table (36d) still only after asking).
+> [04-roadmap.md](04-roadmap.md) (Milestone 9; **💍 gold (36c) implemented
+> 2026-11-20** on request, to the doc-12 design; the origins table (36d)
+> still only after asking).
 
 ## One sentence
 

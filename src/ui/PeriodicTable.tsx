@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'motion/react'
 import { SideDrawer } from './SideDrawer'
 import { SpeakButton } from './SpeakButton'
@@ -12,6 +12,7 @@ import { neutralShellConfiguration } from '../core/atom'
 import { typicalNeutrons } from '../core/nuclides'
 import { PHOTO_ELEMENTS, elementFacts, funFactFor } from '../core/elementFacts'
 import { USE_PHOTOS } from '../core/usePhotos'
+import { searchElements, type ElementMatch } from '../core/elementNames'
 
 /** Kid-level description of each element family (🎨 patterns bubble). */
 const FAMILY_INFO: Record<ElementCategory, string> = {
@@ -79,19 +80,7 @@ function InfoPara({ icon, text }: { icon: string; text: string }) {
 /** Always-visible info panel, structured like the main page's info panel:
  *  "Right now" (the live, selection-specific facts), "What am I seeing?"
  *  (the view + active overlays), and "Tips". Scrolls internally. */
-function TableInfoPanel({
-  patterns,
-  valence,
-  photosMode,
-  selectedZ,
-  fullHeight,
-}: {
-  patterns: boolean
-  valence: boolean
-  photosMode: boolean
-  selectedZ: number | null
-  fullHeight: boolean
-}) {
+function TableInfoPanel({ selectedZ }: { selectedZ: number | null }) {
   const element = selectedZ !== null ? ELEMENTS[selectedZ - 1] : null
 
   const rightNow: Array<{ icon: string; text: string }> = []
@@ -132,41 +121,35 @@ function TableInfoPanel({
       text: 'Every square is one element — one kind of atom. Everything in the universe is built from these 118!',
     },
   ]
-  if (patterns) {
-    seeing.push({
+  seeing.push(
+    {
       icon: '🎨',
       text: 'The colors group elements into families — relatives that behave alike. Click the chips under the table to spotlight a family.',
-    })
-  }
-  if (valence) {
-    seeing.push({
+    },
+    {
       icon: '⚡',
       text: 'The little amber number counts the electrons in the outer shell — watch it repeat down each column! Those outer electrons decide how an element behaves with others.',
-    })
-  }
-  if (photosMode) {
-    seeing.push({
+    },
+    {
       icon: '🖼️',
       text: 'The photos below show the selected element and something we make from it.',
-    })
-  }
+    },
+  )
 
   const tips: Array<{ icon: string; text: string }> = [
     {
       icon: '👆',
-      text: 'Click a square to select an element, then "Open in editor" to build it.',
+      text: 'Click a square to select an element. Double-click it — or press "Open in editor" — to build it.',
     },
     {
-      icon: '🔦',
-      text: 'Try the switches at the top — each reveals a hidden pattern of the table.',
+      icon: '🔍',
+      text: 'Search by name in English, Deutsch or русский (gold, Gold, золото), or by the symbol in the square (Au).',
     },
   ]
 
   return (
     <div
-      className={`min-h-0 overflow-y-auto p-3 text-sm leading-relaxed text-slate-300 ${FLAT} ${
-        fullHeight ? 'flex-1' : 'basis-2/5'
-      }`}
+      className={`min-h-0 basis-2/5 overflow-y-auto p-3 text-sm leading-relaxed text-slate-300 ${FLAT}`}
     >
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
         Right now
@@ -196,43 +179,10 @@ function TableInfoPanel({
   )
 }
 
-/** Compact switch-style toggle for the header row (off by default). */
-function InlineToggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string
-  checked: boolean
-  onChange: () => void
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={onChange}
-      className={`flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 ${KEY}`}
-    >
-      <span>{label}</span>
-      <span
-        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-          checked ? 'bg-sky-500' : 'bg-slate-600'
-        }`}
-      >
-        <span
-          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
-            checked ? 'left-[18px]' : 'left-0.5'
-          }`}
-        />
-      </span>
-    </button>
-  )
-}
 import { useAtomStore } from '../state/atomStore'
 import { useDiscoveryStore } from '../state/discoveryStore'
 import { useEventStore } from '../state/eventStore'
-import { FLAT, KEY } from './surfaces'
+import { FLAT, KEY, TRAY } from './surfaces'
 
 // P01/P02: the periodic table starts as 118 grey cells and fills up as the
 // kid builds elements — each discovery lights up exactly its own cell.
@@ -242,17 +192,19 @@ import { FLAT, KEY } from './surfaces'
 function ElementCell({
   z,
   onSelect,
-  patterns,
-  valence,
+  onOpen,
   focusCategories,
   selected,
+  searchHit,
 }: {
   z: number
   onSelect: (z: number) => void
-  patterns: boolean
-  valence: boolean
+  /** double-click: straight into the atom editor */
+  onOpen: (z: number) => void
   focusCategories: ElementCategory[]
   selected: boolean
+  /** while searching: does this cell match? (null = no search) */
+  searchHit: boolean | null
 }) {
   const element = ELEMENTS[z - 1]
   const { row, col } = tablePosition(z)
@@ -263,7 +215,7 @@ function ElementCell({
   // spotlight mode: legend families were clicked — their members shine,
   // the rest fade back (empty selection = everything normal)
   const focusActive = focusCategories.length > 0
-  const spotlit = !focusActive || focusCategories.includes(category)
+  const spotlit = (!focusActive || focusCategories.includes(category)) && searchHit !== false
   return (
     <button
       type="button"
@@ -273,23 +225,22 @@ function ElementCell({
         // actinides into a non-existent implicit track — the trimmed row)
         gridRow: row,
         gridColumn: col,
-        ...(patterns
-          ? {
-              backgroundColor: `rgba(${categoryRgb}, ${
-                !spotlit ? 0.05 : focusActive ? (discovered ? 0.55 : 0.3) : discovered ? 0.4 : 0.14
-              })`,
-              borderColor: `rgba(${categoryRgb}, ${
-                !spotlit ? 0.12 : focusActive ? 0.9 : discovered ? 0.85 : 0.35
-              })`,
-              opacity: spotlit ? 1 : 0.35,
-            }
-          : {}),
+        // P04: family colors (always on)
+        backgroundColor: `rgba(${categoryRgb}, ${
+          !spotlit ? 0.05 : focusActive ? (discovered ? 0.55 : 0.3) : discovered ? 0.4 : 0.14
+        })`,
+        borderColor: `rgba(${categoryRgb}, ${
+          !spotlit ? 0.12 : focusActive ? 0.9 : discovered ? 0.85 : 0.35
+        })`,
+        // a search fades the non-matches further than a family spotlight
+        opacity: spotlit ? 1 : searchHit === false ? 0.2 : 0.35,
       }}
       onClick={() => onSelect(z)}
+      onDoubleClick={() => onOpen(z)}
       title={
         discovered
-          ? `${element.name} (${z}) — click to select`
-          : `Element ${z} — click to select`
+          ? `${element.name} (${z}) — click to select, double-click to build it`
+          : `Element ${z} — click to select, double-click to build it`
       }
       className={`relative flex cursor-pointer items-center justify-center rounded border text-center transition hover:ring-2 hover:ring-sky-400 ${
         selected ? 'ring-2 ring-sky-300' : isCurrent ? 'ring-2 ring-amber-400' : ''
@@ -314,28 +265,26 @@ function ElementCell({
           initial={{ scale: 1.7, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 320, damping: 16 }}
-          className={`mt-1 text-base font-bold ${patterns ? 'text-slate-100' : 'text-sky-200'}`}
+          className={`mt-1 text-base font-bold text-slate-100`}
         >
           {element.symbol}
         </motion.span>
       ) : (
         <span
-          className={`mt-1 text-base font-medium ${patterns ? 'text-slate-500' : 'text-slate-600'}`}
+          className={`mt-1 text-base font-medium text-slate-500`}
         >
           {element.symbol}
         </span>
       )}
       {/* P05: valence electrons, revealed column by column */}
-      {valence && (
-        <motion.span
-          initial={{ opacity: 0, y: 3 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: col * 0.05, duration: 0.25 }}
-          className="absolute bottom-0 right-1 font-mono text-[8px] leading-3.5 text-amber-300"
-        >
-          {valenceOf(z)}
-        </motion.span>
-      )}
+      <motion.span
+        initial={{ opacity: 0, y: 3 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: col * 0.05, duration: 0.25 }}
+        className="absolute bottom-0 right-1 font-mono text-[8px] leading-3.5 text-amber-300"
+      >
+        {valenceOf(z)}
+      </motion.span>
     </button>
   )
 }
@@ -347,25 +296,48 @@ export function PeriodicTable() {
   const setCount = useAtomStore((s) => s.setCount)
   const clearStory = useEventStore((s) => s.clearStory)
   const [open, setOpen] = useState(false)
-  const [patterns, setPatterns] = useState(true)
-  const [valence, setValence] = useState(true)
   const [focusCategories, setFocusCategories] = useState<ElementCategory[]>([])
-  // 🖼️ photo-browse mode: shows the selected element's photos in the sidebar
-  const [photosMode, setPhotosMode] = useState(true)
+  // 🔍 search by name (EN · DE · RU) or symbol: the matches stay lit, the
+  // best one is selected while typing
+  const [query, setQuery] = useState('')
+  const matches = useMemo(() => searchElements(query), [query])
+  const hitSet = useMemo(
+    () => (query.trim() ? new Set(matches.map((m) => m.z)) : null),
+    [query, matches],
+  )
+  const best: ElementMatch | undefined = matches[0]
   // clicking a cell SELECTS it (drives side panels); the big "Open in
   // editor" button is what actually builds the atom
   const [selectedZ, setSelectedZ] = useState<number | null>(null)
 
   // P03: load the selected element as the neutral atom of its typical
   // isotope.
-  const loadSelected = () => {
-    if (selectedZ === null) return
+  const load = (z: number) => {
     clearStory()
-    setCount('protons', selectedZ) // first, so the other caps use the new Z
-    setCount('neutrons', typicalNeutrons(selectedZ))
-    setCount('electrons', selectedZ)
+    setCount('protons', z) // first, so the other caps use the new Z
+    setCount('neutrons', typicalNeutrons(z))
+    setCount('electrons', z)
     bumpLoadPulse()
     setOpen(false)
+  }
+  const loadSelected = () => {
+    if (selectedZ !== null) load(selectedZ)
+  }
+  // picking a square ends a search: the field clears, all cells light up
+  // again and the picked element stays selected (Elena, 2026-11-20)
+  const pick = (z: number) => {
+    setSelectedZ(z)
+    setQuery('')
+  }
+  // double-click a square: select it and build it at once
+  const openZ = (z: number) => {
+    pick(z)
+    load(z)
+  }
+  const onSearch = (q: string) => {
+    setQuery(q)
+    const m = searchElements(q)[0]
+    if (m) setSelectedZ(m.z)
   }
 
   return (
@@ -430,87 +402,101 @@ export function PeriodicTable() {
             >
               ⚛️ Open in editor
             </button>
-            <InlineToggle
-              label="🎨 Patterns"
-              checked={patterns}
-              onChange={() =>
-                setPatterns((v) => {
-                  if (v) setFocusCategories([])
-                  return !v
-                })
-              }
-            />
-            <InlineToggle
-              label="e⁻ Valence"
-              checked={valence}
-              onChange={() => setValence((v) => !v)}
-            />
-            <InlineToggle
-              label="🖼️ Photos"
-              checked={photosMode}
-              onChange={() => setPhotosMode((v) => !v)}
-            />
+            {/* 🔍 search: names in EN · DE · RU, or the symbol */}
+            <div className="flex min-w-[15rem] flex-1 items-center">
+              <div className="relative w-full max-w-sm">
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm"
+                >
+                  🔍
+                </span>
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => onSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Escape clears the search first; a second one closes
+                    if (e.key === 'Escape' && query) {
+                      e.stopPropagation()
+                      setQuery('')
+                    }
+                    // Enter takes the best match: keep it selected, clear the field
+                    if (e.key === 'Enter' && best) pick(best.z)
+                  }}
+                  placeholder="Find an element: gold · Gold · золото · Au"
+                  aria-label="Search elements by name or symbol"
+                  className={`w-full py-1.5 pl-9 pr-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 ${TRAY}`}
+                />
+              </div>
+              {query.trim() && (
+                <span className="ml-3 shrink-0 text-xs text-slate-400" aria-live="polite">
+                  {best ? (
+                    <>
+                      {best.lang === 'de' || best.lang === 'ru' ? `${best.matched} → ` : ''}
+                      <span className="text-slate-200">{ELEMENTS[best.z - 1].name}</span> (
+                      {ELEMENTS[best.z - 1].symbol})
+                      {matches.length > 1 && ` · ${matches.length} found`}
+                    </>
+                  ) : (
+                    'nothing found'
+                  )}
+                </span>
+              )}
+            </div>
           </div>
           <div className="col-start-1 row-span-2 row-start-1 flex min-h-0 flex-col gap-3">
-            <TableInfoPanel
-              patterns={patterns}
-              valence={valence}
-              photosMode={photosMode}
-              selectedZ={selectedZ}
-              fullHeight={!photosMode}
-            />
-            {photosMode && (
-              <div className={`min-h-0 basis-3/5 overflow-y-auto px-3 py-3 ${FLAT}`}>
-                {selectedZ === null ? (
-                  <p className="text-sm text-slate-400">
-                    Click any element in the table to see its photos here.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {PHOTO_ELEMENTS.has(selectedZ) ? (
-                      <figure>
-                        <img
-                          src={`${import.meta.env.BASE_URL}elements/${selectedZ}.jpg`}
-                          alt={`${ELEMENTS[selectedZ - 1].name} in real life`}
-                          className="h-36 w-full rounded-lg border border-slate-700 object-cover"
-                        />
-                        <figcaption className="mt-0.5">
-                          <div className="text-sm text-slate-200">
-                            👀 The element itself
-                          </div>
-                          <div className="text-[9px] text-slate-500">
-                            images-of-elements.com (CC BY 3.0)
-                          </div>
-                        </figcaption>
-                      </figure>
-                    ) : (
-                      <p className="text-xs text-slate-500">
-                        No photo of this element — most likely no one has ever
-                        seen a visible piece of it!
-                      </p>
-                    )}
-                    {USE_PHOTOS[selectedZ] && (
-                      <figure>
-                        <img
-                          src={`${import.meta.env.BASE_URL}uses/${selectedZ}.jpg`}
-                          alt={`Made with ${ELEMENTS[selectedZ - 1].name}: ${USE_PHOTOS[selectedZ].caption}`}
-                          className="h-36 w-full rounded-lg border border-slate-700 object-cover"
-                        />
-                        <figcaption className="mt-0.5">
-                          <div className="text-sm text-slate-200">
-                            🔧 We make: {USE_PHOTOS[selectedZ].caption}
-                          </div>
-                          <div className="text-[9px] text-slate-500">
-                            {USE_PHOTOS[selectedZ].creator} (CC{' '}
-                            {USE_PHOTOS[selectedZ].license})
-                          </div>
-                        </figcaption>
-                      </figure>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            <TableInfoPanel selectedZ={selectedZ} />
+            <div className={`min-h-0 basis-3/5 overflow-y-auto px-3 py-3 ${FLAT}`}>
+              {selectedZ === null ? (
+                <p className="text-sm text-slate-400">
+                  Click any element in the table to see its photos here.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {PHOTO_ELEMENTS.has(selectedZ) ? (
+                    <figure>
+                      <img
+                        src={`${import.meta.env.BASE_URL}elements/${selectedZ}.jpg`}
+                        alt={`${ELEMENTS[selectedZ - 1].name} in real life`}
+                        className="h-36 w-full rounded-lg border border-slate-700 object-cover"
+                      />
+                      <figcaption className="mt-0.5">
+                        <div className="text-sm text-slate-200">
+                          👀 The element itself
+                        </div>
+                        <div className="text-[9px] text-slate-500">
+                          images-of-elements.com (CC BY 3.0)
+                        </div>
+                      </figcaption>
+                    </figure>
+                  ) : (
+                    <p className="text-xs text-slate-500">
+                      No photo of this element — most likely no one has ever
+                      seen a visible piece of it!
+                    </p>
+                  )}
+                  {USE_PHOTOS[selectedZ] && (
+                    <figure>
+                      <img
+                        src={`${import.meta.env.BASE_URL}uses/${selectedZ}.jpg`}
+                        alt={`Made with ${ELEMENTS[selectedZ - 1].name}: ${USE_PHOTOS[selectedZ].caption}`}
+                        className="h-36 w-full rounded-lg border border-slate-700 object-cover"
+                      />
+                      <figcaption className="mt-0.5">
+                        <div className="text-sm text-slate-200">
+                          🔧 We make: {USE_PHOTOS[selectedZ].caption}
+                        </div>
+                        <div className="text-[9px] text-slate-500">
+                          {USE_PHOTOS[selectedZ].creator} (CC{' '}
+                          {USE_PHOTOS[selectedZ].license})
+                        </div>
+                      </figcaption>
+                    </figure>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           {/* container query: cells are sized against the actual space this
               region receives, so the table always fits exactly */}
@@ -538,11 +524,11 @@ export function PeriodicTable() {
               <ElementCell
                 key={el.atomicNumber}
                 z={el.atomicNumber}
-                onSelect={setSelectedZ}
+                onSelect={pick}
+                onOpen={openZ}
                 selected={selectedZ === el.atomicNumber}
-                patterns={patterns}
-                valence={valence}
-                focusCategories={patterns ? focusCategories : []}
+                focusCategories={focusCategories}
+                searchHit={hitSet ? hitSet.has(el.atomicNumber) : null}
               />
             ))}
             {/* markers linking the main table to the f-block rows */}
@@ -560,55 +546,51 @@ export function PeriodicTable() {
             </div>
           </div>
             </div>
-            {/* family filter / valence note live UNDER the table */}
-            {patterns && (
-              <div className="absolute inset-x-0 bottom-1 flex flex-col items-center gap-1.5">
-                {patterns && (
-                  <div className="flex max-w-full flex-wrap justify-center gap-1.5 px-2">
+            {/* the family filter lives UNDER the table */}
+            <div className="absolute inset-x-0 bottom-1 flex flex-col items-center gap-1.5">
+                <div className="flex max-w-full flex-wrap justify-center gap-1.5 px-2">
+                  <button
+                    type="button"
+                    onClick={() => setFocusCategories([])}
+                    className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs transition ${
+                      focusCategories.length === 0
+                        ? 'border-sky-500 bg-slate-700 text-white'
+                        : 'border-slate-700 text-slate-300 hover:bg-slate-700/60'
+                    }`}
+                  >
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300" />
+                    All families
+                  </button>
+                  {(
+                    Object.entries(CATEGORY_STYLE) as Array<
+                      [ElementCategory, { rgb: string; label: string }]
+                    >
+                  ).map(([key, { rgb, label }]) => (
                     <button
+                      key={key}
                       type="button"
-                      onClick={() => setFocusCategories([])}
+                      onClick={() =>
+                        setFocusCategories((prev) =>
+                          prev.includes(key)
+                            ? prev.filter((k) => k !== key)
+                            : [...prev, key],
+                        )
+                      }
                       className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs transition ${
-                        focusCategories.length === 0
+                        focusCategories.includes(key)
                           ? 'border-sky-500 bg-slate-700 text-white'
                           : 'border-slate-700 text-slate-300 hover:bg-slate-700/60'
                       }`}
                     >
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300" />
-                      All families
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: `rgb(${rgb})` }}
+                      />
+                      {label}
                     </button>
-                    {(
-                      Object.entries(CATEGORY_STYLE) as Array<
-                        [ElementCategory, { rgb: string; label: string }]
-                      >
-                    ).map(([key, { rgb, label }]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() =>
-                          setFocusCategories((prev) =>
-                            prev.includes(key)
-                              ? prev.filter((k) => k !== key)
-                              : [...prev, key],
-                          )
-                        }
-                        className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs transition ${
-                          focusCategories.includes(key)
-                            ? 'border-sky-500 bg-slate-700 text-white'
-                            : 'border-slate-700 text-slate-300 hover:bg-slate-700/60'
-                        }`}
-                      >
-                        <span
-                          className="h-2 w-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: `rgb(${rgb})` }}
-                        />
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                  ))}
+                </div>
+            </div>
           </div>
         </div>
       </SideDrawer>

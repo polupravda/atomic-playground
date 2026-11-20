@@ -1,4 +1,5 @@
 import { memo, useCallback, useState } from 'react'
+import { useSpaceToPause } from './useSpaceToPause'
 import { PageNav } from './PageNav'
 import {
   LightStage,
@@ -176,6 +177,8 @@ export function LightExample({ active }: { active: boolean }) {
     setSeek((prev) => ({ id, n: (prev?.n ?? 0) + 1 }))
   }, [])
   const running = story !== null
+  // ⎵ Space = ⏸ Pause / ▶ Resume while a story plays
+  useSpaceToPause(active && running, () => setPaused((v) => !v))
 
   // 🔊 narration — listen first, then watch (10-narration-strategy.md)
   const narration = useDemoNarration({
@@ -252,6 +255,7 @@ export function LightExample({ active }: { active: boolean }) {
             <button
               type="button"
               onClick={() => setPaused((v) => !v)}
+              title="Pause or resume the story (Space)"
               aria-pressed={paused}
               className={`absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 text-sm ${
                 paused

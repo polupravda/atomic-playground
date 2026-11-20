@@ -1,6 +1,9 @@
 # Proposal — R03 ⚡ Nuclear power plant (Atoms in action)
 
 > Status: **approved with answers 2026-11-09** (see Open questions below).
+> **📖 Story mode built 2026-11-20** to the kid-first story of
+> [doc 12](12-story-designs-for-kids.md) (roadmap 35b); 🕹️ operator mode
+> still to come.
 > The R03 row lives in [01-feature-spec.md](01-feature-spec.md), the steps in
 > [04-roadmap.md](04-roadmap.md) (Milestone 9, 35–35d, todo — queued after
 > R02's step 34 is confirmed).

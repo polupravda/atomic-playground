@@ -342,6 +342,12 @@ new and explains "why near the pole", which is what children ask next.
 
 ## 💍 Where gold comes from
 
+> **Built 2026-11-20** (roadmap step 36c): nine beats — the designed six
+> plus the zoom into the ring, the teaspoon (its own show-first beat) and
+> the neutron stuffing (its own beat). Closing line spoken as designed.
+> The question says "no fire, no factory" — never "nobody can make gold":
+> accelerators can make a few atoms (honest note).
+
 - **The question:** "You can't make gold. Not with fire, not in any
   factory. So who made the gold in a ring?"
 - **The aha:** *Two dead stars crashed into each other, long before the
@@ -391,6 +397,11 @@ something a child can picture.
 ---
 
 ## ⚡ How a power plant works
+
+> **Built 2026-11-20** (roadmap 35b), as designed, with one honest change:
+> after the rods drop back the splits *die down* (the plant shuts itself
+> down) rather than "calm down to steady": that is what a real automatic
+> drop does. The fuel facts are shown as two jars of 100 uranium atoms.
 
 - **The question:** "The bomb's chain reaction destroys a city in a
   blink. Can the very same thing light a city instead?"

@@ -29,7 +29,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100">
-      <main className="mx-auto max-w-[1440px] px-6 py-5">
+      <main className="mx-auto max-w-[1440px] px-6 pt-5">
         {/* The three top-level views are SIBLINGS (see PageNav). All stay
             mounted — the inactive ones are merely hidden — so every canvas
             keeps its state (atoms, molecules, discoveries) across switches. */}
@@ -59,31 +59,31 @@ export default function App() {
         </div>
         <div
           className={page === 'charges' ? '' : 'hidden'}
-          style={{ height: 'calc(100vh - 40px)' }}
+          style={{ height: 'calc(100vh - 20px)' }}
         >
           <ChargePlayground />
         </div>
         <div
           className={page === 'bonding' ? '' : 'hidden'}
-          style={{ height: 'calc(100vh - 40px)' }}
+          style={{ height: 'calc(100vh - 20px)' }}
         >
           <BondingLab />
         </div>
         <div
           className={page === 'crystal' ? '' : 'hidden'}
-          style={{ height: 'calc(100vh - 40px)' }}
+          style={{ height: 'calc(100vh - 20px)' }}
         >
           <CrystalLab />
         </div>
         <div
           className={page === 'light' ? '' : 'hidden'}
-          style={{ height: 'calc(100vh - 40px)' }}
+          style={{ height: 'calc(100vh - 20px)' }}
         >
           <LightLab />
         </div>
         <div
           className={page === 'examples' ? '' : 'hidden'}
-          style={{ height: 'calc(100vh - 40px)' }}
+          style={{ height: 'calc(100vh - 20px)' }}
         >
           <ExamplesPage />
         </div>

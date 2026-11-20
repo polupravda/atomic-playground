@@ -31,6 +31,8 @@ import { parseNarrationLine } from '../../src/stage/narrationScript'
 import { syllables } from './tempo'
 import { SUN_SCRIPTS } from '../../src/stage/sunNarration'
 import { DETECTIVE_SCRIPTS } from '../../src/stage/detectiveNarration'
+import { GOLD_SCRIPTS } from '../../src/stage/goldNarration'
+import { PLANT_SCRIPTS } from '../../src/stage/plantNarration'
 import { CRYSTAL_INTRO_KEY, CRYSTAL_INTRO_SCRIPTS } from '../../src/stage/crystalIntros'
 import { FIREWORK_SCRIPTS } from '../../src/stage/fireworkNarration'
 import { BOMB_MODES, bombScripts, bombStoryKey } from '../../src/stage/bombNarration'
@@ -339,6 +341,18 @@ function makeEdge(voice: string, rate: string, prep: (t: string) => string = (t)
 
 const stripStress = (t: string) => t.replace(/́/g, '')
 
+// What the Russian voice is SENT, when its own dictionary gets a stress
+// wrong and neither stress marks nor phoneme tags help (the free endpoint
+// rejects <phoneme>). The script keeps the correct spelling; only the
+// voice gets a respelling. Each was picked by ear (Elena) from A/B renders:
+//   нейтро́н — the whole root, every form (нейтро́н, -а, -у, -ом, -ы, -ов,
+//   -ам, -ами, -ах; нейтро́нный, -ая, -ой, -ого …): the stress is always on
+//   this «о», and Svetlana misplaced it (first «нейтро́нная», then «следи за
+//   нашим нейтро́ном», 2026-11-20). A doubled «оо» pulls the stress onto it
+//   ("the best, not ideal"). Not нейтри́но (another root).
+const RU_RESPELL: Array<[RegExp, string]> = [[/([Нн]ейтр)о(н)/g, '$1оо$2']]
+const ruVoiceText = (t: string) => RU_RESPELL.reduce((acc, [re, to]) => acc.replace(re, to), t)
+
 // ---------- main ----------
 
 type Lang = 'en' | 'de' | 'ru'
@@ -352,7 +366,7 @@ const VOICES: Record<Lang, { label: string; make: () => Promise<Render> }> = {
   },
   ru: {
     label: `Edge ${RU_VOICE} rate=${RU_RATE} stress-marks=${RU_SEND_STRESS_MARKS ? 'sent' : 'stripped'} (placeholder)`,
-    make: async () => makeEdge(RU_VOICE, RU_RATE, RU_SEND_STRESS_MARKS ? undefined : stripStress),
+    make: async () => makeEdge(RU_VOICE, RU_RATE, (t) => ruVoiceText(RU_SEND_STRESS_MARKS ? t : stripStress(t))),
   },
 }
 
@@ -375,6 +389,8 @@ const STORIES: Story[] = [
   { key: 'stardust', scripts: STARDUST_SCRIPTS, frozen: ['en'], singleShort: ['en'] },
   // every other story at the reference's own speed (EN_SPEED): same tempo
   { key: 'detective', scripts: DETECTIVE_SCRIPTS },
+  { key: 'gold', scripts: GOLD_SCRIPTS },
+  { key: 'plant', scripts: PLANT_SCRIPTS },
   // 🧊 Crystal lab: one short intro per scene (not a story)
   { key: CRYSTAL_INTRO_KEY, scripts: CRYSTAL_INTRO_SCRIPTS },
   { key: 'sun', scripts: SUN_SCRIPTS },
@@ -387,11 +403,18 @@ async function main() {
   // `npm run generate ru`, `npm run generate stardust de`; no argument
   // renders every story in every language it has a script for
   const unfreeze = process.argv.includes('--unfreeze')
+  // `--only beat,beat2`: render just these beats (the rest stay as they
+  // are) — a long story over the flaky free Edge endpoint often drops
+  // before it is through, and a one-line fix shouldn't re-render a story
+  const oi = process.argv.indexOf('--only')
+  const onlyBeats = oi > 0 ? new Set(process.argv[oi + 1].split(',')) : null
   // `--test-names <dir>`: render only the EN pieces with Russian names,
   // as listen-test files in <dir> — the app's audio is left as it is
   const ti = process.argv.indexOf('--test-names')
   const testDir = ti > 0 ? resolve(process.argv[ti + 1]) : null
-  const args = process.argv.slice(2).filter((a, i, all) => a !== '--unfreeze' && a !== '--test-names' && all[i - 1] !== '--test-names')
+  const args = process.argv
+    .slice(2)
+    .filter((a, i, all) => !['--unfreeze', '--test-names', '--only'].includes(a) && !['--test-names', '--only'].includes(all[i - 1]))
   const langs = Object.keys(VOICES) as Lang[]
   const storyKeys = STORIES.map((s) => s.key)
   for (const a of args) {
@@ -452,6 +475,7 @@ async function main() {
       let syl = 0
       let speech = 0
       for (const id of order) {
+        if (onlyBeats && !onlyBeats.has(id)) continue
         // a science line's information pieces (' | ') become one file each:
         // <beat>.m4a, <beat>-2.m4a … — the app puts watch breaks between
         for (const old of readdirSync(outDir)) {

@@ -56,8 +56,9 @@ import {
 const PAGE_W = Math.min(window.innerWidth, 1440)
 // page frame − 48 padding − 16rem info − 18rem photos − 2×24 gaps − 2 border
 export const FISSION_W = Math.max(620, PAGE_W - 48 - 256 - 288 - 48 - 2)
-// viewport − 40 page padding − 2 border − 48 header row (+gap)
-export const FISSION_H = Math.max(480, window.innerHeight - 42 - 48)
+// viewport − 20 top padding − 2 border: down to the screen's bottom edge
+// (Elena, 2026-11-20; the old 48 px header row is long gone)
+export const FISSION_H = Math.max(480, window.innerHeight - 22)
 const W = FISSION_W
 const H = FISSION_H
 const CX = W / 2

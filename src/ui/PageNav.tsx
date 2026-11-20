@@ -20,7 +20,7 @@ export const EXAMPLE_ITEMS: Array<{ id: ExampleId; label: string; planned?: bool
   { id: 'light', label: '✨ Light & color' },
   { id: 'cosmos', label: '🌟 Star stuff' },
   // designed, not built yet: inactive thumbnails (ComingSoonExample)
-  { id: 'plant', label: '⚡ Power plant', planned: true },
+  { id: 'plant', label: '⚡ Power plant' },
   { id: 'atoms', label: '♻️ Atoms never vanish', planned: true },
   { id: 'crystals', label: '💎 Crystals', planned: true },
 ]

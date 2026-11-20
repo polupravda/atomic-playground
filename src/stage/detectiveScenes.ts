@@ -145,7 +145,8 @@ function drawTelescope(ctx: CanvasRenderingContext2D, b: Board) {
   const { x, y } = b.scope
   ctx.save()
   ctx.translate(x, y)
-  ctx.rotate(-1.05) // aimed up at the star
+  // aimed AT the star it observes: the wide end (the objective) faces it
+  ctx.rotate(Math.atan2(b.star.y - y, b.star.x - x))
   ctx.fillStyle = '#334155'
   ctx.strokeStyle = '#94a3b8'
   ctx.lineWidth = 1.5
@@ -340,17 +341,23 @@ function drawCatch(ctx: CanvasRenderingContext2D, W: number, UH: number, t: numb
   ctx.beginPath()
   ctx.arc(cx, cy, R, 0, Math.PI * 2)
   ctx.fill()
-  // its thin outer gas: a pale shell
+  // its thin outer gas: a pale shell wrapped all around the ball,
+  // overlapping its edge (no hard border where the star ends)
   const shell = clamp01(t / 1.2)
   const gx0 = cx + R
   const gx1 = gx0 + W * 0.2
   ctx.save()
   ctx.globalAlpha = shell
-  const sg = ctx.createLinearGradient(gx0, 0, gx1, 0)
-  sg.addColorStop(0, 'rgba(148, 163, 184, 0.28)')
-  sg.addColorStop(1, 'rgba(148, 163, 184, 0.04)')
+  const outer = gx1 - cx
+  const sg = ctx.createRadialGradient(cx, cy, R * 0.82, cx, cy, outer)
+  sg.addColorStop(0, 'rgba(148, 163, 184, 0)')
+  sg.addColorStop(((R * 1.02 - R * 0.82) / (outer - R * 0.82)), 'rgba(148, 163, 184, 0.3)')
+  sg.addColorStop(0.7, 'rgba(148, 163, 184, 0.08)')
+  sg.addColorStop(1, 'rgba(148, 163, 184, 0)')
   ctx.fillStyle = sg
-  ctx.fillRect(gx0, cy - R * 0.9, gx1 - gx0, R * 1.8)
+  ctx.beginPath()
+  ctx.arc(cx, cy, outer, 0, Math.PI * 2)
+  ctx.fill()
   text(ctx, 'thin outer gas', (gx0 + gx1) / 2, cy - R * 0.9 - 14)
   ctx.restore()
   // the atoms in the gas: hydrogen (H) and helium (He)
@@ -456,15 +463,33 @@ function drawDiscovery(ctx: CanvasRenderingContext2D, W: number, UH: number, t: 
   ctx.beginPath()
   ctx.arc(sx, sy, R, 0, Math.PI * 2)
   ctx.fill()
-  // the prominence: a pink-red flame on the Sun's edge
-  if (cover > 0.6) {
-    const pa = clamp01((cover - 0.6) / 0.4)
-    ctx.fillStyle = `rgba(244, 114, 182, ${0.85 * pa})`
-    ctx.beginPath()
-    const bx = sx + R * 0.7
-    const by = sy - R * 0.72
-    ctx.ellipse(bx + 4, by - 6 + Math.sin(idle * 1.7) * 1.5, 9, 16, 0.8, 0, Math.PI * 2)
-    ctx.fill()
+  // a prominence: a loop of glowing gas rising from the Sun's edge — only
+  // visible when the Moon hides the bright disk. Its light is where the
+  // 1868 yellow line was seen.
+  const prom = cover > 0.6 ? clamp01((cover - 0.6) / 0.4) : 0
+  const pa = -0.8 // where on the edge it stands (up and to the right)
+  if (prom > 0) {
+    const flick = 1 + 0.04 * Math.sin(idle * 2.1)
+    const foot = (d: number) => ({ x: sx + Math.cos(pa + d) * R, y: sy + Math.sin(pa + d) * R })
+    const f0 = foot(-0.2)
+    const f1 = foot(0.2)
+    const top = { x: sx + Math.cos(pa) * R * 1.42 * flick, y: sy + Math.sin(pa) * R * 1.42 * flick }
+    ctx.save()
+    ctx.globalAlpha = prom
+    ctx.lineCap = 'round'
+    for (const [w, c] of [[11, 'rgba(244, 114, 182, 0.25)'], [5, 'rgba(251, 113, 133, 0.9)']] as const) {
+      ctx.strokeStyle = c
+      ctx.lineWidth = w
+      ctx.beginPath()
+      ctx.moveTo(f0.x, f0.y)
+      ctx.bezierCurveTo(
+        f0.x + (top.x - sx) * 0.55, f0.y + (top.y - sy) * 0.55,
+        f1.x + (top.x - sx) * 0.55, f1.y + (top.y - sy) * 0.55,
+        f1.x, f1.y,
+      )
+      ctx.stroke()
+    }
+    ctx.restore()
   }
   // the Moon sliding in front
   ctx.fillStyle = '#020617'
@@ -472,6 +497,14 @@ function drawDiscovery(ctx: CanvasRenderingContext2D, W: number, UH: number, t: 
   ctx.arc(sx + (1 - cover) * R * 2.4, sy, R * 1.01, 0, Math.PI * 2)
   ctx.fill()
   text(ctx, 'the Sun, during an eclipse · 1868', sx, sy + R + 34, '#cbd5e1', 13)
+  if (prom > 0) {
+    ctx.save()
+    ctx.globalAlpha = prom
+    const lx = sx + Math.cos(pa) * R * 1.55
+    const ly = sy + Math.sin(pa) * R * 1.55
+    text(ctx, 'glowing gas at the edge', lx + 18, ly - 4, '#fda4af', 12, '', 'left')
+    ctx.restore()
+  }
   // the light of the glowing edge, through a prism: BRIGHT lines — one of
   // them, a yellow line, belonged to no element known on Earth
   const lx = W * 0.5
