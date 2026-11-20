@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { Circle, Group, Rect, Shape, Text } from 'react-konva'
 import Konva from 'konva'
-import { subshellConfiguration, subshellLabel, type Subshell } from '../core/atom'
+import { subshellConfigurationFor, subshellLabel, type Subshell } from '../core/atom'
 import { useViewStore } from '../state/viewStore'
 import { CENTER, GOLDEN_ANGLE, MAX_SHELL_R, STAGE_W, type Pt } from './layout'
 import { subshellColor } from './orbitalPalette'
@@ -23,7 +23,7 @@ function lobeGeometry(l: number, r: number) {
 }
 
 /** 2D cross-section of one subshell, centered on the origin. */
-function SubshellShape({
+export function SubshellShape({
   sub,
   r,
   colorIndex,
@@ -79,7 +79,7 @@ function SubshellShape({
 
 /** One position measurement, sampled from the drawn 2D density (rejection
  *  sampling). Never lands on a node — p flashes never appear at the nucleus. */
-function samplePoint(sub: Subshell, r: number): Pt {
+export function samplePoint(sub: Subshell, r: number): Pt {
   if (sub.l === 0) {
     for (let tries = 0; tries < 80; tries++) {
       const x = (Math.random() * 2 - 1) * r
@@ -438,6 +438,16 @@ function NucleusCluster({
   )
 }
 
+/** Occupied subshells and the n = 1 radius at zoom 1. True-ish proportions:
+ *  a subshell's radius is r1·n², scaled so the outermost shell fits the
+ *  stage. Shared with the shells ⇄ orbitals morph, whose last frame must be
+ *  exactly this view. */
+export function orbitalGeometry(protons: number, electrons: number) {
+  const subshells = subshellConfigurationFor(protons, electrons)
+  const nMax = Math.max(1, ...subshells.map((s) => s.n))
+  return { subshells, r1: MAX_SHELL_R / (nMax * nMax) }
+}
+
 export function OrbitalsView({
   electrons,
   protons,
@@ -451,11 +461,7 @@ export function OrbitalsView({
   const hidden = useViewStore((s) => s.hiddenSubshells)
   const watching = useViewStore((s) => s.watching)
   const watchStats = useRef<WatchStats>({ count: 0 })
-  const subshells = subshellConfiguration(electrons)
-  const nMax = Math.max(1, ...subshells.map((s) => s.n))
-  // True-ish proportions: shell radius ∝ n², scaled so the outermost shell
-  // fits the stage at zoom 1.
-  const r1 = MAX_SHELL_R / (nMax * nMax)
+  const { subshells, r1 } = orbitalGeometry(protons, electrons)
 
   const watched = subshells
     .map((sub, i) => ({ sub, i, label: subshellLabel(sub.n, sub.l) }))

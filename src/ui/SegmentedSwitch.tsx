@@ -2,7 +2,7 @@ import { TRAY } from './surfaces'
 
 // The app's ONE way to pick one of a few things (Elena, 2026-11-20): a
 // sunken tray with the choices side by side and the current one filled
-// sky blue — the look of the atom builder's Shells · Cloud · Orbitals
+// sky blue — the look of the atom builder's Shells · Orbitals
 // switch (ViewToggle). No headline above it: the options say what they
 // are ("✏️ Graphite · 💎 Diamond", not a card titled "On the table").
 // More options than fit in a row wrap into a grid (`columns`).

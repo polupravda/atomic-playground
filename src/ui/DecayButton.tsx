@@ -78,6 +78,7 @@ export function DecayButton() {
   const protons = useAtomStore((s) => s.protons)
   const neutrons = useAtomStore((s) => s.neutrons)
   const view = useViewStore((s) => s.view)
+  const morphing = useViewStore((s) => s.transition) !== null
   const active = useDecayStore((s) => s.active)
   const start = useDecayStore((s) => s.start)
   const setStory = useEventStore((s) => s.setStory)
@@ -87,7 +88,7 @@ export function DecayButton() {
 
   const mode = decayMode(protons, neutrons)
   const inOrbitals = view === 'orbitals'
-  const disabled = active !== null || !mode || inOrbitals
+  const disabled = active !== null || !mode || inOrbitals || morphing
 
   return (
     <div className={`w-64 p-3 ${FLAT}`}>
@@ -107,7 +108,7 @@ export function DecayButton() {
         {active
           ? 'decaying…'
           : inOrbitals
-            ? 'Switch to Shells or Cloud view to watch.'
+            ? 'Switch to the Shells view to watch.'
             : mode === 'alpha'
               ? 'α decay: the nucleus will throw out 2 protons + 2 neutrons.'
               : mode === 'beta-minus'

@@ -3,7 +3,6 @@ import { TRAY } from './surfaces'
 
 const LABELS: Record<AtomView, string> = {
   shells: 'Shells',
-  cloud: 'Cloud',
   orbitals: 'Orbitals',
 }
 

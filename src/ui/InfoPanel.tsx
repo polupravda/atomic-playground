@@ -92,7 +92,7 @@ function situationParagraphs(p: number, n: number, e: number): IconPara[] {
 }
 
 const VIEW_EXPLANATIONS: Record<
-  AtomView | 'morph-cloud' | 'morph-shells',
+  AtomView | 'morph-orbitals' | 'morph-shells',
   { title: string; icon: string; paragraphs: IconPara[] }
 > = {
   shells: {
@@ -105,29 +105,15 @@ const VIEW_EXPLANATIONS: Record<
       },
       {
         icon: '💡',
-        text: "Electrons don't really ride on rails — the rings are a simple way to count and sort them. Protons and neutrons really do cluster in the nucleus, though!",
+        text: "This is a counting picture. Electrons don't really ride on rings — the rings just sort them by energy. Protons and neutrons really do cluster in the nucleus, though!",
+      },
+      {
+        icon: '🌈',
+        text: 'Want to see where electrons might really be? Switch to Orbitals and watch each shell split up.',
       },
       {
         icon: '🧲',
         text: 'Drag an electron around and watch the amber arrow: the nucleus pulls it electromagnetically — hard when close, gently when far.',
-      },
-    ],
-  },
-  cloud: {
-    title: 'Cloud view',
-    icon: '☁️',
-    paragraphs: [
-      {
-        icon: '☁️',
-        text: 'This soft glow is the electron cloud. Brighter spots are where an electron is easiest to find.',
-      },
-      {
-        icon: '🎲',
-        text: "It's a map of chances — not a real fog! The cloud has no sharp edge, and it's the picture physicists actually use.",
-      },
-      {
-        icon: '🧩',
-        text: "The cloud is what you get when you add all the orbitals together — the whole atom's electron blur. (The Orbitals view shows the separate parts.)",
       },
     ],
   },
@@ -138,6 +124,10 @@ const VIEW_EXPLANATIONS: Record<
       {
         icon: '🌈',
         text: 'Each color is one orbital group — a region where electrons are most likely to be. A round one is an s orbital; the lobed ones are p (and d, f) orbitals.',
+      },
+      {
+        icon: '🎲',
+        text: "It's a map of chances, not a real fog: brighter means an electron is more likely there. Orbitals have no sharp edge — this is the picture physicists actually use.",
       },
       {
         icon: '💡',
@@ -161,15 +151,26 @@ const VIEW_EXPLANATIONS: Record<
       },
     ],
   },
-  'morph-cloud': {
-    title: 'Turning into a cloud…',
+  'morph-orbitals': {
+    title: 'From shells to orbitals…',
     icon: '🎬',
     paragraphs: [
       {
-        icon: '💨',
-        text: 'Watch! The electrons zoom around so fast that their paths blur into a cloud.',
+        icon: '🎨',
+        text: 'Each shell splits into orbitals: shell 2 is a 2s and a 2p orbital. The colors match the orbitals you are about to see.',
       },
-      { icon: '⚛️', text: 'Same electrons — just a new way to see them.' },
+      {
+        icon: '🔍',
+        text: 'The nucleus shrinks to its true size — far too tiny to see from here.',
+      },
+      {
+        icon: '📸',
+        text: 'Then each electron is gone from its ring. The specks show places we might find it if we looked. Between looks it has no path at all.',
+      },
+      {
+        icon: '⚛️',
+        text: 'Two different pictures: shells COUNT electrons by energy, orbitals show WHERE they might be.',
+      },
     ],
   },
   'morph-shells': {
@@ -178,7 +179,11 @@ const VIEW_EXPLANATIONS: Record<
     paragraphs: [
       {
         icon: '🎯',
-        text: 'The cloud gathers into neat shells. It was the same atom all along.',
+        text: "The same electrons, counted again on simple rings. Each orbital's electrons go back to their shell.",
+      },
+      {
+        icon: '💡',
+        text: 'Shells are easier for counting and sorting; orbitals are closer to how an atom really is.',
       },
     ],
   },
@@ -244,7 +249,7 @@ export function InfoPanel() {
   const transition = useViewStore((s) => s.transition)
   const watching = useViewStore((s) => s.watching)
   const key = transition
-    ? (`morph-${transition.to}` as 'morph-cloud' | 'morph-shells')
+    ? (`morph-${transition.to}` as 'morph-orbitals' | 'morph-shells')
     : view
   const viewSection =
     key === 'orbitals' && watching ? WATCHING_EXPLANATION : VIEW_EXPLANATIONS[key]

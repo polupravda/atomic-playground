@@ -31,7 +31,7 @@ in `public/narration/<story>/<lang>/`. Rules: see
 1. **DOM (Motion)** — chrome transitions: dialogs, cards, table cells,
    label changes. Declarative, fire-and-forget.
 2. **Canvas (Konva + rAF)** — everything inside the atom stage: particle
-   entry/exit, orbits, decay, clouds, forces. A single animation loop per
+   entry/exit, the shells ⇄ orbitals morph, decay, forces. A single animation loop per
    stage ticks the scene; particle positions are *not* React state (they live
    in refs/Konva nodes), only semantically meaningful values (counts, mode,
    selection) go through Zustand.
@@ -85,12 +85,11 @@ Shared color/typography vocabulary — every new feature must stay inside it:
   countable: a positive ion shows an empty electron seat, a negative ion an
   extra squeezed-in electron.
 - In the builder, an ion gets a **charge aura**: a corona ring at one FIXED
-  radius just outside the dashed atom zone, identical in shells and cloud
-  views — red for +, sky for −, brighter and wider with more charge. Fixed on
+  radius just outside the dashed atom zone, shown in the shells view — red for +, sky for −, brighter and wider with more charge. Fixed on
   purpose: the aura's size then means exactly one thing (the charge), never
   "the atom grew a shell", and kids always know where to look. Deliberately a crisp hollow ring, NOT radiating
   waves — waves read as emission (that's the decay rays), and the sharp
-  silhouette stays distinguishable from the fuzzy cloud even when both are
+  silhouette stays distinguishable from fuzzy shapes even when both are
   sky blue.
 - **Big glowing sky text is reserved for element names** (periodic table
   header, etc.) — kids find "which element is this?" by looking for the glow.
@@ -118,7 +117,7 @@ in `src/ui/surfaces.ts` — use them instead of hand-written box styles:
   languages); the chosen one is the sky fill inside it.
 
 **One way to choose (2026-11-20, Elena):** every "pick one of a few"
-control is `ui/SegmentedSwitch.tsx` — the atom builder's Shells · Cloud ·
+control is `ui/SegmentedSwitch.tsx` — the atom builder's Shells ·
 Orbitals look (a `TRAY`, choices side by side, the current one sky; more
 options wrap into a grid with `columns`). No heading over a selector whose
 options name themselves (the "On the table" / "On the film" cards are

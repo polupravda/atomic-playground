@@ -174,6 +174,75 @@ export function subshellConfiguration(electrons: number): Subshell[] {
   return result
 }
 
+/**
+ * The aufbau exceptions above at SUBSHELL granularity: only the subshells
+ * whose measured occupancy differs from idealized Madelung filling. A test
+ * guarantees these agree with NEUTRAL_CONFIG_EXCEPTIONS shell by shell.
+ */
+const SUBSHELL_EXCEPTIONS: Readonly<Record<number, Readonly<Record<string, number>>>> = {
+  24: { '3d': 5, '4s': 1 }, // Cr
+  29: { '3d': 10, '4s': 1 }, // Cu
+  41: { '4d': 4, '5s': 1 }, // Nb
+  42: { '4d': 5, '5s': 1 }, // Mo
+  44: { '4d': 7, '5s': 1 }, // Ru
+  45: { '4d': 8, '5s': 1 }, // Rh
+  46: { '4d': 10, '5s': 0 }, // Pd
+  47: { '4d': 10, '5s': 1 }, // Ag
+  57: { '4f': 0, '5d': 1 }, // La
+  58: { '4f': 1, '5d': 1 }, // Ce
+  64: { '4f': 7, '5d': 1 }, // Gd
+  78: { '5d': 9, '6s': 1 }, // Pt
+  79: { '5d': 10, '6s': 1 }, // Au
+  89: { '5f': 0, '6d': 1 }, // Ac
+  90: { '5f': 0, '6d': 2 }, // Th
+  91: { '5f': 2, '6d': 1 }, // Pa
+  92: { '5f': 3, '6d': 1 }, // U
+  93: { '5f': 4, '6d': 1 }, // Np
+  96: { '5f': 7, '6d': 1 }, // Cm
+  103: { '6d': 0, '7p': 1 }, // Lr
+}
+
+/**
+ * Occupied subshells of an atom or ion — the SAME electrons the shell view
+ * shows, split into s/p/d/f (so the shells ⇄ orbitals morph never has to
+ * invent or lose an electron). Mirrors shellConfiguration():
+ *   - electrons ≤ protons: the element's neutral configuration (with the
+ *     aufbau exceptions), then electrons removed from the outermost shell
+ *     first — highest n, and within a shell the highest l first. So Fe²⁺
+ *     loses its 4s electrons (3d⁶, not 4s² 3d⁴), as real cations do.
+ *   - electrons > protons (anion, or no element yet): idealized filling.
+ * Subshells come in Madelung order; empty ones are left out.
+ */
+export function subshellConfigurationFor(protons: number, electrons: number): Subshell[] {
+  if (electrons <= 0) return []
+  if (electrons > protons) return subshellConfiguration(electrons)
+  const neutral = subshellConfiguration(protons)
+  const exception = SUBSHELL_EXCEPTIONS[protons]
+  if (exception) {
+    for (const [label, count] of Object.entries(exception)) {
+      const existing = neutral.find((s) => subshellLabel(s.n, s.l) === label)
+      if (existing) existing.electrons = count
+      else {
+        const n = Number(label.slice(0, -1))
+        const l = 'spdf'.indexOf(label.slice(-1))
+        neutral.push({ n, l, electrons: count })
+      }
+    }
+    const rank = (s: Subshell) =>
+      MADELUNG_ORDER.findIndex((m) => m.n === s.n && m.l === s.l)
+    neutral.sort((a, b) => rank(a) - rank(b))
+  }
+  let toRemove = protons - electrons
+  const removalOrder = neutral.slice().sort((a, b) => b.n - a.n || b.l - a.l)
+  for (const sub of removalOrder) {
+    if (toRemove <= 0) break
+    const take = Math.min(sub.electrons, toRemove)
+    sub.electrons -= take
+    toRemove -= take
+  }
+  return neutral.filter((s) => s.electrons > 0)
+}
+
 /** Conventional subshell name: 1s, 2p, 3d... */
 export function subshellLabel(n: number, l: number): string {
   return `${n}${'spdf'[l] ?? '?'}`

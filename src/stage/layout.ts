@@ -17,6 +17,7 @@ export const NUCLEON_R = 12
 export const ELECTRON_R = 8
 export const INNER_SHELL_R = 90
 export const MAX_SHELL_R = ATOM_ZONE_R - 12
+/** Just outside the outermost shell: where the charge aura sits. */
 export const CLOUD_R = MAX_SHELL_R + 26
 export const GOLDEN_ANGLE = 2.399963
 
@@ -138,28 +139,4 @@ export function nucleonLayout(protons: number, neutrons: number): Nucleon[] {
     })
   }
   return nucleons
-}
-
-/** Radial-gradient color stops for the probability cloud: a density band per
- *  occupied shell, brighter with more electrons. `bandWidthPx` lets the
- *  cloud⇄shells transition narrow the bands until they look like rings. */
-export function cloudGradientStops(
-  shells: number[],
-  shellRadii: number[],
-  bandWidthPx?: number,
-): Array<number | string> {
-  const ringGap =
-    shellRadii.length > 1 ? shellRadii[1] - shellRadii[0] : INNER_SHELL_R * 0.45
-  const bw = (bandWidthPx ?? ringGap * 0.42) / CLOUD_R
-  const stops: Array<number | string> = [0, 'rgba(56, 189, 248, 0)']
-  shells.forEach((count, si) => {
-    if (count === 0) return
-    const pos = shellRadii[si] / CLOUD_R
-    const alpha = Math.min(0.5, 0.1 + count * 0.022)
-    stops.push(Math.max(0, pos - bw), 'rgba(56, 189, 248, 0.02)')
-    stops.push(pos, `rgba(56, 189, 248, ${alpha})`)
-    stops.push(Math.min(1, pos + bw), 'rgba(56, 189, 248, 0.02)')
-  })
-  stops.push(1, 'rgba(56, 189, 248, 0)')
-  return stops
 }

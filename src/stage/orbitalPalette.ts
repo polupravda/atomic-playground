@@ -3,18 +3,21 @@
 // and the legend. Red and blue hues are deliberately ABSENT: those are the
 // proton and electron colors everywhere else in the app, and an orbital
 // marked red/blue would read as "made of protons" / "a special electron".
+// Order matters: subshells that sit side by side in the shells ⇄ orbitals
+// morph (1s…3d, the first seven) must be told apart at a glance, so the
+// first entries step around the hue circle; lighter variants come last.
 const PALETTE: Array<[number, number, number]> = [
-  [167, 139, 250], // violet
-  [52, 211, 153], // emerald
-  [244, 114, 182], // pink
-  [251, 191, 36], // amber
-  [45, 212, 191], // teal
-  [192, 132, 252], // purple
-  [251, 146, 60], // orange
-  [134, 239, 172], // green
-  [240, 171, 252], // fuchsia
-  [253, 224, 71], // yellow
-  [190, 242, 100], // lime
+  [167, 139, 250], // violet      1s
+  [52, 211, 153], // emerald      2s
+  [244, 114, 182], // pink        2p
+  [251, 191, 36], // amber        3s
+  [190, 242, 100], // lime        3p
+  [240, 171, 252], // fuchsia     4s
+  [45, 212, 191], // teal         3d
+  [251, 146, 60], // orange       4p
+  [192, 132, 252], // purple      5s
+  [253, 224, 71], // yellow       4d
+  [134, 239, 172], // green       5p
   [216, 180, 254], // light purple
   [253, 186, 116], // light orange
   [110, 231, 183], // light emerald

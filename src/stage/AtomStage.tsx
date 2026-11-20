@@ -30,9 +30,8 @@ import {
   type Pt,
 } from './layout'
 import { drawGlossyParticle, glossyFillProps } from './particleStyle'
-import { CloudView } from './CloudView'
 import { OrbitalsView } from './OrbitalsView'
-import { CloudToShellsTransition, ShellsToCloudTransition } from './ViewTransition'
+import { OrbitalMorph } from './OrbitalMorph'
 
 /** An endless-supply particle in a bucket; always snaps back after a drag. */
 function BucketToken({
@@ -104,7 +103,7 @@ function AtomParticle({
   // A18: electrons are dynamic participants, not static dots — a gentle
   // in-place shimmer (scale + opacity breathing, each with its own phase).
   // Deliberately NOT an orbit: circling would teach the planetary picture
-  // the cloud view exists to correct.
+  // the orbitals view exists to correct.
   useEffect(() => {
     if (kind !== 'electrons') return
     const node = ref.current
@@ -916,7 +915,7 @@ export function AtomStage() {
     const prevE = prevElectrons.current
     if (!skipExitAnim.current) {
       const ghosts: Array<Pt & { kind: ParticleKind }> = []
-      // In cloud view (or mid-transition) there are no discrete electrons.
+      // Mid-morph and in the orbitals view there are no discrete electrons.
       if (inShellsView && electrons === prevE - 1) {
         ghosts.push({
           kind: 'electrons',
@@ -1089,28 +1088,20 @@ export function AtomStage() {
           {!transition && view !== 'orbitals' && atomCharge !== 0 && (
             <ChargeAura chargeValue={atomCharge} baseRadius={CLOUD_R + 6} />
           )}
-          {view === 'cloud' && !transition && (
-            <CloudView shells={shells} shellRadii={shellRadii} />
-          )}
           {view === 'orbitals' && !transition && (
             <OrbitalsView electrons={electrons} protons={protons} neutrons={neutrons} />
           )}
-          {transition &&
-            (transition.to === 'cloud' ? (
-              <ShellsToCloudTransition
-                shells={shells}
-                shellRadii={shellRadii}
-                filledMeta={filledMeta}
-                onDone={completeTransition}
-              />
-            ) : (
-              <CloudToShellsTransition
-                shells={shells}
-                shellRadii={shellRadii}
-                filledMeta={filledMeta}
-                onDone={completeTransition}
-              />
-            ))}
+          {transition && (
+            <OrbitalMorph
+              direction={transition.to === 'orbitals' ? 'to-orbitals' : 'to-shells'}
+              protons={protons}
+              electrons={electrons}
+              nucleons={nucleons}
+              shellRadii={shellRadii}
+              filledMeta={filledMeta}
+              onDone={completeTransition}
+            />
+          )}
 
           {inShellsView &&
             shellRadii.map((r, si) => (
@@ -1185,9 +1176,10 @@ export function AtomStage() {
             />
           ))}
 
-          {/* Atom contents. In the orbitals view the nucleus is drawn as a
-              tiny to-scale-ish dot inside OrbitalsView instead. */}
-          {view !== 'orbitals' && nucleons.map((p) => (
+          {/* Atom contents. In the orbitals view the nucleus is drawn at
+              true scale inside OrbitalsView instead; mid-morph, OrbitalMorph
+              draws it shrinking or growing. */}
+          {view !== 'orbitals' && !transition && nucleons.map((p) => (
             <AtomParticle
               key={`${p.kind}-${p.kindIdx}`}
               kind={p.kind}
@@ -1223,13 +1215,13 @@ export function AtomStage() {
                 />
               )
             })}
-          {view !== 'orbitals' && nucleusInfo?.stability === 'unstable' && (
+          {view !== 'orbitals' && !transition && nucleusInfo?.stability === 'unstable' && (
             <RadiationEmitter
               instability={nucleusInfo.instability}
               nucleusRadius={nucleusRadius}
             />
           )}
-          {view !== 'orbitals' && atomCharge !== 0 && (
+          {view !== 'orbitals' && !transition && atomCharge !== 0 && (
             <ChargeSparkEmitter chargeValue={atomCharge} />
           )}
           {decayActive && (
@@ -1259,7 +1251,7 @@ export function AtomStage() {
               isotope, nuclear stability, charge. */}
           {protons > 0 &&
             (() => {
-              const statusY = view === 'orbitals' ? 54 : 14
+              const statusY = view === 'orbitals' && !transition ? 54 : 14
               const q = atomCharge
               const rows: Array<{ text: string; fill: string }> = [
                 { text: isotopeLabel(protons, neutrons) ?? '', fill: '#6ee7b7' },

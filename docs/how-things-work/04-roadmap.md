@@ -256,6 +256,12 @@ Every documented-but-unbuilt demo has its place under 🎬 Stories (dimmed menu 
 | 45p | narration | **Tempo audit, all languages**: `npm run tempo` now measures EN · DE · RU, both with sentence gaps and as pure voice speed (silence cut out). Result: one rate per language everywhere; voice speed within ±5% of star stuff in every story (RU gold +2.3%, i.e. not slower than the other Russian demos). **RU stress**: the repeat «Нейтро́нная. Звезда́.» (the lone word got the wrong stress) is now the phrase «Нейтро́нная звезда́.»; only `gold/ru/stars-2.m4a` re-rendered. A/B listen files made for Elena's check. | awaiting manual test |
 | 45q | narration RU | «нейтро́нная» still mis-stressed by Svetlana in every spelling (incl. stress mark, the phrase, in-sentence; `<phoneme>` rejected by the endpoint) → generator respelling `RU_RESPELL` «нейтроонн…» sent to the voice only, Elena's pick from A/B ("best, not ideal"); covers all three spoken occurrences (gold `stars-2` ×2, `teaspoon`); only those two RU files re-rendered. | awaiting manual test |
 
+## Shells ⇄ orbitals morph (2026-11-20) — `done`, awaiting manual test
+
+| Step | Features | Scope | Status |
+| --- | --- | --- | --- |
+| 46 | A13, A14, A15, A16 | [Proposal 14](14-proposal-shell-orbital-morph.md). **Cloud view removed** (two models: Shells · Orbitals). New signature animation `stage/OrbitalMorph.tsx`: sort (subshell-colored halos, arcs and labels on the rings) → rescale (rings to radius ∝ n², nucleus shrinks to true size) → dissolve (each electron flashes out, measurement specks sampled from its orbital, orbitals fade in); the reverse for Orbitals → Shells; on-canvas captions. Data fix: `subshellConfigurationFor(protons, electrons)` — orbitals now use the measured aufbau exceptions and the cation rule, tested to match the shells view for every Z and electron count. Orbital palette reordered for distinct first seven colors; texts updated (shells = counting picture, "map of chances" moved to Orbitals); decay button waits during a morph. Supersedes steps 8 and 9. | awaiting manual test |
+
 ## Backlog — proposed demos ([proposal 11](11-proposal-new-demos.md), awaiting review)
 
 | Step | Features | Scope | Status |

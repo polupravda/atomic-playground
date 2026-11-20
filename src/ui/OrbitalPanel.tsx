@@ -5,7 +5,7 @@ import {
   MIN_ORBITAL_ZOOM,
   useViewStore,
 } from '../state/viewStore'
-import { subshellConfiguration, subshellLabel } from '../core/atom'
+import { subshellConfigurationFor, subshellLabel } from '../core/atom'
 import { subshellColor } from '../stage/orbitalPalette'
 import { FLAT } from './surfaces'
 
@@ -22,8 +22,9 @@ export function OrbitalPanel() {
   const watchFast = useViewStore((s) => s.watchFast)
   const toggleWatchFast = useViewStore((s) => s.toggleWatchFast)
   const electrons = useAtomStore((s) => s.electrons)
+  const protons = useAtomStore((s) => s.protons)
 
-  const subshells = subshellConfiguration(electrons)
+  const subshells = subshellConfigurationFor(protons, electrons)
 
   // Stop watching if the watched subshell no longer exists.
   const watchedExists = subshells.some(

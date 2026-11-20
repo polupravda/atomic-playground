@@ -10,6 +10,7 @@ import {
   shellConfiguration,
   shellOccupancy,
   subshellConfiguration,
+  subshellConfigurationFor,
   subshellLabel,
 } from './atom'
 
@@ -162,5 +163,39 @@ describe('shell model (A11/A12)', () => {
     expect(outerShellElectrons(0)).toBe(0)
     expect(outerShellElectrons(11)).toBe(1) // Na
     expect(outerShellElectrons(17)).toBe(7) // Cl
+  })
+})
+
+describe('subshells agree with shells (shells ⇄ orbitals morph)', () => {
+  const label = (subs: ReturnType<typeof subshellConfigurationFor>) =>
+    subs.map((s) => `${subshellLabel(s.n, s.l)}${s.electrons}`).join(' ')
+
+  it('splits every atom and ion into exactly the shell view electrons', () => {
+    for (let p = 1; p <= 118; p++) {
+      for (let e = 0; e <= p + 1; e++) {
+        const shells = shellConfiguration(p, e)
+        const fromSubs: number[] = []
+        for (const s of subshellConfigurationFor(p, e)) {
+          fromSubs[s.n - 1] = (fromSubs[s.n - 1] ?? 0) + s.electrons
+        }
+        for (let i = 0; i < fromSubs.length; i++) fromSubs[i] = fromSubs[i] ?? 0
+        expect(fromSubs, `Z=${p}, e=${e}`).toEqual(shells)
+      }
+    }
+  })
+
+  it('uses the measured configuration for aufbau exceptions', () => {
+    expect(label(subshellConfigurationFor(24, 24))).toBe('1s2 2s2 2p6 3s2 3p6 4s1 3d5') // Cr
+    expect(label(subshellConfigurationFor(46, 46))).toContain('4d10')
+    expect(label(subshellConfigurationFor(46, 46))).not.toContain('5s')
+    expect(label(subshellConfigurationFor(103, 103))).toContain('7p1')
+    expect(label(subshellConfigurationFor(103, 103))).not.toContain('6d')
+  })
+
+  it('removes cation electrons outermost first (Fe²⁺ is 3d⁶, no 4s)', () => {
+    const fe2 = label(subshellConfigurationFor(26, 24))
+    expect(fe2).toContain('3d6')
+    expect(fe2).not.toContain('4s')
+    expect(label(subshellConfigurationFor(11, 10))).toBe('1s2 2s2 2p6') // Na⁺
   })
 })
