@@ -12,6 +12,9 @@ a purely client-side educational toy.
 | [02-tech-stack.md](02-tech-stack.md) | Chosen stack and the reasoning behind each choice, including what was rejected and why. |
 | [03-architecture.md](03-architecture.md) | Code layout, layering rules (core → state → stage/ui), and the animation model. |
 | [04-roadmap.md](04-roadmap.md) | Step-by-step implementation plan with per-feature status. Updated after every implemented + manually tested step. |
+| [11-proposal-new-demos.md](11-proposal-new-demos.md) | **Proposed 2026-11-19, awaiting review**: seven new demos — 🕯️ the candle and 🌳 the tree (two separate narrated demos with a plot), 💎 crystals as a narrated demo AND a separate silent 🧊 Crystal lab playground (diamond vs. pencil, snowflakes), and three 💡 Light lab scenes (microscopes, sky colors, lasers). |
+| [13-proposal-crystal-lab.md](13-proposal-crystal-lab.md) | **Built 2026-11-19, reworked after review**: the 🧊 Crystal lab playground — one block of carbon (graphite / diamond): 🔄 look around as the main view (⚛️ atoms or ⚪ balls & sticks), ✏️ write, 👉 push, 🔦 light, 🔋 electricity and 🗜️🔥 squeeze & heat in drawers. Snowflake and salt removed. |
+| [12-story-designs-for-kids.md](12-story-designs-for-kids.md) | **Proposed 2026-11-19, awaiting review**: the eight unbuilt 🎬 stories redesigned for a child — one question, one aha, at most two new words each (candle, tree, pencil to diamond, snowflake, neon, aurora, gold, power plant). Wins over older proposals for those stories. |
 | [10-narration-strategy.md](10-narration-strategy.md) | How demos are narrated: voice, writing rules, listen-first pacing, translations, the audio pipeline. **Source of truth** for every narration script. |
 
 ## Working agreement

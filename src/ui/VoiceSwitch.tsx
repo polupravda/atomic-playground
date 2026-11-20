@@ -1,6 +1,7 @@
 import { useVoiceStore, type NarrationLang } from '../state/voiceStore'
 import { cancelNarration } from './useNarration'
 import { SpeakerIcon } from './SpeakButton'
+import { TRAY } from './surfaces'
 
 // 🔊 the global storyteller-voice controls, rendered in every demo's
 // controls block (ui/DemoControls.tsx, left column under the main menu):
@@ -65,7 +66,7 @@ export function NarrationLangSwitch() {
       role="group"
       aria-label="Narration language"
       title="Narration language — only the storyteller voice; nothing else is translated yet"
-      className="flex w-full gap-1 text-sm"
+      className={`flex w-full gap-1 p-1 text-sm ${TRAY}`}
     >
       {LANGS.map((l) => (
         <button
@@ -74,7 +75,8 @@ export function NarrationLangSwitch() {
           aria-pressed={lang === l.id}
           onClick={() => {
             if (l.id === lang) return
-            cancelNarration() // the current beat re-reads in the new voice
+            // no cancel: the narrator fades the old voice and picks up what
+            // was still to be said in the new one (useNarration: switchLanguage)
             setLang(l.id)
           }}
           className={`flex-1 rounded-lg px-1 py-1 transition ${

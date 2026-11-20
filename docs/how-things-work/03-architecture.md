@@ -101,6 +101,26 @@ Shared color/typography vocabulary — every new feature must stay inside it:
   `p-3` container on `bg-slate-800/40`, `text-xs` uppercase slate-400 section
   headers with `border-t` separators, `text-sm` body, icon-led paragraphs.
 
+## Press or read — raised vs flat (2026-11-19)
+
+One rule on every page (Elena chose option A of the strategy
+https://claude.ai/artifact/6zEhrSLr9Kr7j6TetmipCG): **things you can press
+stand up from the page; things you read lie flat on it.** The classes live
+in `src/ui/surfaces.ts` — use them instead of hand-written box styles:
+
+- `KEY` — a pressable button: lit top edge, short shadow, 1 px lift on
+  hover, 1 px press. Drawer buttons (🧪 Periodic table, 🌡️ States of
+  matter, Light lab scenes), "Choose another …", ⏸ Pause, Reset/Clear.
+- `CHIP_KEY` — the same key as a small pill (lamp colors, quick jumps).
+- `FLAT` — panels you read and a control's home card: no border, no
+  shadow, a faint fill (info panels, readouts, photo cards, the menu).
+- `TRAY` — a sunken tray holding a set of choices (tabs, view toggles,
+  languages); the chosen one is the sky fill inside it.
+
+Color keeps one meaning each: sky blue = your current choice; amber = look
+here, happening now; the chooser's ▶ Watch it stays the one solid call to
+action. Every signal is visible at rest (tablets have no hover).
+
 ## Current status
 
 - `core/` holds the 118-element dataset and the pure rules (element lookup,

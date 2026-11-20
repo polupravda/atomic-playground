@@ -7,6 +7,7 @@ import {
 } from '../state/viewStore'
 import { subshellConfiguration, subshellLabel } from '../core/atom'
 import { subshellColor } from '../stage/orbitalPalette'
+import { FLAT } from './surfaces'
 
 /** Legend + controls for the orbitals view: one row per occupied subshell
  *  (color chip, name, electron count, show/hide) and zoom controls. */
@@ -35,7 +36,7 @@ export function OrbitalPanel() {
   if (view !== 'orbitals') return null
 
   return (
-    <div className="w-64 rounded-xl border border-slate-700 bg-slate-800/60 p-4">
+    <div className={`w-64 p-4 ${FLAT}`}>
       <div className="mb-2 flex items-center justify-between text-sm">
         <span className="text-slate-300">Orbitals</span>
         <span className="flex items-center gap-1">

@@ -14,6 +14,7 @@ import { BondingLab } from './ui/BondingLab'
 import { InfoPanel } from './ui/InfoPanel'
 import { PageNav } from './ui/PageNav'
 import { LightLab } from './ui/LightLab'
+import { CrystalLab } from './ui/CrystalLab'
 import { ExamplesPage } from './ui/ExamplesPage'
 import { usePageStore } from './state/pageStore'
 
@@ -67,6 +68,12 @@ export default function App() {
           style={{ height: 'calc(100vh - 40px)' }}
         >
           <BondingLab />
+        </div>
+        <div
+          className={page === 'crystal' ? '' : 'hidden'}
+          style={{ height: 'calc(100vh - 40px)' }}
+        >
+          <CrystalLab />
         </div>
         <div
           className={page === 'light' ? '' : 'hidden'}

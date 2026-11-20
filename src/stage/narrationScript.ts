@@ -56,3 +56,20 @@ export function parseNarrationLine(line: string): NarrationLine {
   const text = m ? rest.slice(m[0].length) : rest
   return { watchFirst, flow, run, pieces: text.split(PIECE_MARK) }
 }
+
+/** a line's pacing markers ('~ ', '> ', '| ', '|5| '…), without its text */
+export function lineMarks(line: string): string {
+  return /^(?:[~>] )?(?:\|(?:\d+(?:\.\d+)?\|)?\s+)?/.exec(line)![0]
+}
+
+/**
+ * A translated script: the same beats, each line's TEXT in the new
+ * language and its PACING copied from English — show first, flow and run
+ * are about the animation, not the language. `text` may not carry
+ * markers of its own; its pieces (' | ') must match English one to one
+ * (the tests check), since emphasis and the intro's fact cards follow
+ * piece numbers.
+ */
+export function translated(en: Record<string, string>, text: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.keys(en).map((id) => [id, `${lineMarks(en[id])}${text[id]}`]))
+}

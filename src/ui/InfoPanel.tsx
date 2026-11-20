@@ -4,6 +4,7 @@ import { elementForProtons } from '../core/elements'
 import { charge, chargeLabel, isotopeLabel } from '../core/atom'
 import { nuclideStability } from '../core/nuclides'
 import { useEventStore } from '../state/eventStore'
+import { FLAT } from './surfaces'
 
 // The F01 explanation layer: a live "tip giver" beside the canvas that
 // describes whatever is currently going on. Every paragraph carries an icon
@@ -253,7 +254,7 @@ export function InfoPanel() {
   const story = useEventStore((s) => s.story)
 
   return (
-    <aside className="h-full w-64 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/40 p-3 text-sm leading-relaxed text-slate-300">
+    <aside className={`h-full w-64 overflow-y-auto p-3 text-sm leading-relaxed text-slate-300 ${FLAT}`}>
       <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
         Right now
       </h2>

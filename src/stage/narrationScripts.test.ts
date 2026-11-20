@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { BOMB_MODES, bombNarration, bombStoryKey } from './bombNarration'
-import { FIREWORK_NARRATION } from './fireworkNarration'
-import { SUN_NARRATION } from './sunNarration'
-import { WATCH_BREAK_S, parseNarrationLine } from './narrationScript'
+import { BOMB_MODES, bombNarration, bombScripts, bombStoryKey } from './bombNarration'
+import { FIREWORK_NARRATION, FIREWORK_SCRIPTS } from './fireworkNarration'
+import { SUN_NARRATION, SUN_SCRIPTS } from './sunNarration'
+import { DETECTIVE_NARRATION, DETECTIVE_SCRIPTS } from './detectiveNarration'
+import { CRYSTAL_INTROS, CRYSTAL_INTRO_SCRIPTS } from './crystalIntros'
+import { STARDUST_SCRIPTS } from './stardustNarration'
+import { WATCH_BREAK_S, lineMarks, parseNarrationLine } from './narrationScript'
 
 // The narration scripts of the ☢️ bombs, the 🎆 firework and the ☀️ Sun
 // (the 🧒 star-stuff script has its own test). Beat orders are kept
@@ -17,13 +20,102 @@ const ORDERS: Record<string, string[]> = {
   'bomb-tsar': ['intro', 'armed', 'countdown', 'assembling', 'chain', ...n('closeup', 6), 'chainAfter', 'xray', 'fusion', 'chainDone', ...n('explosion', 5)],
   firework: ['scene', 'zoom', ...n('closeup', 5), 'barcode', 'payoff'],
   sun: ['sun', 'recipe', 'zoom', ...n('closeup', 4), 'scale', 'walk', 'valley'],
+  detective: ['star', 'prism', 'catch', 'hydrogen', 'oxygen', 'helium', 'discovery'],
+  'crystal-lab': ['look', 'write', 'push', 'light', 'power', 'squeeze'],
 }
 
 const SCRIPTS: Record<string, Record<string, string>> = {
   ...Object.fromEntries(BOMB_MODES.map((m) => [bombStoryKey(m), bombNarration(m)])),
   firework: FIREWORK_NARRATION,
   sun: SUN_NARRATION,
+  detective: DETECTIVE_NARRATION,
+  'crystal-lab': CRYSTAL_INTROS,
 }
+
+/** every story's scripts in every language (EN is SCRIPTS above) */
+const ALL_LANGS: Record<string, Partial<Record<'en' | 'de' | 'ru', Record<string, string>>>> = {
+  ...Object.fromEntries(BOMB_MODES.map((m) => [bombStoryKey(m), bombScripts(m)])),
+  firework: FIREWORK_SCRIPTS,
+  sun: SUN_SCRIPTS,
+  detective: DETECTIVE_SCRIPTS,
+  'crystal-lab': CRYSTAL_INTRO_SCRIPTS,
+}
+
+describe('the DE and RU translations (bombs, firework, Sun)', () => {
+  it('has every beat, the same pacing marks and the same pieces as English', () => {
+    for (const [key, langs] of Object.entries(ALL_LANGS)) {
+      const en = langs.en!
+      for (const lang of ['de', 'ru'] as const) {
+        const lines = langs[lang]
+        expect(lines, `${key}:${lang}`).toBeDefined()
+        expect(Object.keys(lines!), `${key}:${lang}`).toEqual(Object.keys(en))
+        for (const id of Object.keys(en)) {
+          const where = `${key}:${lang}:${id}`
+          expect(lineMarks(lines![id]), where).toBe(lineMarks(en[id]))
+          // emphasis rings and the intro's fact cards follow piece numbers
+          expect(parseNarrationLine(lines![id]).pieces.length, where).toBe(parseNarrationLine(en[id]).pieces.length)
+        }
+      }
+    }
+  })
+
+  it('keeps every piece speakable in every language', () => {
+    for (const [key, langs] of Object.entries(ALL_LANGS)) {
+      for (const lang of ['de', 'ru'] as const) {
+        for (const [id, line] of Object.entries(langs[lang]!)) {
+          expect(line, `${key}:${lang}:${id}`).not.toContain('undefined')
+          for (const [p, piece] of parseNarrationLine(line).pieces.entries()) {
+            const where = `${key}:${lang}:${id}#${p + 1}`
+            const words = piece.split(/\s+/).filter((w) => /\p{L}/u.test(w))
+            expect(words.length, where).toBeGreaterThanOrEqual(4)
+            expect(words.length, where).toBeLessThanOrEqual(40)
+            expect(piece, where).toMatch(/[.!?]$/)
+            expect(piece, where).not.toMatch(/[()=+→×—–:|\d]/)
+          }
+        }
+      }
+    }
+  })
+
+  it('RU: no homographs, ё written out, the taught terms stress-marked', () => {
+    const plain = (t: string) => t.replace(/\u0301/g, '')
+    // words a Russian voice can stress two ways — rephrased away, always
+    const homographs = /(?<!\p{L})(ядра|звезды|земли|волны|кольца|облака|дома|города|искры|цвета|полосы|пары|стены)(?!\p{L})/iu
+    for (const [key, langs] of Object.entries(ALL_LANGS)) {
+      for (const [id, line] of Object.entries(langs.ru!)) expect(plain(line), `${key}:${id}`).not.toMatch(homographs)
+    }
+    const all = Object.values(ALL_LANGS).flatMap((l) => Object.values(l.ru!)).join(' ')
+    for (const term of ['Крити́ческая', 'Цепна́я', 'Деле́ние', 'Уда́рная', 'Гриб', 'Водоро́д', 'Ге́лий', 'Дейте́рий', 'Нейтри́но', 'Си́нтез', 'Ли́тий', 'Фото́н', 'На́трий'])
+      expect(all, term).toContain(term)
+    for (const word of ['ещё', 'всё', 'её', 'учёных', 'жёлтыми', 'отсчёт', 'несётся', 'растёт']) expect(all, word).toContain(word)
+  })
+
+  it('teaches the school word in every language', () => {
+    const de = (key: string) => Object.values(ALL_LANGS[key].de!).join(' ')
+    for (const m of BOMB_MODES) {
+      const s = de(bombStoryKey(m))
+      for (const t of ['Kritische. Masse.', 'Ketten. Reaktion.', 'Kern. Spaltung.', 'Druck. Welle.', 'Atom. Pilz.']) expect(s, `${m}:${t}`).toContain(t)
+    }
+    expect(de('bomb-tsar')).toContain('Kern. Fusion.')
+    expect(de('sun')).toContain('Wasserstoff')
+    expect(de('sun')).toContain('Kern. Fusion.')
+    expect(de('firework')).toContain('Photon. ... Photon.')
+  })
+
+  it('has a pre-rendered audio file per piece and language', () => {
+    const files = Object.keys(import.meta.glob('../../public/narration/*/*/*.m4a', { query: '?url' }))
+    for (const [key, langs] of Object.entries(ALL_LANGS)) {
+      for (const lang of ['de', 'ru'] as const) {
+        for (const [id, line] of Object.entries(langs[lang]!)) {
+          for (let p = 0; p < parseNarrationLine(line).pieces.length; p++) {
+            const name = `${id}${p ? `-${p + 1}` : ''}.m4a`
+            expect(files.some((f) => f.endsWith(`/${key}/${lang}/${name}`)), `${key}:${lang}:${name}`).toBe(true)
+          }
+        }
+      }
+    }
+  })
+})
 
 describe('the narration scripts (bombs, firework, Sun)', () => {
   it('has one line per story beat, in play order', () => {
@@ -97,6 +189,10 @@ describe('the narration scripts (bombs, firework, Sun)', () => {
     const lines = SCRIPTS.firework
     const flowing = Object.keys(lines).filter((id) => parseNarrationLine(lines[id]).flow)
     expect(flowing).toEqual(['scene', 'barcode', 'payoff'])
+  })
+
+  it('plays the apple-and-kid animation while it is told (flow), in every language', () => {
+    for (const lines of Object.values(STARDUST_SCRIPTS)) expect(parseNarrationLine(lines!.alive).flow).toBe(true)
   })
 
   it('lets the explosion RUN at full speed: the voice catches up before the size comparison', () => {

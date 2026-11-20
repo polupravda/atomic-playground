@@ -3,6 +3,7 @@ import { useAtomStore } from '../state/atomStore'
 import { elementForProtons } from '../core/elements'
 import { charge, chargeLabel, massNumber } from '../core/atom'
 import { SpeakButton } from './SpeakButton'
+import { FLAT } from './surfaces'
 
 // A03: the proton count alone determines the element. The badge re-mounts on
 // every atomic-number change (key), playing a short "discovery" pop + glow.
@@ -18,7 +19,7 @@ export function ElementBadge() {
   const positive = charge(protons, electrons) > 0
 
   return (
-    <div className="relative flex min-h-[6.5rem] w-64 items-center rounded-xl border border-slate-700 bg-slate-800/60 p-4">
+    <div className={`relative flex min-h-[6.5rem] w-64 items-center p-4 ${FLAT}`}>
       {element ? (
         <motion.div
           key={element.atomicNumber}

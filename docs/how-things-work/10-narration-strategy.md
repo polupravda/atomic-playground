@@ -20,13 +20,14 @@ it was verified with (`singleShort`, see "Short pieces" below).
 
 | Demo | Story | Script | Pacing | Languages |
 | --- | --- | --- | --- | --- |
-| ☢️ Atomic bomb | Little Boy · Fat Man · Tsar Bomba | `stage/bombNarration.ts` (one function, per-bomb lines) | science; flow for the chain reaction | EN |
-| ✨ Light & color | 🎆 Firework | `stage/fireworkNarration.ts` | science | EN |
-| 🌟 Star stuff | ☀️ Why the Sun shines | `stage/sunNarration.ts` | science | EN |
+| ☢️ Atomic bomb | Little Boy · Fat Man · Tsar Bomba | `stage/bombNarration.ts` (one function, per-bomb lines, a text table per language) | science; flow for the chain reaction; run for the explosion | EN · DE · RU |
+| ✨ Light & color | 🎆 Firework | `stage/fireworkNarration.ts` | science; flow for the firework and the photon count | EN · DE · RU |
+| 🌟 Star stuff | 🔭 Star detective | `stage/detectiveNarration.ts` | science; show first for the rainbow, each barcode card and the 1868 eclipse; flow for the light being caught | EN · DE · RU |
+| 🌟 Star stuff | ☀️ Why the Sun shines | `stage/sunNarration.ts` | science | EN · DE · RU |
 | 🌟 Star stuff | 🧒 You are star stuff | `stage/stardustNarration.ts` | story (the reference) | EN · DE · RU |
 
-Stories not built yet (neon, aurora, 🔭 star detective, gold) get their
-script when they are built. (The star detective — reading a star's light
+Stories not built yet (neon, aurora, gold) get their script when they
+are built — in every language at once. (The star detective — reading a star's light
 barcode — moved from ✨ Light & color to the FIRST row of the 🌟 Star
 stuff chooser on 2026-11-18: the Sun story uses the barcode, so it must
 come before it.) A story without a script in the chosen
@@ -246,7 +247,7 @@ once" (`chain`, the close-up's six steps, `chainAfter`, Tsar Bomba's
 hands over to the next. To keep the moment the fuel comes together moving, the
 "critical mass" sentence opens the chain line (it used to close the
 assembling line, which held the finished lump still while it was said).
-`FissionStage` and `LightStage` support `fit` (the 🎆 firework's `scene`, `barcode` — "Every photon counts" — and `payoff` flow too, on fixed timings: no look-ahead needed); a stage that ignores it would
+`FissionStage`, `LightStage` and `CosmosStage` support `fit`: the 🎆 firework's `scene`, `barcode` ("Every photon counts") and `payoff` flow too, and so does 🧒 star stuff's `alive` beat (volcano → leaf → apple → kid, in every language: Elena 2026-11-19, "parallel to the narration, not after" — measured ×0.78, the voice and the animation start and end together; the marker is not spoken, so the verified audio is untouched); a stage that ignores it would
 run the beat at normal speed and then hold — add the look-ahead first.
 
 ## Run pacing: a spectacle plays at its own speed
@@ -373,7 +374,39 @@ Under the Voice switch sits a **🇬🇧 EN | 🇩🇪 DE | 🇷🇺 RU** toggle
 remembered, `voiceStore.lang`). It switches the NARRATION only — UI, story
 column and canvas text stay English until a decision to translate them;
 the pilot exists to hear whether a non-English storyteller works first.
-Switching language mid-story re-reads the current beat in the new voice.
+Since 2026-11-19 every narrated story has DE and RU scripts (Elena:
+"translate the rest of available demos").
+
+Translations reuse English's PACING: a translated script holds only text
+(`translated(en, text)` in `stage/narrationScript.ts` copies each line's
+show-first, flow and run marks from English), and its pieces (` | `)
+match English one to one — the tests check both, because emphasis rings
+and the bomb intro's fact cards follow piece numbers. The bombs are known
+by their own names where a language has one (RU: Малыш, Толстяк,
+Царь-бомба; DE: die Zar-Bombe); the Russian leaders' names are written in
+German spelling for the German voice (Juli Chariton, Andrei Sacharow).
+
+**Switching mid-story** (kids love flipping between languages — Elena,
+2026-11-19; `switchLanguage` in `ui/useNarration.ts`):
+
+- the old voice **fades out** (0.2 s) instead of being cut mid-word;
+- after a 0.4 s breath, the new voice **picks up what was still to be
+  said**: the interrupted piece from its start, then the rest of the line
+  and any lines still queued — never the whole story again, never a
+  piece that was already said to its end;
+- a switch while the voice is quiet (its line done, the animation still
+  playing) says nothing new: the next beat simply speaks the new
+  language;
+- an interrupted watch break keeps only what was left of it;
+- into a language without a script for this story, the voice fades out and
+  the notice says so; back into one with a script, it picks up the current
+  beat's unsaid pieces;
+- switching while ⏸ paused waits for ▶ Resume; a quick second switch
+  during the fade simply wins.
+
+The player tracks this per piece: every queued item knows its
+`<beat>#<piece>`, and pieces said to the end are remembered until a
+deliberate restart (seek, new story, mute).
 
 Open question for when the UI is translated: one language setting for
 everything, or a separate narration language (e.g. English UI, German
@@ -409,7 +442,9 @@ narration-only by design.
 6. **Language-specific pronunciation needs.** Where a language has
    features a TTS voice commonly gets wrong, the script spells them out.
    For Russian: write *ё* explicitly, mark the stress on every taught
-   term, and **never use a homograph** — a word spelled like another form
+   term, and **never use a homograph** (the test bans *ядра, звезды,
+   земли, волны, кольца, облака, дома, города, искры, цвета, полосы,
+   пары, стены*) — a word spelled like another form
    but stressed differently (*два ядра́* vs the plural *я́дра*; *звезды́* vs
    *звёзды*). Rephrase to a form with only one possible stress (*одно
    ядро … в другое*, *в звезде*, *звезда*): a stress mark did NOT fix the

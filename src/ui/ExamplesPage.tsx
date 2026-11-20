@@ -8,19 +8,21 @@ import { BOMB_PHOTO_GROUPS } from '../core/examplePhotos'
 import { BombsTable, ChainStats, CompareTable, DamageLegend, ParticleLegend } from './BombLegend'
 import { StoryTimeline } from './StoryTimeline'
 import { BombsIcon } from './BombsIcon'
+import { ComingSoonExample } from './ComingSoonExample'
 import { LightExample } from './LightExample'
 import { CosmosExample } from './CosmosExample'
 import { Paras, SectionHeader, type Para } from './Paras'
 import { DemoControls, INFO_PANEL } from './DemoControls'
-import { bombNarration, bombStoryKey } from '../stage/bombNarration'
+import { bombScripts, bombStoryKey } from '../stage/bombNarration'
 import { cancelNarration, useDemoNarration } from './useNarration'
 import { NarrationNotice } from './NarrationNotice'
+import { KEY, TRAY } from './surfaces'
 
 /** each bomb's narration scripts, per language */
-const BOMB_NARRATION: Record<BombDesignId, { en: Record<string, string> }> = {
-  gun: { en: bombNarration('gun') },
-  implosion: { en: bombNarration('implosion') },
-  tsar: { en: bombNarration('tsar') },
+const BOMB_NARRATION: Record<BombDesignId, ReturnType<typeof bombScripts>> = {
+  gun: bombScripts('gun'),
+  implosion: bombScripts('implosion'),
+  tsar: bombScripts('tsar'),
 }
 
 // R00 — "Atoms in action": a top-level sibling view of practical examples
@@ -164,6 +166,11 @@ export function ExamplesPage() {
       <div className={example === 'cosmos' ? 'h-full' : 'hidden'}>
         <CosmosExample active={page === 'examples' && example === 'cosmos'} />
       </div>
+      {(['plant', 'atoms', 'crystals'] as const).map((id) => (
+        <div key={id} className={example === id ? 'h-full' : 'hidden'}>
+          <ComingSoonExample id={id} />
+        </div>
+      ))}
     </>
   )
 }
@@ -222,8 +229,8 @@ function BombExample({ active }: { active: boolean }) {
               disabled={!running}
               aria-current={running ? undefined : 'page'}
               title="Go to the bomb selection screen"
-              className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-medium transition ${
-                running ? 'text-sky-100 hover:bg-sky-600 hover:text-white' : 'cursor-default bg-sky-600 text-white'
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm font-medium ${
+                running ? `text-slate-100 ${KEY}` : 'cursor-default rounded-lg bg-sky-600 text-white'
               }`}
             >
               <BombsIcon className="h-6 w-9 shrink-0" />
@@ -300,10 +307,10 @@ function BombExample({ active }: { active: boolean }) {
               type="button"
               onClick={() => setPaused((v) => !v)}
               aria-pressed={paused}
-              className={`absolute bottom-4 left-1/2 -translate-x-1/2 rounded-xl border px-4 py-2 text-sm transition ${
+              className={`absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 text-sm ${
                 paused
-                  ? 'border-sky-400 bg-sky-600 text-white hover:bg-sky-500'
-                  : 'border-slate-600 bg-slate-800/85 text-slate-200 hover:bg-slate-700'
+                  ? 'rounded-xl border border-sky-400 bg-sky-600 text-white transition hover:bg-sky-500'
+                  : `text-slate-200 ${KEY}`
               }`}
             >
               {paused ? '▶ Resume' : '⏸ Pause'}
@@ -314,7 +321,7 @@ function BombExample({ active }: { active: boolean }) {
 
       {/* right: the story timeline, or the real photos */}
       <div className="col-start-3 row-start-1 flex min-h-0 flex-col gap-2">
-        <div className="flex gap-1 rounded-xl border border-slate-700 bg-slate-800/60 p-1 text-sm">
+        <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
           {(
             [
               ['story', '📖 Story'],
@@ -378,10 +385,8 @@ const PhotoPanel = memo(function PhotoPanel({ mode }: { mode: BombDesignId | nul
             {group.photos.map((ph) => (
               <figure
                 key={ph.file}
-                className={`rounded-xl border p-2 transition ${
-                  ph.design === mode
-                    ? 'border-amber-500/60 bg-amber-500/10'
-                    : 'border-slate-700 bg-slate-800/40'
+                className={`rounded-xl p-2 transition ${
+                  ph.design === mode ? 'border border-amber-500/60 bg-amber-500/10' : 'bg-slate-800/40'
                 }`}
               >
                 <img

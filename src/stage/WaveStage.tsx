@@ -2,6 +2,16 @@ import { memo, useEffect, useRef } from 'react'
 import { Layer, Shape, Stage } from 'react-konva'
 import Konva from 'konva'
 import {
+  refractiveIndex,
+  traceDrop,
+  tracePolygon,
+  turnDeg,
+  turnedPolygon,
+  type PrismMaterial,
+  type PrismShape,
+  type Vec,
+} from './prismOptics'
+import {
   EM_BANDS,
   VIS_MAX_M,
   VIS_MIN_M,
@@ -54,7 +64,10 @@ const PAGE_W = Math.min(window.innerWidth, 1440)
 export const WAVE_W = Math.max(620, PAGE_W - 48 - 256 - 264 - 48 - 2)
 export const WAVE_H = Math.max(480, window.innerHeight - 42)
 const W = WAVE_W
-const H = WAVE_H
+// the canvas height: WAVE_H on the page; a Light lab drawer may draw a
+// taller canvas (setHeight — every layout constant below that follows the
+// height is re-derived, per instance, before each step and draw)
+let H = WAVE_H
 
 // EM bar geometry
 const BAR_X = 28
@@ -62,7 +75,7 @@ const BAR_W = W - 2 * BAR_X
 const BAR_Y = 30
 const BAR_H = 18
 
-const CY = H * 0.58 // the wave's resting line
+let CY = H * 0.58 // the wave's resting line
 const CREST_SPEED = 130 // px/s, left → right
 
 // ---------- screen wavelength ----------
@@ -364,7 +377,7 @@ const PLATE_W = 24
 const PLATE_H = 230
 const LAMP_X = 86
 const PACKET_SPEED = 240
-const BELL_Y = CY - PLATE_H / 2 - 64
+let BELL_Y = CY - PLATE_H / 2 - 64
 /** beam packets are denser than the wave view's: full brightness must feel
  *  like a STORM of packets (that still can't ring the bell when red) */
 const doorSpacing = (brightness: number) => 120 + 340 * (1 - brightness)
@@ -604,9 +617,9 @@ export interface LampLevels {
   b: number
 }
 
-const WALL_CY = H * 0.4
+let WALL_CY = H * 0.4
 const POOL_R = 185
-const FLOOR_Y = H - 86
+let FLOOR_Y = H - 86
 const LAMP_PRIMARIES = {
   r: [255, 45, 25],
   g: [45, 255, 70],
@@ -733,12 +746,14 @@ function drawLamps(ctx: CanvasRenderingContext2D, lv: LampLevels) {
 // lamp (one pure color, L11) a red apple genuinely goes black on screen.
 
 const EYE_X = W - 126
-const EYE_Y = H * 0.4
+let EYE_Y = H * 0.4
 const EYE_R = 74
 const OBJ_X = W * 0.44
-const OBJ_Y = H - 182
-const EYE_LAMP_X = 104
-const EYE_LAMP_Y = 92
+let OBJ_Y = H - 182
+const EYE_LAMP_X = 168
+const EYE_LAMP_Y = 96
+/** the lamp's mouth: how far along its aim the light leaves it */
+const EYE_LAMP_MOUTH = 28
 
 export type EyeLampSetting = 'white' | number // nm
 
@@ -876,11 +891,12 @@ function drawEyeScene(
   ctx.closePath()
   ctx.fill()
   ctx.restore()
-  label(ctx, lamp === 'white' ? 'white lamp' : 'the trick lamp', EYE_LAMP_X - 10, EYE_LAMP_Y + 44)
+  label(ctx, lamp === 'white' ? 'white lamp' : 'the trick lamp', EYE_LAMP_X - 64, EYE_LAMP_Y + 8)
 
-  // incoming bundle: lamp → object (absorbed strands stop at the surface)
-  const inX0 = EYE_LAMP_X + 34
-  const inY0 = EYE_LAMP_Y + 16
+  // incoming bundle: lamp → object, leaving from the middle of the lamp's
+  // mouth (absorbed strands stop at the surface)
+  const inX0 = EYE_LAMP_X + Math.cos(aim) * EYE_LAMP_MOUTH
+  const inY0 = EYE_LAMP_Y + Math.sin(aim) * EYE_LAMP_MOUTH
   const inX1 = OBJ_X - 14
   const inY1 = OBJ_Y - 34
   const spread = Math.min(44, bundle.length * 7)
@@ -1010,118 +1026,213 @@ function drawEyeScene(
 // glass, so they bend more (the honest hand-wave; full refraction is not
 // told here).
 
-const PRISM_X = W * 0.46
-const PRISM_Y = H * 0.47
+let PRISM_Y = H * 0.47
 const PRISM_H2 = 95 // apex above / base below the beam line
-const BEAM_Y = PRISM_Y - 10
+let BEAM_Y = PRISM_Y - 10
 const PRISM_LAMP_X = 88
 const SCREEN_X = W - 110
 
-/** downward deviation (rad) after the prism: shorter waves bend more */
-function prismDeviation(nm: number): number {
-  return 0.09 + ((700 - Math.min(700, Math.max(410, nm))) / 290) * 0.3
+/** the prism's corners before it is turned (the beam meets its left face) */
+const PRISM_TRI: Vec[] = [
+  { x: 0, y: -PRISM_H2 },
+  { x: 78, y: PRISM_H2 * 0.75 },
+  { x: -78, y: PRISM_H2 * 0.75 },
+]
+/** where the prism / raindrop sits (fractions of the canvas) — the Light
+ *  lab turns the prism by dragging around this point */
+export const PRISM_CENTER_FRAC = { x: 0.46, y: 0.47 }
+
+export const DEFAULT_PRISM: PrismSetup = { angle: 0, material: 'glass', shape: 'prism', impact: 0.86 }
+
+export interface PrismSetup {
+  /** prism turn (rad), dragged by the kid */
+  angle: number
+  material: PrismMaterial
+  shape: PrismShape
+  /** raindrop: where the beam meets the drop, −1 … 1 of its radius (+ = above centre) */
+  impact: number
 }
 
-function drawPrismRay(
-  ctx: CanvasRenderingContext2D,
-  nm: number,
-  alpha: number,
-  pulse: number,
-) {
-  const entry = { x: PRISM_X - 44, y: BEAM_Y }
-  const exit = { x: PRISM_X + 42, y: BEAM_Y + 16 }
-  const dev = prismDeviation(nm)
-  const endX = SCREEN_X - 8
-  const endY = exit.y + Math.tan(dev) * (endX - exit.x)
+const MATERIAL_LOOK: Record<PrismMaterial, { fill: string; edge: string; name: string }> = {
+  glass: { fill: 'rgba(148, 197, 253, 0.1)', edge: '#94a3b8', name: 'glass prism' },
+  water: { fill: 'rgba(56, 189, 248, 0.16)', edge: '#7dd3fc', name: 'water prism' },
+  diamond: { fill: 'rgba(241, 245, 249, 0.14)', edge: '#e2e8f0', name: 'diamond prism' },
+}
+
+export const dropRadius = () => Math.min(120, H * 0.16)
+
+/** the beam's colors: white = the rainbow's seven, a lamp = its own one */
+function prismColors(lamp: EyeLampSetting): number[] {
+  return lamp === 'white' ? [700, 640, 590, 550, 510, 470, 420] : [lamp]
+}
+
+/** from `p` along `d` to the canvas edge, or to the screen if it crosses it */
+function rayEnd(p: Vec, d: Vec, useScreen: boolean): { end: Vec; onScreen: boolean } {
+  const top = BEAM_Y - 30
+  const bottom = top + H * 0.42
+  if (useScreen && d.x > 1e-6) {
+    const t = (SCREEN_X - 2 - p.x) / d.x
+    const y = p.y + d.y * t
+    if (t > 0 && y >= top && y <= bottom) return { end: { x: SCREEN_X - 2, y }, onScreen: true }
+  }
+  let t = Infinity
+  if (d.x > 1e-6) t = Math.min(t, (W - p.x) / d.x)
+  if (d.x < -1e-6) t = Math.min(t, -p.x / d.x)
+  if (d.y > 1e-6) t = Math.min(t, (H - p.y) / d.y)
+  if (d.y < -1e-6) t = Math.min(t, -p.y / d.y)
+  if (!Number.isFinite(t)) t = 0
+  return { end: { x: p.x + d.x * t, y: p.y + d.y * t }, onScreen: false }
+}
+
+function strokePath(ctx: CanvasRenderingContext2D, pts: Vec[], css: (a: number) => string, pulse: number) {
   for (const [lw, a] of [
-    [7, 0.18],
-    [2.6, 0.9],
+    [7, 0.16],
+    [2.4, 0.9],
   ] as const) {
-    ctx.strokeStyle = wavelengthToCss(nm, a * alpha * pulse)
+    ctx.strokeStyle = css(a * pulse)
     ctx.lineWidth = lw
     ctx.lineCap = 'round'
-    // inside the glass: the colors already part ways
+    ctx.lineJoin = 'round'
     ctx.beginPath()
-    ctx.moveTo(entry.x, entry.y)
-    ctx.lineTo(exit.x, exit.y + (dev - 0.2) * 26)
-    ctx.stroke()
-    // out in the air: the fan
-    ctx.beginPath()
-    ctx.moveTo(exit.x, exit.y + (dev - 0.2) * 26)
-    ctx.lineTo(endX, endY)
+    ctx.moveTo(pts[0].x, pts[0].y)
+    for (const q of pts.slice(1)) ctx.lineTo(q.x, q.y)
     ctx.stroke()
   }
-  // the stripe where it lands on the screen
-  ctx.fillStyle = wavelengthToCss(nm, 0.95 * alpha)
-  ctx.beginPath()
-  ctx.roundRect(SCREEN_X - 6, endY - 5, 14, 10, 3)
-  ctx.fill()
 }
 
-function drawPrismScene(ctx: CanvasRenderingContext2D, lamp: EyeLampSetting, t: number) {
-  const bundle = eyeLampBundle(lamp)
-  const pulse = 0.9 + 0.1 * Math.sin(t * 3)
+function drawSparkle(ctx: CanvasRenderingContext2D, p: Vec, t: number) {
+  const a = 0.55 + 0.45 * Math.sin(t * 6 + p.x)
+  ctx.strokeStyle = `rgba(255, 255, 255, ${a})`
+  ctx.lineWidth = 1.5
+  for (const [dx, dy] of [
+    [7, 0],
+    [0, 7],
+  ]) {
+    ctx.beginPath()
+    ctx.moveTo(p.x - dx, p.y - dy)
+    ctx.lineTo(p.x + dx, p.y + dy)
+    ctx.stroke()
+  }
+}
 
-  // the lamp (reuses the doorbell's hooded look, facing right)
+function drawPrismLamp(ctx: CanvasRenderingContext2D, y: number, lamp: EyeLampSetting) {
   ctx.fillStyle = '#334155'
   ctx.beginPath()
-  ctx.roundRect(PRISM_LAMP_X - 46, BEAM_Y - 24, 52, 48, 8)
+  ctx.roundRect(PRISM_LAMP_X - 46, y - 24, 52, 48, 8)
   ctx.fill()
   ctx.fillStyle = '#1e293b'
   ctx.beginPath()
-  ctx.moveTo(PRISM_LAMP_X + 6, BEAM_Y - 24)
-  ctx.lineTo(PRISM_LAMP_X + 26, BEAM_Y - 33)
-  ctx.lineTo(PRISM_LAMP_X + 26, BEAM_Y + 33)
-  ctx.lineTo(PRISM_LAMP_X + 6, BEAM_Y + 24)
+  ctx.moveTo(PRISM_LAMP_X + 6, y - 24)
+  ctx.lineTo(PRISM_LAMP_X + 26, y - 33)
+  ctx.lineTo(PRISM_LAMP_X + 26, y + 33)
+  ctx.lineTo(PRISM_LAMP_X + 6, y + 24)
   ctx.closePath()
   ctx.fill()
-  label(ctx, lamp === 'white' ? 'white lamp' : 'one-color lamp', PRISM_LAMP_X - 20, BEAM_Y + 44)
+  label(ctx, lamp === 'white' ? 'white lamp' : 'one-color lamp', PRISM_LAMP_X - 20, y + 44)
+}
 
-  // the incoming beam: white = the colors TRAVELLING TOGETHER, so it is
-  // drawn as one white beam; a single color travels alone in its own color
-  for (const [lw, a] of [
-    [8, 0.25],
-    [3, 1],
-  ] as const) {
-    ctx.strokeStyle =
-      lamp === 'white'
-        ? `rgba(248, 250, 252, ${a * 0.85 * pulse})`
-        : wavelengthToCss(lamp, a * 0.9 * pulse)
-    ctx.lineWidth = lw
-    ctx.lineCap = 'round'
-    ctx.beginPath()
-    ctx.moveTo(PRISM_LAMP_X + 26, BEAM_Y)
-    ctx.lineTo(PRISM_X - 44, BEAM_Y)
-    ctx.stroke()
+function drawPrismScene(ctx: CanvasRenderingContext2D, lamp: EyeLampSetting, t: number, setup: PrismSetup) {
+  const pulse = 0.9 + 0.1 * Math.sin(t * 3)
+  const colors = prismColors(lamp)
+  const center = { x: W * PRISM_CENTER_FRAC.x, y: H * PRISM_CENTER_FRAC.y }
+  const drop = setup.shape === 'drop'
+  const R = dropRadius()
+  const beamY = drop ? center.y - setup.impact * R : BEAM_Y
+  const start = { x: PRISM_LAMP_X + 26, y: beamY }
+  const dir = { x: 1, y: 0 }
+  const white = (a: number) => `rgba(248, 250, 252, ${a * 0.9})`
+  const sparkles: Vec[] = []
+
+  drawPrismLamp(ctx, beamY, lamp)
+
+  // trace every color; until the first surface they travel together
+  const paths = colors.map((nm) => {
+    const n = refractiveIndex(drop ? 'water' : setup.material, nm)
+    const path = drop
+      ? traceDrop(start, dir, center, R, n)
+      : tracePolygon(start, dir, turnedPolygon(PRISM_TRI, center, setup.angle), n)
+    return { nm, path }
+  })
+  const firstHit = paths.find((q) => q.path && q.path.pts.length > 1)?.path?.pts[1]
+  // the shared incoming beam
+  const meet = firstHit ?? rayEnd(start, dir, !drop).end
+  strokePath(ctx, [start, meet], lamp === 'white' ? white : (a) => wavelengthToCss(lamp as number, a), pulse)
+
+  if (firstHit) {
+    for (const { nm, path } of paths) {
+      if (!path) continue
+      const last = path.pts[path.pts.length - 1]
+      const { end, onScreen } = path.trapped ? { end: last, onScreen: false } : rayEnd(last, path.dir, !drop)
+      strokePath(ctx, [...path.pts.slice(1), end], (a) => wavelengthToCss(nm, a), pulse)
+      sparkles.push(...path.bounces)
+      if (onScreen) {
+        ctx.fillStyle = wavelengthToCss(nm, 0.95)
+        ctx.beginPath()
+        ctx.roundRect(SCREEN_X - 6, end.y - 5, 14, 10, 3)
+        ctx.fill()
+      }
+    }
   }
 
-  // the rays through and past the prism (drawn before the glass so the
-  // prism's glassy fill sits over them)
-  for (const nm of bundle) drawPrismRay(ctx, nm, 1, pulse)
+  // the glass (or the drop), over the rays
+  if (drop) {
+    const g = ctx.createRadialGradient(center.x - R * 0.3, center.y - R * 0.35, R * 0.1, center.x, center.y, R)
+    g.addColorStop(0, 'rgba(186, 230, 253, 0.22)')
+    g.addColorStop(1, 'rgba(56, 189, 248, 0.08)')
+    ctx.fillStyle = g
+    ctx.strokeStyle = '#7dd3fc'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(center.x, center.y, R, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+    label(ctx, 'a raindrop (drawn huge)', center.x, center.y - R - 16)
+  } else {
+    const look = MATERIAL_LOOK[setup.material]
+    const poly = turnedPolygon(PRISM_TRI, center, setup.angle)
+    ctx.fillStyle = look.fill
+    ctx.strokeStyle = look.edge
+    ctx.lineWidth = 2
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    poly.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)))
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+    label(ctx, look.name, center.x, center.y + PRISM_H2 + 22)
+    // a turning hint: a faint arc with arrows around the prism
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)'
+    ctx.lineWidth = 1.2
+    ctx.setLineDash([4, 5])
+    ctx.beginPath()
+    ctx.arc(center.x, center.y + 16, PRISM_H2 + 34, -2.5, -0.65)
+    ctx.stroke()
+    ctx.setLineDash([])
+    label(ctx, '↻ drag to turn', center.x, center.y + 16 - PRISM_H2 - 44)
+  }
+  for (const q of sparkles) drawSparkle(ctx, q, t)
 
-  // the glass prism
-  ctx.fillStyle = 'rgba(148, 197, 253, 0.1)'
-  ctx.strokeStyle = '#94a3b8'
-  ctx.lineWidth = 2
-  ctx.lineJoin = 'round'
-  ctx.beginPath()
-  ctx.moveTo(PRISM_X, PRISM_Y - PRISM_H2)
-  ctx.lineTo(PRISM_X + 78, PRISM_Y + PRISM_H2 * 0.75)
-  ctx.lineTo(PRISM_X - 78, PRISM_Y + PRISM_H2 * 0.75)
-  ctx.closePath()
-  ctx.fill()
-  ctx.stroke()
-  label(ctx, 'glass prism', PRISM_X, PRISM_Y + PRISM_H2 * 0.75 + 16)
-
-  // the screen catching the result
-  ctx.fillStyle = '#1e293b'
-  ctx.strokeStyle = 'rgba(100, 116, 139, 0.9)'
-  ctx.lineWidth = 1.5
-  ctx.beginPath()
-  ctx.roundRect(SCREEN_X, BEAM_Y - 30, 14, H * 0.42, 4)
-  ctx.fill()
-  ctx.stroke()
-  label(ctx, 'screen', SCREEN_X + 7, BEAM_Y - 44)
+  if (!drop) {
+    // the screen catching the result
+    ctx.fillStyle = '#1e293b'
+    ctx.strokeStyle = 'rgba(100, 116, 139, 0.9)'
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.roundRect(SCREEN_X, BEAM_Y - 30, 14, H * 0.42, 4)
+    ctx.fill()
+    ctx.stroke()
+    label(ctx, 'screen', SCREEN_X + 7, BEAM_Y - 44)
+  } else {
+    label(ctx, '↕ drag to move the beam', PRISM_LAMP_X - 10, beamY - 46)
+    // where the colors come back out: beside the fan, the real rainbow
+    // angle (a fact, not the boosted drawing's)
+    const red = paths.find((q) => q.nm === 700 || colors.length === 1)?.path
+    if (red && !red.trapped && turnDeg(dir, red.dir) > 120) {
+      // right of the drop, clear of the fan (which leaves to the lower left)
+      label(ctx, 'the colors come back out:', center.x + R + 110, center.y + R * 0.9)
+      label(ctx, 'a rainbow, about 42° from the sunlight', center.x + R + 110, center.y + R * 0.9 + 16)
+    }
+  }
 }
 
 // ---------- 🩻 the bone photo (L13: how an X-ray picture is made) ----------
@@ -1547,6 +1658,20 @@ function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
 export type WaveView = 'wave' | 'photons'
 export type WaveScene = 'wave' | 'doorbell' | 'lamps' | 'eye' | 'prism' | 'xray'
 
+/** switch the module's layout to a canvas `h` px tall */
+function setHeight(h: number) {
+  if (h === H) return
+  H = h
+  CY = H * 0.58
+  BELL_Y = CY - PLATE_H / 2 - 64
+  WALL_CY = H * 0.4
+  FLOOR_Y = H - 86
+  EYE_Y = H * 0.4
+  OBJ_Y = H - 182
+  PRISM_Y = H * 0.47
+  BEAM_Y = PRISM_Y - 10
+}
+
 export const WaveStage = memo(function WaveStage({
   u,
   brightness,
@@ -1556,10 +1681,12 @@ export const WaveStage = memo(function WaveStage({
   eyeObject,
   eyeLamp,
   prismLamp,
+  prism = DEFAULT_PRISM,
   xrayObject,
   xrayLamp,
   xraySpeed,
   active,
+  height = WAVE_H,
   onBell,
 }: {
   /** wavelength slider value 0–1 (core/emSpectrum mapping) */
@@ -1577,6 +1704,8 @@ export const WaveStage = memo(function WaveStage({
   eyeLamp: EyeLampSetting
   /** prism scene: white or a pure color (Newton's proof) */
   prismLamp: EyeLampSetting
+  /** prism scene: its turn, material, prism or raindrop */
+  prism?: PrismSetup
   /** 🩻 bone-photo scene: what lies on the film, and which lamp shines */
   xrayObject: XrayObjectId
   xrayLamp: XrayLamp
@@ -1584,9 +1713,14 @@ export const WaveStage = memo(function WaveStage({
    *  pace is NOT affected */
   xraySpeed: number
   active: boolean
+  /** canvas height (px); a Light lab drawer passes its own */
+  height?: number
   /** doorbell: the bell rang (total ring count) */
   onBell?: (rings: number) => void
 }) {
+  setHeight(height) // before any state below is built from the layout
+  const heightRef = useRef(height)
+  heightRef.current = height
   const shapeRef = useRef<Konva.Shape | null>(null)
   const uRef = useRef(u)
   uRef.current = u
@@ -1604,6 +1738,8 @@ export const WaveStage = memo(function WaveStage({
   eyeLampRef.current = eyeLamp
   const prismLampRef = useRef(prismLamp)
   prismLampRef.current = prismLamp
+  const prismRef = useRef(prism)
+  prismRef.current = prism
   const xrayObjectRef = useRef(xrayObject)
   xrayObjectRef.current = xrayObject
   const xrayLampRef = useRef(xrayLamp)
@@ -1626,6 +1762,7 @@ export const WaveStage = memo(function WaveStage({
     const anim = new Konva.Animation((frame) => {
       if (!frame) return
       const dt = Math.min(0.05, frame.timeDiff / 1000)
+      setHeight(heightRef.current)
       tRef.current += dt
       if (sceneRef.current === 'doorbell') {
         stepDoor(doorRef.current, dt, uToWavelength(uRef.current), brightRef.current)
@@ -1658,14 +1795,15 @@ export const WaveStage = memo(function WaveStage({
   // redraw immediately on slider moves even while paused/hidden
   useEffect(() => {
     shapeRef.current?.getLayer()?.batchDraw()
-  }, [u, brightness, view, scene, lamps, eyeObject, eyeLamp, prismLamp, xrayObject, xrayLamp, xraySpeed])
+  }, [u, brightness, view, scene, lamps, eyeObject, eyeLamp, prismLamp, prism, xrayObject, xrayLamp, xraySpeed])
 
   return (
-    <Stage width={W} height={H}>
+    <Stage width={W} height={height}>
       <Layer listening={false}>
         <Shape
           ref={shapeRef}
           sceneFunc={(kctx, shape) => {
+            setHeight(heightRef.current)
             shape.getSelfRect = () => ({ x: 0, y: 0, width: W, height: H })
             const ctx = kctx._context as CanvasRenderingContext2D
             ctx.save()
@@ -1677,7 +1815,7 @@ export const WaveStage = memo(function WaveStage({
             } else if (sceneRef.current === 'eye') {
               drawEyeScene(ctx, eyeObjectRef.current, eyeLampRef.current, tRef.current)
             } else if (sceneRef.current === 'prism') {
-              drawPrismScene(ctx, prismLampRef.current, tRef.current)
+              drawPrismScene(ctx, prismLampRef.current, tRef.current, prismRef.current)
             } else if (sceneRef.current === 'xray') {
               drawXrayScene(
                 ctx,

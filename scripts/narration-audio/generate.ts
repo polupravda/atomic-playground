@@ -29,9 +29,11 @@ import { STARDUST_SCRIPTS } from '../../src/stage/stardustNarration'
 // the line format (pieces ' | ', show-first '| ') — the app's own parser
 import { parseNarrationLine } from '../../src/stage/narrationScript'
 import { syllables } from './tempo'
-import { SUN_NARRATION } from '../../src/stage/sunNarration'
-import { FIREWORK_NARRATION } from '../../src/stage/fireworkNarration'
-import { BOMB_MODES, bombNarration, bombStoryKey } from '../../src/stage/bombNarration'
+import { SUN_SCRIPTS } from '../../src/stage/sunNarration'
+import { DETECTIVE_SCRIPTS } from '../../src/stage/detectiveNarration'
+import { CRYSTAL_INTRO_KEY, CRYSTAL_INTRO_SCRIPTS } from '../../src/stage/crystalIntros'
+import { FIREWORK_SCRIPTS } from '../../src/stage/fireworkNarration'
+import { BOMB_MODES, bombScripts, bombStoryKey } from '../../src/stage/bombNarration'
 
 const SR = 24000
 const EN_VOICE = 'af_heart'
@@ -372,9 +374,12 @@ const STORIES: Story[] = [
   // 🧒 star stuff EN is the verified reference narration (2026-11-18)
   { key: 'stardust', scripts: STARDUST_SCRIPTS, frozen: ['en'], singleShort: ['en'] },
   // every other story at the reference's own speed (EN_SPEED): same tempo
-  { key: 'sun', scripts: { en: SUN_NARRATION } },
-  { key: 'firework', scripts: { en: FIREWORK_NARRATION } },
-  ...BOMB_MODES.map((m) => ({ key: bombStoryKey(m), scripts: { en: bombNarration(m) } })),
+  { key: 'detective', scripts: DETECTIVE_SCRIPTS },
+  // 🧊 Crystal lab: one short intro per scene (not a story)
+  { key: CRYSTAL_INTRO_KEY, scripts: CRYSTAL_INTRO_SCRIPTS },
+  { key: 'sun', scripts: SUN_SCRIPTS },
+  { key: 'firework', scripts: FIREWORK_SCRIPTS },
+  ...BOMB_MODES.map((m) => ({ key: bombStoryKey(m), scripts: bombScripts(m) })),
 ]
 
 async function main() {

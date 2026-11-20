@@ -5,6 +5,7 @@ import { useEventStore, type EventStory } from '../state/eventStore'
 import { decayMode, nuclideStability, type DecayMode } from '../core/nuclides'
 import { elementForProtons } from '../core/elements'
 import { isotopeLabel } from '../core/atom'
+import { FLAT } from './surfaces'
 
 /** The sticky "what just happened" narrative, written when the decay starts
  *  so the kid can read along while the animation plays — and long after. */
@@ -89,7 +90,7 @@ export function DecayButton() {
   const disabled = active !== null || !mode || inOrbitals
 
   return (
-    <div className="w-64 rounded-xl border border-amber-500/30 bg-slate-800/60 p-3">
+    <div className={`w-64 p-3 ${FLAT}`}>
       <button
         type="button"
         disabled={disabled}

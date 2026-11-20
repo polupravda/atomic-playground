@@ -134,6 +134,10 @@ photons, with a live "photons caught: N" counter (sibling of "looks: N").
 
 ### Story-specific payoffs
 
+> **2026-11-19:** the 🏮 neon and 🌌 aurora stories were rewritten for a
+> child's eyes in [12-story-designs-for-kids.md](12-story-designs-for-kids.md),
+> which wins for those two stories.
+
 - 🎆 **Firework**: ends on the sky scene re-colored — red stars = lithium,
   yellow = sodium; a final card "the colors were decided inside atoms".
 - 🏮 **Neon sign**: the tube's glow is the sum of neon's many red-orange

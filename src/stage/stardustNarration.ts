@@ -26,6 +26,10 @@ export const STARDUST_NARRATION_ORDER = [
 // like "Super. Nova." or a repeat like "Beryllium.") and followed by a
 // ' ... ' pause so the child can keep it. The repeated mention drops its
 // article — "Nebula.", never "A nebula." — unless strictly required.
+// 'alive' is a FLOW line ('~ ', Elena 2026-11-19): the volcano → leaf →
+// apple → kid animation plays WHILE it is told, at one steady speed that
+// ends with the line — not held for the voice and played after. The
+// marker is not spoken: the verified audio is unchanged.
 export const STARDUST_NARRATION: Record<string, string> = {
   giant:
     'This story begins long before the Sun was born. An old giant star is running out of fuel.',
@@ -41,7 +45,7 @@ export const STARDUST_NARRATION: Record<string, string> = {
   earth:
     'Slowly, gravity gathers the cloud. A new star lights up. It is our Sun! The leftover dust clumps into planets. Our atom lands on the young Earth.',
   alive:
-    'Billions of years later, a volcano breathes our atom out into the air. A leaf catches it, and keeps the carbon to build an apple. This is called photosynthesis. ... Photo. Synthesis. ... And the apple gets eaten.',
+    '~ Billions of years later, a volcano breathes our atom out into the air. A leaf catches it, and keeps the carbon to build an apple. This is called photosynthesis. ... Photo. Synthesis. ... And the apple gets eaten.',
   you:
     'Almost every atom in you was made inside a star. You are star stuff. You are the universe, looking at itself.',
 }
@@ -65,7 +69,7 @@ export const STARDUST_NARRATION_DE: Record<string, string> = {
   earth:
     'Langsam zieht die Schwerkraft die Wolke zusammen. Ein neuer Stern leuchtet auf. Es ist unsere Sonne! Aus dem übrigen Staub ballen sich Planeten zusammen. Unser Atom landet auf der jungen Erde.',
   alive:
-    'Milliarden Jahre später atmet ein Vulkan unser Atom in die Luft hinaus. Ein Blatt fängt es ein und baut aus dem Kohlenstoff einen Apfel. Das nennt man Photosynthese. ... Photo. Synthese. ... Und der Apfel wird gegessen.',
+    '~ Milliarden Jahre später atmet ein Vulkan unser Atom in die Luft hinaus. Ein Blatt fängt es ein und baut aus dem Kohlenstoff einen Apfel. Das nennt man Photosynthese. ... Photo. Synthese. ... Und der Apfel wird gegessen.',
   you:
     'Fast jedes Atom in dir wurde in einem Stern gemacht. Du bist Sternenstaub. Du bist das Universum, das sich selbst betrachtet.',
 }
@@ -98,7 +102,7 @@ export const STARDUST_NARRATION_RU: Record<string, string> = {
   earth:
     'Сила тяжести медленно собирает облако вместе. Загорается новая звезда. Это наше Солнце! Из оставшейся пыли слипаются планеты. Наш атом попадает на молодую Землю.',
   alive:
-    'Миллиарды лет спустя вулкан выдыхает наш атом в воздух. Листок ловит его и строит из углерода яблоко. Это называют фотоси́нтезом. ... Фо́то. Си́нтез. ... А потом яблоко съедают.',
+    '~ Миллиарды лет спустя вулкан выдыхает наш атом в воздух. Листок ловит его и строит из углерода яблоко. Это называют фотоси́нтезом. ... Фо́то. Си́нтез. ... А потом яблоко съедают.',
   you:
     'Почти каждый атом в тебе родился в звезде. Ты состоишь из звёздной пыли. Через тебя Вселенная смотрит сама на себя.',
 }

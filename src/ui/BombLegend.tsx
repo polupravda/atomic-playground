@@ -176,7 +176,7 @@ export function ParticleLegend({ mode }: { mode: BombDesignId }) {
 
 function Stat({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-900/50 px-2 py-1">
+    <div className="rounded-lg bg-slate-900/50 px-2 py-1">
       <div className="text-[10px] uppercase tracking-wide text-slate-400">{label}</div>
       <div className="font-mono text-sm text-slate-100">{value}</div>
     </div>
@@ -240,7 +240,7 @@ export function CompareTable({ mode }: { mode: BombDesignId }) {
           <div
             key={id}
             className={`rounded-lg border px-2 py-1.5 ${
-              id === mode ? 'border-amber-500/60 bg-amber-500/10' : 'border-slate-700 bg-slate-900/40'
+              id === mode ? 'border-amber-500/60 bg-amber-500/10' : 'border-transparent bg-slate-900/40'
             }`}
           >
             <div className="font-medium text-slate-100">{d.label}</div>
@@ -285,7 +285,7 @@ export function BombsTable({ mode }: { mode?: BombDesignId }) {
           <div
             key={id}
             className={`rounded-lg border px-2 py-1.5 ${
-              id === mode ? 'border-amber-500/60 bg-amber-500/10' : 'border-slate-700 bg-slate-900/40'
+              id === mode ? 'border-amber-500/60 bg-amber-500/10' : 'border-transparent bg-slate-900/40'
             }`}
           >
             <div className="font-medium text-slate-100">{d.label}</div>

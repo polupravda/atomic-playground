@@ -47,6 +47,14 @@ timeline, ⏸ Pause, auto-return to chooser.
 > light barcode, designed in proposal 06, step 34c) moved here as the FIRST
 > row, "coming soon": the ☀️ Sun story's recipe beat reads the Sun's
 > barcode, so the barcode story must come before it.
+>
+> **2026-11-19: built** (Elena: "implement 'star detective' demo, with
+> translations"). Seven beats — star, prism (a rainbow with dark lines),
+> why the gaps (the star's thin gas catches its atoms' own colors), the
+> detective cards (hydrogen ✓, oxygen ✗, helium ✓) and the payoff: helium
+> seen in the Sun during the 1868 eclipse, named after _helios_, found on
+> Earth 27 years later. Auto-played matching (interactive matching: ask
+> Elena later). Narrated in EN · DE · RU.
 
 The lineup chooser shows three framed night-sky scenes side by side, each a
 big "▶ Watch it" row:
@@ -74,7 +82,7 @@ timeline · payoff hold ~10 s → chooser.
    story's "explosive shell": the panel says so explicitly — the Tsar Bomba
    squeezed its fuel with explosives for a microsecond; the Sun squeezes
    with gravity, forever.
-1b. **What the Sun is made of** (the recipe beat, added 2026-11-11 by
+   1b. **What the Sun is made of** (the recipe beat, added 2026-11-11 by
    request): the Sun's ingredients WEIGHED — out of every 100 kg, 73 kg
    hydrogen, 25 kg helium, 2 kg everything else — drawn as a growing
    ingredient bar in the app's colors (hydrogen = proton red, helium =
@@ -133,6 +141,10 @@ language), followed through scenes:
    itself. You are the universe, looking at itself." Hold.
 
 ### 💍 Where gold comes from (~70 s)
+
+> **2026-11-19:** rewritten for a child's eyes (told backwards from the
+> ring) in [12-story-designs-for-kids.md](12-story-designs-for-kids.md),
+> which wins for this story.
 
 1. **The problem**: the energy valley returns — fusion in stars stops at
    iron. "Then where did the 61 heavier elements come from?"
@@ -257,7 +269,7 @@ R02's extraction step.
 ## Open questions
 
 1. **Story count**: three journeys, or ship ☀️ alone first (it carries the
-   pasted spec's core idea and the fission↔fusion pairing by itself)?
+   hops between 2 electrons. fix,s o pasted spec's core idea and the fission↔fusion pairing by itself)?
    answer: ship sun first, ask mm elater
 2. **E = mc²**: the scale beat deliberately never shows the formula — show
    it once on the payoff card for the older kids (F02 spirit), or keep the

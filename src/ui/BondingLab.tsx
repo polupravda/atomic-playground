@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { Layer, Shape, Stage } from 'react-konva'
 import Konva from 'konva'
 import { drawGlossyParticle } from '../stage/particleStyle'
+import { RING_BASE, RING_GAP, drawShellAtom } from '../stage/shellAtom'
 import { shellConfiguration } from '../core/atom'
 import { BOND_SCENARIOS, matchBondScenario, type BondScenario } from '../core/bonding'
 import { motion } from 'motion/react'
 import { MOLECULE_PHOTOS } from '../core/moleculePhotos'
 import { PageNav } from './PageNav'
+import { FLAT, KEY } from './surfaces'
 
 // what the 🔊 button reads aloud: the formula letter by letter (subscripts
 // as plain digits), then the name — "H 2 O — water"
@@ -97,8 +99,6 @@ const SPECIES = [
 type Sym = (typeof SPECIES)[number]['symbol']
 const speciesOf = (symbol: Sym) => SPECIES.find((s) => s.symbol === symbol)!
 
-const RING_BASE = 13
-const RING_GAP = 10
 const shellsOf = (symbol: Sym) => {
   const p = speciesOf(symbol).protons
   return shellConfiguration(p, p)
@@ -143,8 +143,7 @@ function completesRecipe(groupCounts: Record<string, number>, sym: Sym): boolean
   return matchBondScenario(next).exact !== null
 }
 
-/** A whole atom in shell-view language: nucleus, rings, spinning electrons.
- *  Outer-shell (valence) electrons are drawn larger — they do the bonding. */
+/** A whole atom in shell-view language (stage/shellAtom.ts) */
 function drawAtom(
   native: CanvasRenderingContext2D,
   symbol: Sym,
@@ -155,44 +154,7 @@ function drawAtom(
   // bonded atoms hand their valence electrons to the bond animation
   skipValence = false,
 ) {
-  const species = speciesOf(symbol)
-  const shells = shellsOf(symbol)
-  for (let i = 0; i < shells.length; i++) {
-    const r = (RING_BASE + RING_GAP * i) * scale
-    native.strokeStyle = i === shells.length - 1 ? '#4a6b91' : '#3b5a7d'
-    native.lineWidth = 1
-    native.beginPath()
-    native.arc(x, y, r, 0, Math.PI * 2)
-    native.stroke()
-  }
-  if (species.protons === 1) {
-    // hydrogen's whole nucleus really is a single proton
-    drawGlossyParticle(native, 'protons', x, y, 3.4 * scale)
-  } else {
-    const nR = 2.7 * scale
-    drawGlossyParticle(native, 'protons', x - nR * 0.9, y - nR * 0.6, nR)
-    drawGlossyParticle(native, 'neutrons', x + nR * 0.9, y - nR * 0.6, nR)
-    drawGlossyParticle(native, 'protons', x + nR * 0.1, y + nR * 0.95, nR)
-    drawGlossyParticle(native, 'neutrons', x - nR * 1.1, y + nR * 0.7, nR)
-  }
-  for (let i = 0; i < shells.length; i++) {
-    const isValence = i === shells.length - 1
-    if (skipValence && isValence) continue
-    const r = (RING_BASE + RING_GAP * i) * scale
-    const eR = (isValence ? 3.1 : 2.4) * scale
-    // alternate spin direction per ring so the atom feels alive
-    const a0 = spin * (i % 2 === 0 ? 1 : -0.7) + i * 1.3
-    for (let k = 0; k < shells[i]; k++) {
-      const a = a0 + (k * 2 * Math.PI) / shells[i]
-      drawGlossyParticle(
-        native,
-        'electrons',
-        x + r * Math.cos(a),
-        y + r * Math.sin(a),
-        eR,
-      )
-    }
-  }
+  drawShellAtom(native, shellsOf(symbol), speciesOf(symbol).protons, x, y, scale, spin, skipValence)
 }
 
 /** Where a matched recipe gathers: the atoms' own centroid, NOT the field
@@ -1107,7 +1069,7 @@ export function BondingLab() {
             <button
               type="button"
               onClick={() => setClearSignal((n) => n + 1)}
-              className="mt-auto shrink-0 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5 text-sm text-slate-300 transition hover:bg-slate-700"
+              className={`mt-auto shrink-0 px-3 py-1.5 text-sm text-slate-300 ${KEY}`}
             >
               🧹 Clear table
             </button>
@@ -1115,7 +1077,7 @@ export function BondingLab() {
           <div className="col-start-1 row-start-1 flex min-h-0 flex-col gap-3">
             <PageNav />
             <div
-              className={`min-h-0 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/40 p-3 text-sm leading-relaxed text-slate-300 ${
+              className={`min-h-0 overflow-y-auto p-3 text-sm leading-relaxed text-slate-300 ${FLAT} ${
                 photo ? 'basis-2/5' : 'flex-1'
               }`}
             >
@@ -1202,7 +1164,7 @@ export function BondingLab() {
               </div>
             </div>
             {photo && photoScenario && (
-              <div className="relative min-h-0 basis-3/5 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/40 px-3 py-3">
+              <div className={`relative min-h-0 basis-3/5 overflow-y-auto px-3 py-3 ${FLAT}`}>
                 <button
                   type="button"
                   onClick={() => setPhotoId(null)}

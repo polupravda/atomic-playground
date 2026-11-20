@@ -164,7 +164,7 @@ function TableInfoPanel({
 
   return (
     <div
-      className={`min-h-0 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/40 p-3 text-sm leading-relaxed text-slate-300 ${
+      className={`min-h-0 overflow-y-auto p-3 text-sm leading-relaxed text-slate-300 ${FLAT} ${
         fullHeight ? 'flex-1' : 'basis-2/5'
       }`}
     >
@@ -212,7 +212,7 @@ function InlineToggle({
       role="switch"
       aria-checked={checked}
       onClick={onChange}
-      className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5 text-sm text-slate-200 transition hover:bg-slate-700"
+      className={`flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 ${KEY}`}
     >
       <span>{label}</span>
       <span
@@ -232,6 +232,7 @@ function InlineToggle({
 import { useAtomStore } from '../state/atomStore'
 import { useDiscoveryStore } from '../state/discoveryStore'
 import { useEventStore } from '../state/eventStore'
+import { FLAT, KEY } from './surfaces'
 
 // P01/P02: the periodic table starts as 118 grey cells and fills up as the
 // kid builds elements — each discovery lights up exactly its own cell.
@@ -375,7 +376,7 @@ export function PeriodicTable() {
           setSelectedZ(protonsInBuilder >= 1 ? protonsInBuilder : null)
           setOpen(true)
         }}
-        className="w-64 rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2.5 text-left text-sm text-slate-200 transition hover:bg-slate-700"
+        className={`w-64 px-4 py-2.5 text-left text-sm text-slate-200 ${KEY}`}
       >
         🧪 Periodic table
         <span className="float-right font-mono text-xs text-sky-400">
@@ -459,7 +460,7 @@ export function PeriodicTable() {
               fullHeight={!photosMode}
             />
             {photosMode && (
-              <div className="min-h-0 basis-3/5 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/40 px-3 py-3">
+              <div className={`min-h-0 basis-3/5 overflow-y-auto px-3 py-3 ${FLAT}`}>
                 {selectedZ === null ? (
                   <p className="text-sm text-slate-400">
                     Click any element in the table to see its photos here.

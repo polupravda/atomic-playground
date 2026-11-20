@@ -3,6 +3,7 @@ import { Layer, Shape, Stage } from 'react-konva'
 import Konva from 'konva'
 import { drawGlossyParticle } from '../stage/particleStyle'
 import { PageNav } from './PageNav'
+import { FLAT, KEY } from './surfaces'
 
 // A21/A22/A23 — the charge playground. Drag ➕ and ➖ charges onto the
 // field: amber force arrows make the invisible electric force visible,
@@ -411,7 +412,7 @@ export function ChargePlayground() {
     <div className="grid h-full min-h-0 grid-cols-[16rem_1fr] grid-rows-[minmax(0,1fr)] gap-x-6">
       <div className="col-start-1 row-start-1 flex min-h-0 flex-col gap-3">
         <PageNav />
-            <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/40 p-3 text-sm leading-relaxed text-slate-300">
+            <div className={`min-h-0 flex-1 overflow-y-auto p-3 text-sm leading-relaxed text-slate-300 ${FLAT}`}>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 Right now
               </h3>
@@ -499,7 +500,7 @@ export function ChargePlayground() {
           <button
             type="button"
             onClick={() => setClearSignal((n) => n + 1)}
-            className="absolute bottom-3 right-3 rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-sm text-slate-300 transition hover:bg-slate-700"
+            className={`absolute bottom-3 right-3 px-3 py-1.5 text-sm text-slate-300 ${KEY}`}
           >
             🧹 Clear field
           </button>

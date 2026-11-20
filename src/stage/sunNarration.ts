@@ -1,6 +1,9 @@
+import { translated } from './narrationScript'
+
 // R04 🌟 "Star stuff" — ☀️ Why the Sun shines: the narration script, one
 // spoken line per 📖 story beat (the keys are cosmosStoryOrder('sun')).
-// English only so far. Written to
+// EN, DE and RU (the translations retell the story under the same
+// rules; pacing marks are copied from English). Written to
 // docs/how-things-work/10-narration-strategy.md: one thought per short
 // sentence, terms named and taught slowly, ' ... ' for a real pause, the
 // repeat without its article, numbers written as words for the voice.
@@ -28,3 +31,50 @@ export const SUN_NARRATION: Record<string, string> = {
   valley:
     'This is the energy valley. | Small nuclei roll down by joining together. That is the Sun. | Huge nuclei roll down by splitting apart. That is the bomb. | Iron sits at the very bottom.',
 }
+
+// 🇩🇪 German: school terms (Wasserstoff, Kernfusion), du, numbers as words
+export const SUN_NARRATION_DE = translated(SUN_NARRATION, {
+  sun: 'Das ist unser Stern, die Sonne. Sie ist eine riesige Kugel aus glühendem Gas. | Der winzige blaue Punkt ist die Erde, im gleichen Maßstab gezeichnet.',
+  recipe:
+    'Woraus besteht die Sonne? Von je hundert Kilogramm sind dreiundsiebzig Wasserstoff. ... Wasserstoff. ... Fünfundzwanzig sind Helium. ... Helium. | Das verraten uns die dunklen Linien im Sonnenlicht.',
+  zoom: 'Lass uns ins Innere der Sonne tauchen, bis in ihren Kern. | Dort ist es fünfzehn Millionen Grad heiß. Das Gewicht der ganzen Sonne drückt ihn zusammen.',
+  closeup0:
+    'Der Kern ist voller nackter Protonen. | Sie prallen ständig zusammen. Aber fast immer springen sie einfach wieder auseinander.',
+  closeup1:
+    'Manchmal prallen zwei Protonen so heftig zusammen, dass sie kleben bleiben. Zusammen bilden sie schweren Wasserstoff. Er heißt Deuterium. ... Deuterium. | Zwei winzige Teilchen fliegen davon. Eines davon ist wie ein Geist. Es heißt Neutrino. ... Neutrino.',
+  closeup2:
+    'Dann kommt noch ein Proton dazu. | Jetzt ist der Kern eine leichte Art von Helium. Ein Energieblitz fliegt hinaus.',
+  closeup3:
+    'Zwei dieser leichten Heliumkerne prallen zusammen. Sie bilden einen echten Heliumkern. | Zwei Protonen werden frei und versuchen es noch einmal. | Wenn Kerne so verschmelzen, nennt man das Kernfusion. ... Kern. Fusion.',
+  scale:
+    'Jetzt wiegen wir nach. Vier Wasserstoffkerne gehen hinein. Ein Heliumkern kommt heraus. | Und das Helium ist ein kleines bisschen leichter! | Das fehlende Stückchen ist zu Licht geworden. Darum scheint die Sonne.',
+  walk: 'Das neugeborene Licht ist gefangen. Es prallt etwa hunderttausend Jahre lang im Inneren der Sonne hin und her. | Dann erreicht es die Oberfläche. Von dort fliegt es in nur acht Minuten zur Erde.',
+  valley:
+    'Das ist das Energietal. | Kleine Kerne rollen hinunter, indem sie sich verbinden. So macht es die Sonne. | Riesige Kerne rollen hinunter, indem sie zerbrechen. So macht es die Bombe. | Ganz unten sitzt das Eisen.',
+})
+
+// 🇷🇺 Russian: stress marks on the taught terms, ё written out, NO
+// homographs (never «ядра», «звезды», «земли»: «ядро», «ядер», «атомы»,
+// «на Землю» instead — see stardustNarration.ts)
+export const SUN_NARRATION_RU = translated(SUN_NARRATION, {
+  sun: 'Это наша звезда, Солнце. Это огромный шар из раскалённого газа. | Видишь крошечную голубую точку? Это Земля. Она нарисована в том же масштабе.',
+  recipe:
+    'Из чего состоит Солнце? Возьмём сто килограммов солнечного вещества. Семьдесят три килограмма из них это водоро́д. ... Водоро́д. ... Двадцать пять килограммов это ге́лий. ... Ге́лий. | Мы узнаём это по тёмным линиям в солнечном свете.',
+  zoom: 'Давай нырнём в самый центр Солнца, в его ядро. | Там жара в пятнадцать миллионов градусов. Вес всего Солнца сжимает это ядро.',
+  closeup0:
+    'В ядре Солнца тесно от голых протонов. | Они всё время сталкиваются друг с другом. Но почти всегда просто отскакивают.',
+  closeup1:
+    'Иногда два протона сталкиваются так сильно, что слипаются. Вместе они образуют тяжёлый водород. Его называют дейте́рием. ... Дейте́рий. | Две крошечные частицы улетают прочь. Одна из них похожа на призрака. Её называют нейтри́но. ... Нейтри́но.',
+  closeup2:
+    'Потом к ним присоединяется ещё один протон. | Теперь это ядро лёгкого гелия. Наружу вылетает вспышка энергии.',
+  closeup3:
+    'Одно такое лёгкое ядро гелия врезается в другое. Вместе они дают одно настоящее ядро гелия. | Два протона освобождаются и пробуют снова. | Такое слияние ядер называют си́нтезом. ... Си́нтез.',
+  scale:
+    'А теперь давай взвесим. На входе четыре протона. На выходе одно ядро гелия. | И гелий оказывается чуть-чуть легче! | Недостающий кусочек превратился в свет. Вот почему Солнце светит.',
+  walk: 'Новорождённый свет оказывается в ловушке. Около ста тысяч лет он мечется внутри Солнца. | Потом он добирается до поверхности. Оттуда всего за восемь минут он долетает к нам, на Землю.',
+  valley:
+    'Перед тобой долина энергии. | Лёгкие атомы скатываются вниз, когда соединяются. Так светит Солнце. | Тяжёлые атомы скатываются вниз, когда раскалываются. Так работает бомба. | На самом дне лежит железо.',
+})
+
+/** every language's script for this story */
+export const SUN_SCRIPTS = { en: SUN_NARRATION, de: SUN_NARRATION_DE, ru: SUN_NARRATION_RU }

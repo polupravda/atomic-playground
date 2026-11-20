@@ -1,22 +1,28 @@
 import { usePageStore, type AppPage, type ExampleId } from '../state/pageStore'
+import { FLAT } from './surfaces'
 
 // The top-left menu of top-level destinations. The atom builder and the two
 // playgrounds are SIBLING full-screen views — the periodic table and matter
 // lab stay as drawers inside the builder, because they depend on the
-// current atom. The demos of 🌍 Atoms in action are its SUB-ITEMS: nested
+// current atom. The demos of 🎬 Stories (formerly 🌍 Atoms in action) are its SUB-ITEMS: nested
 // under it (indented on a guide line), expanded while it is open.
 const ITEMS: Array<{ id: AppPage; label: string }> = [
   { id: 'builder', label: '⚛️ Atom builder' },
   { id: 'charges', label: '⚡ Charge playground' },
   { id: 'bonding', label: '🧪 Bonding lab' },
+  { id: 'crystal', label: '🧊 Crystal lab' },
   { id: 'light', label: '💡 Light lab' },
-  { id: 'examples', label: '🌍 Atoms in action' },
+  { id: 'examples', label: '🎬 Stories' },
 ]
 
-export const EXAMPLE_ITEMS: Array<{ id: ExampleId; label: string }> = [
+export const EXAMPLE_ITEMS: Array<{ id: ExampleId; label: string; planned?: boolean }> = [
   { id: 'bomb', label: '☢️ Atomic bomb' },
   { id: 'light', label: '✨ Light & color' },
   { id: 'cosmos', label: '🌟 Star stuff' },
+  // designed, not built yet: inactive thumbnails (ComingSoonExample)
+  { id: 'plant', label: '⚡ Power plant', planned: true },
+  { id: 'atoms', label: '♻️ Atoms never vanish', planned: true },
+  { id: 'crystals', label: '💎 Crystals', planned: true },
 ]
 
 export function PageNav() {
@@ -30,7 +36,7 @@ export function PageNav() {
   return (
     <nav
       aria-label="Views"
-      className="flex w-64 shrink-0 flex-col gap-1 rounded-xl border border-slate-700 bg-slate-800/60 p-1 text-sm"
+      className={`flex w-64 shrink-0 flex-col gap-1 p-1 text-sm ${FLAT}`}
     >
       {ITEMS.map((it) => {
         const parent = it.id === 'examples'
@@ -59,7 +65,7 @@ export function PageNav() {
               )}
             </button>
             {open && (
-              <ul aria-label="Demos" className="ml-5 mt-1 flex flex-col gap-1 border-l border-slate-600 pl-2">
+              <ul aria-label="Stories" className="ml-5 mt-1 flex flex-col gap-1 border-l border-slate-600 pl-2">
                 {EXAMPLE_ITEMS.map((ex) => (
                   <li key={ex.id}>
                     <button
@@ -69,7 +75,9 @@ export function PageNav() {
                       className={`w-full rounded-lg px-3 py-1.5 text-left text-[13px] transition ${
                         example === ex.id
                           ? 'bg-sky-600 font-medium text-white'
-                          : 'text-slate-300 hover:bg-slate-700'
+                          : ex.planned
+                            ? 'text-slate-500 hover:bg-slate-700'
+                            : 'text-slate-300 hover:bg-slate-700'
                       }`}
                     >
                       {ex.label}

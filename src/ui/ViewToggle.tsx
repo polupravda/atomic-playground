@@ -1,4 +1,5 @@
 import { useViewStore, type AtomView } from '../state/viewStore'
+import { TRAY } from './surfaces'
 
 const LABELS: Record<AtomView, string> = {
   shells: 'Shells',
@@ -14,7 +15,7 @@ export function ViewToggle() {
   // its way there".
   const active = transition?.to ?? view
   return (
-    <div className="flex w-64 rounded-xl border border-slate-700 bg-slate-800/60 p-1 text-sm">
+    <div className={`flex w-64 p-1 text-sm ${TRAY}`}>
       {(Object.keys(LABELS) as AtomView[]).map((v) => (
         <button
           key={v}

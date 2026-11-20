@@ -2,10 +2,12 @@ import { create } from 'zustand'
 
 // Top-level page switching (no router: views stay MOUNTED and are merely
 // hidden, so every canvas keeps its state between switches).
-export type AppPage = 'builder' | 'charges' | 'bonding' | 'light' | 'examples'
+export type AppPage = 'builder' | 'charges' | 'bonding' | 'crystal' | 'light' | 'examples'
 
 /** the demos inside 🌍 Atoms in action — sub-items of the main menu */
-export type ExampleId = 'bomb' | 'light' | 'cosmos'
+/** the demos inside 🎬 Stories; plant · atoms (candle + tree) · crystals are planned
+ *  (ComingSoonExample: inactive thumbnails only) */
+export type ExampleId = 'bomb' | 'light' | 'cosmos' | 'plant' | 'atoms' | 'crystals'
 
 interface PageState {
   page: AppPage

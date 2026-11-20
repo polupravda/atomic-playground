@@ -8,6 +8,12 @@
 > photo added by request 2026-11-16** (section below) and implemented the
 > same day (step 39e). Still open: the L12 retina zoom ("if wanted") and the
 > second doorbell metal.
+>
+> **Layout change 2026-11-19** (Elena): the 🌊 wave machine is the main
+> view; the other scenes no longer sit in a scene picker — each opens in
+> its own drawer over the wave machine, like the atom builder's 🌡️ States
+> of matter. Short narrated intros per scene are proposed in
+> [proposal 11](11-proposal-new-demos.md).
 
 ## One sentence
 

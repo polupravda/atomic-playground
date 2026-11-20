@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { Layer, Shape, Stage } from 'react-konva'
 import Konva from 'konva'
+import { drifted, fitRate } from './flowPacing'
 import { drawGlossyParticle } from './particleStyle'
 import { clamp01, easeInOut, easeOut } from './canvasUtil'
 import { FISSION_W, FISSION_H } from './FissionStage'
@@ -14,6 +15,7 @@ import {
 import { FORGE_TOTAL, forgeStep } from './stardustStory'
 import { ENERGY_VALLEY, SUN_RECIPE } from '../core/cosmos'
 import { wavelengthToCss } from '../core/spectra'
+import { DETECTIVE_ORDER, DETECTIVE_T, drawDetective, type DetectivePhase } from './detectiveScenes'
 
 // R04 — 🌟 Cosmic origins demo canvas. One story so far: ☀️ "Why the Sun
 // shines" (+ WHAT the Sun is made of — the recipe beat), told with R01/R02's
@@ -46,14 +48,16 @@ export const COSMOS_JOURNEYS: Array<{
   ready: boolean
 }> = [
   // first: reading a star's barcode — the Sun story builds on it (moved
-  // here from the ✨ Light & color chooser 2026-11-18; not built yet)
-  { id: 'detective', label: '🔭 Star detective', subtitle: 'reading starlight barcodes', ready: false },
+  // here from the ✨ Light & color chooser 2026-11-18; built 2026-11-19)
+  { id: 'detective', label: '🔭 Star detective', subtitle: 'reading starlight barcodes', ready: true },
   { id: 'sun', label: '☀️ Why the Sun shines', subtitle: 'and what it is made of', ready: true },
   { id: 'stardust', label: '🧒 You are star stuff', subtitle: 'a carbon atom\'s journey', ready: true },
   { id: 'gold', label: '💍 Where gold comes from', subtitle: 'colliding neutron stars', ready: false },
 ]
 
 export type CosmosPhase =
+  // 🔭 star detective (detectiveScenes.ts)
+  | DetectivePhase
   // ☀️ why the Sun shines
   | 'sun'
   | 'recipe'
@@ -97,7 +101,11 @@ interface Sim {
 }
 
 function buildSim(journey: CosmosJourneyId): Sim {
-  return { journey, phase: journey === 'stardust' ? 'giant' : 'sun', phaseT: 0 }
+  return {
+    journey,
+    phase: journey === 'stardust' ? 'giant' : journey === 'detective' ? DETECTIVE_ORDER[0] : 'sun',
+    phaseT: 0,
+  }
 }
 
 function step(sim: Sim, dt: number) {
@@ -105,6 +113,12 @@ function step(sim: Sim, dt: number) {
   const advance = (next: CosmosPhase) => {
     sim.phase = next
     sim.phaseT = 0
+  }
+  if (sim.journey === 'detective') {
+    const i = DETECTIVE_ORDER.indexOf(sim.phase as DetectivePhase)
+    const next = DETECTIVE_ORDER[i + 1]
+    if (next && sim.phaseT >= DETECTIVE_T[sim.phase as DetectivePhase]) advance(next)
+    return
   }
   if (sim.journey === 'stardust') {
     if (sim.phase === 'giant' && sim.phaseT >= GIANT_T) advance('forge')
@@ -123,11 +137,25 @@ function step(sim: Sim, dt: number) {
 }
 
 export function cosmosStoryOrder(journey: CosmosJourneyId): string[] {
+  if (journey === 'detective') return [...DETECTIVE_ORDER]
   if (journey === 'stardust') {
     return ['giant', 'zoom', 'forge0', 'forge1', 'boom', 'drift', 'earth', 'alive', 'you']
   }
   const close = Array.from({ length: 4 }, (_, i) => `closeup${i}`)
   return ['sun', 'recipe', 'zoom', ...close, 'scale', 'walk', 'valley']
+}
+
+/** story seconds until the sim leaves its current beat (flow pacing):
+ *  the beats run on fixed timings, so a copy played ahead is exact */
+function beatTimeLeft(sim: Sim): number {
+  const id = storyId(sim)
+  const s = { ...sim }
+  let t = 0
+  while (t < 60 && storyId(s) === id) {
+    step(s, 1 / 60)
+    t += 1 / 60
+  }
+  return t
 }
 
 function storyId(sim: Sim): string {
@@ -1291,6 +1319,7 @@ export const CosmosStage = memo(function CosmosStage({
   active,
   timeScale = 1,
   holdBeat = false,
+  fit = null,
   onReport,
   onFinished,
 }: {
@@ -1305,6 +1334,10 @@ export const CosmosStage = memo(function CosmosStage({
   /** science pacing: the narrator still has pieces to say about this
    *  beat — never move on to the next beat (or finish) yet */
   holdBeat?: boolean
+  /** flow pacing: seconds until the beat's line ends — the story runs at
+   *  one steady speed fitted to it (overrides timeScale); null = no flow
+   *  beat */
+  fit?: (() => number) | null
   onReport: (r: CosmosReport) => void
   onFinished: () => void
 }) {
@@ -1315,6 +1348,10 @@ export const CosmosStage = memo(function CosmosStage({
   timeScaleRef.current = timeScale
   const holdBeatRef = useRef(holdBeat)
   holdBeatRef.current = holdBeat
+  const fitRef = useRef(fit)
+  fitRef.current = fit
+  // flow pacing: this beat's steady speed and its story time left
+  const flow = useRef<{ id: string; rate: number; left: number } | null>(null)
   const onFinishedRef = useRef(onFinished)
   onFinishedRef.current = onFinished
   const finishedSent = useRef(false)
@@ -1353,6 +1390,7 @@ export const CosmosStage = memo(function CosmosStage({
   useEffect(() => {
     finishedSent.current = false
     snaps.current.clear()
+    flow.current = null
     lastStory.current = ''
     lastSig.current = ''
     if (journey) {
@@ -1371,6 +1409,7 @@ export const CosmosStage = memo(function CosmosStage({
     const ti = order.indexOf(seek.id)
     if (ti < 0) return
     const idx = (id: string) => order.indexOf(id)
+    flow.current = null
     const restore = (id: string) => {
       sim.current = structuredClone(snaps.current.get(id)!)
       lastStory.current = id
@@ -1406,19 +1445,34 @@ export const CosmosStage = memo(function CosmosStage({
       if (!journeyRef.current) return
       // the beat gate: a frame that would leave the beat is undone. A
       // held story (the voice talking) takes no step, so needs no copy.
-      const sdt = dt * timeScaleRef.current
+      let rate = timeScaleRef.current
+      const narration = fitRef.current?.() ?? null
+      let f = flow.current
+      if (narration !== null) {
+        const id = storyId(sim.current)
+        if (!f || f.id !== id) {
+          const left = beatTimeLeft(sim.current)
+          f = { id, left, rate: fitRate(left, narration) }
+          flow.current = f
+        } else if (drifted(f.left, f.rate, narration)) f.rate = fitRate(f.left, narration)
+        rate = f.rate
+      } else f = null
+      const sdt = dt * rate
       const gate = holdBeatRef.current
       if (!gate || sdt > 0) {
         const backup = gate ? structuredClone(sim.current) : null
         const before = backup ? storyId(sim.current) : ''
         step(sim.current, sdt)
         if (backup && storyId(sim.current) !== before) sim.current = backup
+        else if (f) f.left = Math.max(0, f.left - sdt)
       }
       record()
       report()
       const s = sim.current
       const done =
-        (s.phase === 'valley' && s.phaseT >= END_T) || (s.phase === 'you' && s.phaseT >= YOU_T)
+        (s.phase === 'valley' && s.phaseT >= END_T) ||
+        (s.phase === 'you' && s.phaseT >= YOU_T) ||
+        (s.phase === 'discovery' && s.phaseT >= DETECTIVE_T.discovery)
       if (!finishedSent.current && !holdBeatRef.current && done) {
         finishedSent.current = true
         onFinishedRef.current()
@@ -1444,6 +1498,7 @@ export const CosmosStage = memo(function CosmosStage({
             const now = tRef.current
             IDLE = now
             if (!journeyRef.current) drawLineup(ctx)
+            else if (s.journey === 'detective') drawDetective(ctx, s.phase as DetectivePhase, s.phaseT, W, UH, now)
             else if (s.phase === 'sun') drawSunScene(ctx)
             else if (s.phase === 'recipe') drawRecipeScene(ctx, s.phaseT)
             else if (s.phase === 'giant') drawGiantScene(ctx)

@@ -3,7 +3,13 @@ import * as Slider from '@radix-ui/react-slider'
 import { PageNav } from './PageNav'
 import { usePageStore } from '../state/pageStore'
 import {
+  DEFAULT_PRISM,
+  PRISM_CENTER_FRAC,
+  WAVE_H,
+  WAVE_W,
   WaveStage,
+  dropRadius,
+  type PrismSetup,
   lampMixCss,
   type EyeLampSetting,
   type LampLevels,
@@ -48,12 +54,16 @@ import {
   type XrayObjectId,
 } from '../core/xray'
 import { Paras, SectionHeader, type Para } from './Paras'
+import { SideDrawer } from './SideDrawer'
+import { CHIP_KEY, FLAT, KEY, TRAY } from './surfaces'
 
 // 💡 Light lab (proposal 09, Milestone 10) — a BUILDER like the atom
 // builder, not a demo: the kid drives every knob. Step 37+37b scene: the
 // wave machine (L01 wave + drag, L02 color readout, L03 beyond the rainbow
-// with the EM bar, L04 brightness). Later scenes (wave⇄photons, doorbell,
-// lamps, the eye, prism) plug into the scene picker.
+// with the EM bar, L04 brightness). The wave machine is the MAIN view; the
+// other scenes (doorbell, lamps, the eye, prism, bone photo) each open in a
+// drawer over it — the atom builder's 🌡️ States of matter pattern (Elena,
+// 2026-11-19).
 
 const SCENES = [
   { id: 'wave', label: '🌊 Wave machine', ready: true },
@@ -79,9 +89,44 @@ const PRESETS: Array<{ label: string; m: number }> = [
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="w-64 rounded-xl border border-slate-700 bg-slate-800/60 p-3">
+    <div className={`w-64 p-3 ${FLAT}`}>
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</h3>
       {children}
+    </div>
+  )
+}
+
+/** the lamp's color choices (the eye and prism scenes): every chip shows
+ *  its color as a dot — most kids read the dot before the word */
+function LampChips({ value, onChange }: { value: EyeLampSetting; onChange: (v: EyeLampSetting) => void }) {
+  const chip = (id: EyeLampSetting, name: string, css: string) => {
+    const on = value === id
+    return (
+      <button
+        key={String(id)}
+        type="button"
+        onClick={() => onChange(id)}
+        aria-current={on ? 'page' : undefined}
+        className={`flex items-center gap-1.5 rounded-full border py-1 pl-1.5 pr-2.5 text-xs transition ${
+          on
+            ? `border-slate-200 font-medium ${id === 'white' ? 'text-slate-900' : 'text-white'}`
+            : `${CHIP_KEY} text-slate-300`
+        }`}
+        style={on ? { background: css } : undefined}
+      >
+        <span
+          aria-hidden
+          className={`h-3.5 w-3.5 shrink-0 rounded-full ${on ? 'ring-2 ring-white/80' : 'ring-1 ring-slate-500/60'}`}
+          style={{ background: css }}
+        />
+        {name}
+      </button>
+    )
+  }
+  return (
+    <div className="flex flex-wrap gap-1">
+      {chip('white', 'white', '#f1f5f9')}
+      {EYE_LAMPS.map((l) => chip(l.nm, l.name, wavelengthToCss(l.nm)))}
     </div>
   )
 }
@@ -119,13 +164,117 @@ function LabSlider({
   )
 }
 
+/** the scenes that open in a drawer over the wave machine (the main view),
+ *  like the atom builder's 🌡️ States of matter */
+const DRAWER_SCENES = SCENES.filter((s) => s.id !== 'wave')
+
+// The drawer leaves a strip of the page visible on the left (like the
+// periodic table's), so it reads as a drawer over the lab, not a new
+// screen. Its lab view is built for the full page width (the canvas size
+// is fixed per page, WAVE_W × WAVE_H), so it is scaled down to fit.
+const DRAWER_GAP_PX = 96
+const DRAWER_MAX_PX = 86 * 16
+const DRAWER_PAD_PX = 2 * 20 + 1 // p-5 + the drawer's left border
+/** the lab view's natural width: 16rem + gap + canvas (+ border) + gap + 16.5rem */
+const LAB_W = 256 + 24 + WAVE_W + 2 + 24 + 264
+function drawerFit() {
+  const room = Math.min(window.innerWidth - DRAWER_GAP_PX, DRAWER_MAX_PX) - DRAWER_PAD_PX
+  const k = Math.min(1, room / LAB_W)
+  return { k, height: (window.innerHeight - 40) / k }
+}
+
 export function LightLab() {
   const page = usePageStore((s) => s.page)
+  const [open, setOpen] = useState<WaveScene | null>(null)
+  const openScene = DRAWER_SCENES.find((s) => s.id === open)
+  return (
+    <>
+      <LightLabView
+        scene="wave"
+        // the main view rests while a drawer covers it
+        active={page === 'light' && open === null}
+        bottom={
+          <div className="flex flex-col gap-2">
+            {DRAWER_SCENES.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setOpen(s.id)}
+                className={`w-64 px-4 py-2.5 text-left text-sm text-slate-200 ${KEY}`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        }
+      />
+      <SideDrawer
+        open={open !== null}
+        onClose={() => setOpen(null)}
+        ariaLabel={openScene ? `${openScene.label.slice(openScene.label.indexOf(' ') + 1)} — Light lab scene` : 'Light lab scene'}
+        // = DRAWER_GAP_PX / DRAWER_MAX_PX (Tailwind needs the literal class)
+        widthClassName="w-[min(calc(100vw_-_96px),1376px)]"
+      >
+        {openScene && (
+          // a fresh lab for the scene: its own knobs, its own canvas —
+          // scaled to the drawer
+          <div
+            className="overflow-hidden"
+            style={{ width: LAB_W * drawerFit().k, height: window.innerHeight - 40 }}
+          >
+          <div
+            style={{
+              width: LAB_W,
+              height: drawerFit().height,
+              transform: `scale(${drawerFit().k})`,
+              transformOrigin: 'top left',
+            }}
+          >
+            <LightLabView
+              key={openScene.id}
+              scene={openScene.id}
+              active={page === 'light'}
+              inDrawer
+              // the drawer has more height than width: the canvas uses it
+              canvasHeight={Math.floor(drawerFit().height) - 2}
+              top={<h2 className="pr-8 text-lg font-semibold text-slate-100">{openScene.label}</h2>}
+            />
+          </div>
+          </div>
+        )}
+      </SideDrawer>
+    </>
+  )
+}
+
+/** one Light lab view: the 📷/ℹ️ column, the canvas and the control cards
+ *  for ONE scene — the main page shows the wave machine, each other scene
+ *  opens in its own drawer */
+function LightLabView({
+  scene,
+  active,
+  inDrawer = false,
+  canvasHeight,
+  top,
+  bottom,
+}: {
+  scene: WaveScene
+  active: boolean
+  /** inside a drawer: no main menu in the left column */
+  inDrawer?: boolean
+  /** the canvas height (default: the page's WAVE_H) */
+  canvasHeight?: number
+  /** first block of the right column: the scene's title (drawer) */
+  top?: ReactNode
+  /** last block of the right column, under the controls: the scene drawer
+   *  buttons (main view) — like the atom builder's 🧪 / 🌡️ under its
+   *  controls */
+  bottom?: ReactNode
+}) {
   // the light being built: wavelength as slider-u (see core/emSpectrum), 0–1
   const [u, setU] = useState(wavelengthToU(670e-9)) // start on lithium red
   const [brightness, setBrightness] = useState(0.75)
   const [view, setView] = useState<WaveView>('wave')
-  const [scene, setScene] = useState<WaveScene>('wave')
   const [rings, setRings] = useState(0)
   // all three lamps start on: the white-is-a-mixture surprise comes first
   const [lamps, setLamps] = useState<LampLevels>({ r: 0.85, g: 0.85, b: 0.85 })
@@ -133,6 +282,7 @@ export function LightLab() {
   const [eyeObject, setEyeObject] = useState<EyeObjectId>('apple')
   const [eyeLamp, setEyeLamp] = useState<EyeLampSetting>('white')
   const [prismLamp, setPrismLamp] = useState<EyeLampSetting>('white')
+  const [prism, setPrism] = useState<PrismSetup>(DEFAULT_PRISM)
   // the bone photo: a hand under the X-ray tube is the classic opening
   const [xrayObject, setXrayObject] = useState<XrayObjectId>('hand')
   const [xrayLamp, setXrayLamp] = useState<XrayLamp>('xray')
@@ -156,7 +306,34 @@ export function LightLab() {
   // the lamps scene has no single wavelength — nothing to stretch there
   const onPointerUp = useCallback(() => {
     drag.current = null
+    prismDrag.current = null
   }, [])
+
+  // 🔼 prism: drag around the prism to turn it; raindrop: drag up/down to
+  // move where the beam meets the drop. Pointer → canvas px (the drawer
+  // scales the lab, so measure the box).
+  const prismDrag = useRef<{ a0: number; angle: number; y0: number; impact: number } | null>(null)
+  const canvasH = canvasHeight ?? WAVE_H
+  const toCanvas = (e: React.PointerEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    return { x: ((e.clientX - r.left) * WAVE_W) / r.width, y: ((e.clientY - r.top) * canvasH) / r.height }
+  }
+  const pointerAngle = (q: { x: number; y: number }) =>
+    Math.atan2(q.y - canvasH * PRISM_CENTER_FRAC.y, q.x - WAVE_W * PRISM_CENTER_FRAC.x)
+  const onPrismDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const q = toCanvas(e)
+    prismDrag.current = { a0: pointerAngle(q), angle: prism.angle, y0: q.y, impact: prism.impact }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  const onPrismMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = prismDrag.current
+    if (!d) return
+    const q = toCanvas(e)
+    if (prism.shape === 'drop') {
+      const impact = Math.max(-0.98, Math.min(0.98, d.impact - (q.y - d.y0) / dropRadius()))
+      setPrism((p) => ({ ...p, impact }))
+    } else setPrism((p) => ({ ...p, angle: d.angle + pointerAngle(q) - d.a0 }))
+  }
 
   const m = uToWavelength(u)
   const nm = m * 1e9
@@ -512,7 +689,15 @@ export function LightLab() {
     },
     {
       icon: '🌦️',
-      text: 'A rainbow in the sky is millions of raindrops doing the prism\'s job to sunlight — the same fan, drawn across the whole sky.',
+      text: 'A rainbow in the sky is millions of raindrops doing the prism\'s job to sunlight. Switch to 💧 Raindrop: the light goes in, bounces once off the back of the drop and comes back out, fanned into colors — about 42° from where the sunlight was heading. That is why a rainbow always stands opposite the Sun.',
+    },
+    {
+      icon: '💎',
+      text: 'Diamond bends light much more than glass or water. Turn a diamond prism and the light often cannot get out: it bounces around inside (the little sparkles). That trapped, bouncing light is what makes a cut diamond glitter.',
+    },
+    {
+      icon: '🧾',
+      text: 'Honest notes: the colors here fan out about six times wider than in a real prism, so you can see them (real glass spreads white light by only about one degree — the ORDER of the colors and which material spreads more are true). Every surface also bounces back a little light; we leave that out. The raindrop is drawn hugely enlarged.',
     },
   ]
 
@@ -646,6 +831,9 @@ export function LightLab() {
   const tipsPrism: Para[] = [
     { icon: '🔴', text: 'Send pure red through, then pure violet: same prism, different bend — and neither one splits.' },
     { icon: '🌈', text: 'Back to white: count the stripes on the screen and check the order, red at the top to violet at the bottom.' },
+    { icon: '↻', text: 'Drag around the prism to turn it. Watch the rainbow slide up and down the screen — and find the angle where the light stops coming out of the far side.' },
+    { icon: '💎', text: 'Try diamond: the colors spread wider, and the light bounces inside far more often.' },
+    { icon: '💧', text: 'In the raindrop, drag the beam up and down. Only near one spot do the colors come back out together — that spot paints the rainbow.' },
     { icon: '💿', text: 'At home: the rainbow flashes on a CD, or in the fine spray of a garden hose with the sun behind you — same unpacking.' },
   ]
 
@@ -734,8 +922,8 @@ export function LightLab() {
     <div className="flex h-full min-h-0 items-start gap-6">
       {/* left: nav + 📷 photos / ℹ️ info (photos default; both stay mounted) */}
       <div className="flex h-full w-64 shrink-0 flex-col gap-3">
-        <PageNav />
-        <div className="flex gap-1 rounded-xl border border-slate-700 bg-slate-800/60 p-1 text-sm">
+        {!inDrawer && <PageNav />}
+        <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
           {(
             [
               ['photo', '📷 Photos'],
@@ -764,7 +952,7 @@ export function LightLab() {
             <PhotoColumn current={band.id} scene={scene} />
           </div>
           <div
-            className={`absolute inset-0 overflow-y-auto rounded-xl border border-slate-700 bg-slate-800/40 p-3 text-sm leading-relaxed text-slate-300 ${
+            className={`absolute inset-0 overflow-y-auto p-3 text-sm leading-relaxed text-slate-300 ${FLAT} ${
               leftTab === 'info' ? '' : 'hidden'
             }`}
           >
@@ -784,10 +972,16 @@ export function LightLab() {
           rules the scene (wave machine + doorbell) */}
       <div
         className={`relative overflow-hidden rounded-xl border border-slate-700 bg-slate-950 ${
-          scene === 'wave' || scene === 'doorbell' ? 'cursor-ew-resize' : ''
+          scene === 'wave' || scene === 'doorbell'
+            ? 'cursor-ew-resize'
+            : scene === 'prism'
+              ? prism.shape === 'drop'
+                ? 'cursor-ns-resize'
+                : 'cursor-grab active:cursor-grabbing'
+              : ''
         }`}
-        onPointerDown={scene === 'wave' || scene === 'doorbell' ? onPointerDown : undefined}
-        onPointerMove={scene === 'wave' || scene === 'doorbell' ? onPointerMove : undefined}
+        onPointerDown={scene === 'wave' || scene === 'doorbell' ? onPointerDown : scene === 'prism' ? onPrismDown : undefined}
+        onPointerMove={scene === 'wave' || scene === 'doorbell' ? onPointerMove : scene === 'prism' ? onPrismMove : undefined}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
@@ -828,49 +1022,23 @@ export function LightLab() {
           eyeObject={eyeObject}
           eyeLamp={eyeLamp}
           prismLamp={prismLamp}
+          prism={prism}
           xrayObject={xrayObject}
           xrayLamp={xrayLamp}
           xraySpeed={xraySpeed}
-          active={page === 'light'}
+          active={active}
+          height={canvasHeight}
           onBell={setRings}
         />
       </div>
 
       {/* right: control cards (scrolls inside the block) */}
       <div className="flex h-full min-h-0 w-[16.5rem] shrink-0 flex-col gap-4 overflow-y-auto pr-1">
-        <Card title="Scenes">
-          <div className="grid grid-cols-2 gap-1">
-            {SCENES.map((s) =>
-              s.ready ? (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setScene(s.id as WaveScene)}
-                  aria-current={scene === s.id ? 'page' : undefined}
-                  className={`truncate rounded-lg px-2 py-1 text-left text-xs transition ${
-                    scene === s.id
-                      ? 'bg-sky-600 font-medium text-white'
-                      : 'text-slate-300 hover:bg-slate-700'
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ) : (
-                <div
-                  key={s.id}
-                  title="coming soon"
-                  className="truncate rounded-lg px-2 py-1 text-xs text-slate-500"
-                >
-                  {s.label} 🔜
-                </div>
-              ),
-            )}
-          </div>
-        </Card>
+        {top}
 
         {scene === 'wave' && (
         <Card title="Two pictures of the same light">
-          <div className="flex gap-1 rounded-lg bg-slate-900/60 p-1 text-sm">
+          <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
             {(
               [
                 ['wave', '🌊 Wave'],
@@ -928,56 +1096,77 @@ export function LightLab() {
             </Card>
           </>
         ) : scene === 'prism' ? (
-          <Card title="💡 The lamp">
-            <div className="flex flex-wrap gap-1">
-              <button
-                type="button"
-                onClick={() => setPrismLamp('white')}
-                aria-current={prismLamp === 'white' ? 'page' : undefined}
-                className={`rounded-full border px-2.5 py-1 text-xs transition ${
-                  prismLamp === 'white'
-                    ? 'border-slate-200 bg-slate-100 font-medium text-slate-900'
-                    : 'border-slate-600 bg-slate-900/60 text-slate-300 hover:border-slate-400'
-                }`}
-              >
-                ⚪ white
-              </button>
-              {EYE_LAMPS.map((l) => (
+          <>
+            <Card title="🔍 What the light goes through">
+              <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
+                {(
+                  [
+                    ['prism', '🔼 Prism'],
+                    ['drop', '💧 Raindrop'],
+                  ] as const
+                ).map(([id, text]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setPrism((p) => ({ ...p, shape: id }))}
+                    aria-pressed={prism.shape === id}
+                    className={`flex-1 rounded-lg px-2 py-1 transition ${
+                      prism.shape === id ? 'bg-sky-600 font-medium text-white' : 'text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
+              {prism.shape === 'prism' && (
+                <>
+                  <div className="mb-1 mt-3 text-xs text-slate-400">made of</div>
+                  <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
+                    {(
+                      [
+                        ['glass', '🪟 glass'],
+                        ['water', '💧 water'],
+                        ['diamond', '💎 diamond'],
+                      ] as const
+                    ).map(([id, text]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setPrism((p) => ({ ...p, material: id }))}
+                        aria-pressed={prism.material === id}
+                        className={`flex-1 rounded-lg px-1 py-1 text-xs transition ${
+                          prism.material === id ? 'bg-sky-600 font-medium text-white' : 'text-slate-300 hover:bg-slate-700'
+                        }`}
+                      >
+                        {text}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPrism((p) => ({ ...p, angle: 0 }))}
+                    className={`mt-3 w-full px-3 py-1.5 text-sm text-slate-200 ${KEY}`}
+                  >
+                    ↺ Straighten the prism
+                  </button>
+                </>
+              )}
+              {prism.shape === 'drop' && (
                 <button
-                  key={l.nm}
                   type="button"
-                  onClick={() => setPrismLamp(l.nm)}
-                  aria-current={prismLamp === l.nm ? 'page' : undefined}
-                  className={`rounded-full border px-2.5 py-1 text-xs transition ${
-                    prismLamp === l.nm
-                      ? 'border-slate-200 font-medium text-white'
-                      : 'border-slate-600 bg-slate-900/60 text-slate-300 hover:border-slate-400'
-                  }`}
-                  style={prismLamp === l.nm ? { background: wavelengthToCss(l.nm) } : undefined}
+                  onClick={() => setPrism((p) => ({ ...p, impact: DEFAULT_PRISM.impact }))}
+                  className={`mt-3 w-full px-3 py-1.5 text-sm text-slate-200 ${KEY}`}
                 >
-                  {l.name}
+                  🌈 Aim at the rainbow spot
                 </button>
-              ))}
-            </div>
-          </Card>
+              )}
+            </Card>
+            <Card title="💡 The lamp">
+              <LampChips value={prismLamp} onChange={setPrismLamp} />
+            </Card>
+          </>
         ) : scene === 'eye' ? (
           <>
-            <Card title="What the eye sees">
-              <div className="flex items-center gap-3">
-                <span
-                  aria-hidden
-                  className="h-10 w-10 shrink-0 rounded-lg border border-slate-600"
-                  style={{ background: seen.css }}
-                />
-                <div className="text-sm leading-snug">
-                  <div className="font-medium text-slate-100">{seen.name}</div>
-                  <div className="text-xs text-slate-400">
-                    {seen.name === 'black' ? 'nothing bounced back' : 'the bounced band\'s mix'}
-                  </div>
-                </div>
-              </div>
-            </Card>
-
             <Card title="🍎 On the table">
               <div className="grid grid-cols-1 gap-1">
                 {EYE_OBJECT_ORDER.map((id) => (
@@ -999,36 +1188,7 @@ export function LightLab() {
             </Card>
 
             <Card title="💡 The lamp">
-              <div className="flex flex-wrap gap-1">
-                <button
-                  type="button"
-                  onClick={() => setEyeLamp('white')}
-                  aria-current={eyeLamp === 'white' ? 'page' : undefined}
-                  className={`rounded-full border px-2.5 py-1 text-xs transition ${
-                    eyeLamp === 'white'
-                      ? 'border-slate-200 bg-slate-100 font-medium text-slate-900'
-                      : 'border-slate-600 bg-slate-900/60 text-slate-300 hover:border-slate-400'
-                  }`}
-                >
-                  ⚪ white
-                </button>
-                {EYE_LAMPS.map((l) => (
-                  <button
-                    key={l.nm}
-                    type="button"
-                    onClick={() => setEyeLamp(l.nm)}
-                    aria-current={eyeLamp === l.nm ? 'page' : undefined}
-                    className={`rounded-full border px-2.5 py-1 text-xs transition ${
-                      eyeLamp === l.nm
-                        ? 'border-slate-200 font-medium text-white'
-                        : 'border-slate-600 bg-slate-900/60 text-slate-300 hover:border-slate-400'
-                    }`}
-                    style={eyeLamp === l.nm ? { background: wavelengthToCss(l.nm) } : undefined}
-                  >
-                    {l.name}
-                  </button>
-                ))}
-              </div>
+              <LampChips value={eyeLamp} onChange={setEyeLamp} />
             </Card>
           </>
         ) : scene === 'lamps' ? (
@@ -1106,7 +1266,7 @@ export function LightLab() {
                     key={p.label}
                     type="button"
                     onClick={() => setU(wavelengthToU(p.m))}
-                    className="rounded-full border border-slate-600 bg-slate-900/60 px-2 py-0.5 text-xs text-slate-300 transition hover:border-sky-500 hover:text-white"
+                    className={`px-2 py-0.5 text-xs text-slate-300 hover:text-white ${CHIP_KEY}`}
                   >
                     {p.label}
                   </button>
@@ -1125,6 +1285,7 @@ export function LightLab() {
             </Card>
           </>
         )}
+        {bottom}
       </div>
     </div>
   )

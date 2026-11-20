@@ -8,6 +8,7 @@ import { matterData, phaseAt, type MatterPhase } from '../core/matter'
 import { drawGlossyParticle } from '../stage/particleStyle'
 import { SideDrawer } from './SideDrawer'
 import { SpeakButton } from './SpeakButton'
+import { KEY } from './surfaces'
 
 // P08/P09/X03: the states-of-matter lab. Many atoms of the CURRENT element
 // in a box; a temperature slider walks them through solid → liquid → gas at
@@ -203,7 +204,7 @@ export function MatterLab() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-64 rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2.5 text-left text-sm text-slate-200 transition hover:bg-slate-700"
+        className={`w-64 px-4 py-2.5 text-left text-sm text-slate-200 ${KEY}`}
       >
         🌡️ States of matter
       </button>

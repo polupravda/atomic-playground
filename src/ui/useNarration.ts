@@ -76,8 +76,19 @@ function subscribe(l: () => void) {
 const getStatus = () => status
 
 /** a piece of audio, or a silent watch break; `endsGate` on a line's last
- *  piece opens its beat again */
-type Item = { url: string; endsGate?: boolean; piece: string } | { watch: number }
+ *  piece opens its beat again. `piece` = `<beat>#<index>`: the piece itself,
+ *  or (on a watch break) the piece it leads into — so a language switch
+ *  knows exactly what is still to be said. */
+type Item = { url: string; endsGate?: boolean; piece: string } | { watch: number; piece?: string }
+
+/** how many pieces of each beat's line have been said to the end (a
+ *  language switch or re-enable picks up after them, never repeats them);
+ *  forgotten on every deliberate cancel (seek, new story, mute) */
+const told = new Map<string, number>()
+const splitPiece = (piece: string) => {
+  const at = piece.lastIndexOf('#')
+  return { beat: piece.slice(0, at), index: Number(piece.slice(at + 1)) }
+}
 
 const queue: Item[] = []
 let current: Item | null = null // the item playing/waiting (null in a line gap)
@@ -217,6 +228,8 @@ function advance() {
   const a = el()
   a.onended = () => {
     if (my !== seq) return
+    const { beat, index } = splitPiece(item.piece)
+    told.set(beat, Math.max(told.get(beat) ?? 0, index + 1))
     current = null
     setStatus(item.endsGate ? { speaking: false, gateBeat: null, piece: null } : { speaking: false, piece: null })
     // a science piece flows straight into its watch break; between lines,
@@ -226,6 +239,7 @@ function advance() {
   }
   a.onerror = () => my === seq && fail()
   unlocked = true
+  a.volume = 1 // a language switch fades it out
   a.src = item.url
   // speaking from the moment the piece is requested: the story must not
   // creep on while the file loads (it would drift ahead of the voice)
@@ -285,22 +299,116 @@ if (typeof window !== 'undefined') {
   for (const ev of ['pointerdown', 'keydown'] as const) window.addEventListener(ev, unlockAudio, { capture: true })
 }
 
+/** one beat's line, ready to queue */
+export interface LineSpec {
+  /** the beat, without the language: a switch keeps it */
+  beat: string
+  urls: string[]
+  gated: boolean
+  watchFirst: number
+  run: boolean
+}
+
+/** append a line from piece `from` on; `lead` = a watch break to open with
+ *  instead of the line's own (what was left of an interrupted break) */
+function pushLine(spec: LineSpec, from: number, lead?: number) {
+  const { beat, urls, gated, watchFirst, run } = spec
+  const first = Math.min(from, urls.length - 1)
+  const opening = lead ?? (first === 0 ? watchFirst : 0)
+  if (opening > 0) queue.push({ watch: opening, piece: `${beat}#${first}` })
+  for (let i = first; i < urls.length; i++) {
+    learnDuration(urls[i])
+    // a run line has no watch breaks: the animation never waits for it
+    if (i > first && !run) queue.push({ watch: WATCH_BREAK_S, piece: `${beat}#${i}` })
+    queue.push({ url: urls[i], endsGate: gated && i === urls.length - 1, piece: `${beat}#${i}` })
+  }
+  if (gated) setStatus({ gateBeat: beat })
+}
+
 /** queue one beat's line: one piece, or science pieces with watch breaks;
- *  `watchFirst` > 0 opens with a watch break (show first, then explain) */
-function enqueue(urls: string[], by: string, beat: string, gated: boolean, watchFirst = 0, run = false) {
-  const gateBeat = gated ? beat : null
+ *  `watchFirst` > 0 opens with a watch break (show first, then explain).
+ *  Pieces already said (a re-enable after a silent language) are skipped. */
+function enqueue(by: string, spec: LineSpec) {
   if (status.failed) return
+  const from = told.get(spec.beat) ?? 0
+  if (from >= spec.urls.length) return // all said already
   if (owner !== by) cancelNarration() // a different demo takes the voice
   owner = by
-  if (watchFirst > 0) queue.push({ watch: watchFirst })
-  urls.forEach((url, i) => {
-    learnDuration(url)
-    // a run line has no watch breaks: the animation never waits for it
-    if (i > 0 && !run) queue.push({ watch: WATCH_BREAK_S })
-    queue.push({ url, endsGate: gated && i === urls.length - 1, piece: `${beat}#${i}` })
-  })
-  if (gateBeat !== null) setStatus({ gateBeat })
+  pushLine(spec, from)
   if (!playing) advance()
+}
+
+// ---- switching the language mid-story ----
+
+/** a breath between the old voice fading out and the new one */
+const SWITCH_BREATH_S = 0.4
+const FADE_S = 0.2
+
+/** what is still to be said, beat by beat, in order: from which piece, and
+ *  (for the first) what is left of a watch break it was waiting in */
+function pending(): Array<{ beat: string; from: number; lead?: number }> {
+  const out: Array<{ beat: string; from: number; lead?: number }> = []
+  const items = [...(current ? [current] : []), ...queue]
+  items.forEach((it, i) => {
+    if (!it.piece) return
+    const { beat, index } = splitPiece(it.piece)
+    if (out.some((p) => p.beat === beat)) return
+    out.push({ beat, from: index, lead: i === 0 && 'watch' in it ? waitRemaining() : undefined })
+  })
+  return out
+}
+
+/** stop the sound and the queue, keeping who owns it and what was said */
+function stopNow() {
+  seq++
+  clearWait()
+  queue.length = 0
+  current = null
+  playing = false
+  if (audioEl) {
+    audioEl.onended = null
+    audioEl.onerror = null
+    audioEl.pause()
+    audioEl.removeAttribute('src')
+  }
+  setStatus({ speaking: false, gateBeat: null, piece: null, busy: false })
+}
+
+/**
+ * The language changed: the old voice fades out mid-word, and — after a
+ * breath — the new one picks up exactly what was still to be said (from
+ * the interrupted piece, never the whole story again). Nothing pending →
+ * nothing to pick up. `line` builds a beat's line in the new language;
+ * null = it has no script: the voice just stops.
+ */
+function switchLanguage(by: string, line: ((beat: string) => LineSpec | null) | null) {
+  if (owner !== by) return
+  const todo = pending()
+  const my = ++seq // the old voice's callbacks are stale from now on
+  clearWait()
+  const go = () => {
+    if (my !== seq) return
+    stopNow()
+    if (!line || status.failed) return
+    const specs = todo.map((p) => ({ p, spec: line(p.beat) })).filter((x) => x.spec && x.spec.urls.length)
+    if (!specs.length) return
+    if (specs[0].p.lead === undefined) queue.push({ watch: SWITCH_BREATH_S })
+    for (const { p, spec } of specs) pushLine(spec!, p.from, p.lead)
+    advance()
+  }
+  const a = audioEl
+  if (!a || a.paused || !status.speaking) return go()
+  // fade out instead of cutting the word off
+  const t0 = performance.now()
+  const v0 = a.volume // a quick second switch fades on from where it is
+  const tick = () => {
+    if (my !== seq) return
+    const k = (performance.now() - t0) / 1000 / FADE_S
+    if (k >= 1) return go()
+    a.volume = Math.max(0, v0 * (1 - k))
+    requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
 }
 
 function setDemoPaused(p: boolean) {
@@ -309,29 +417,25 @@ function setDemoPaused(p: boolean) {
   else resumeWait()
   if (!playing || !audioEl) return
   if (p) audioEl.pause()
-  else if (status.speaking) {
+  else if (status.speaking && audioEl.paused) {
     const my = seq
     audioEl.play().catch((e) => my === seq && !interrupted(e) && fail())
   }
+}
+
+/** cut the voice short without forgetting what was already said (a
+ *  playground switching scenes: the next scene's intro starts at once) */
+export function interruptNarration() {
+  stopNow()
 }
 
 /** stop speaking now and drop anything queued (keeps the `failed` flag).
  *  With `onlyOwner`, does nothing unless that demo owns the narration. */
 export function cancelNarration(onlyOwner?: string) {
   if (onlyOwner !== undefined && owner !== onlyOwner) return
-  seq++
-  clearWait()
-  queue.length = 0
-  current = null
-  playing = false
+  stopNow()
   owner = null
-  if (audioEl) {
-    audioEl.onended = null
-    audioEl.onerror = null
-    audioEl.pause()
-    audioEl.removeAttribute('src')
-  }
-  setStatus({ speaking: false, gateBeat: null, piece: null, busy: false })
+  told.clear() // a deliberate restart: everything may be said again
 }
 
 // ---- the low-level hook ----
@@ -366,7 +470,7 @@ export function useNarration({
   flow?: boolean
   /** run pacing: never gated, no watch breaks */
   run?: boolean
-}): NarrationStatus & { mine: boolean } {
+}): NarrationStatus & { mine: boolean; id: string } {
   const id = useId()
   const lastKey = useRef<string | null>(null)
   const urlsKey = audioUrls.join('\n')
@@ -380,10 +484,11 @@ export function useNarration({
     if (beatKey === lastKey.current) return
     lastKey.current = beatKey
     const urls = urlsKey ? urlsKey.split('\n') : []
-    // science pieces and show-first lines hold their beat until the end
-    const gated = !run && (urls.length > 1 || watchFirst > 0 || flow)
-    if (urls.length) enqueue(urls, id, beatKey, gated, watchFirst, run)
-  }, [enabled, beatKey, urlsKey, watchFirst, flow, run, id])
+    if (urls.length) enqueue(id, lineSpec(beatKey, urls, { watchFirst, flow, run }))
+    // a new language's urls for the SAME beat are not a new beat: the
+    // language switch itself picks up (switchLanguage)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, beatKey, id])
 
   // silences only our own lines, never another demo's
   useEffect(() => {
@@ -400,7 +505,13 @@ export function useNarration({
   useEffect(() => () => cancelNarration(id), [id])
 
   const s = useSyncExternalStore(subscribe, getStatus)
-  return { ...s, mine: owner === id }
+  return { ...s, mine: owner === id, id }
+}
+
+/** a beat's line as the player queues it: science pieces and show-first
+ *  and flow lines hold their beat until the end; run lines never do */
+function lineSpec(beat: string, urls: string[], o: { watchFirst: number; flow: boolean; run: boolean }): LineSpec {
+  return { beat, urls, gated: !o.run && (urls.length > 1 || o.watchFirst > 0 || o.flow), watchFirst: o.watchFirst, run: o.run }
 }
 
 // ---- the demo-level hook: what every narrated demo uses ----
@@ -438,7 +549,8 @@ export function useDemoNarration({
   const lang = useVoiceStore((s) => s.lang)
   const lines = storyKey ? scripts?.[lang] : undefined
   const line = lines?.[beatId]
-  const beatKey = `${lang}:${storyKey}:${beatId}`
+  // the beat without the language: switching language is not a new beat
+  const beatKey = `${storyKey}:${beatId}`
   const parsed = line ? parseNarrationLine(line) : null
   const pieces = parsed?.pieces.length ?? 0
   const base = `${import.meta.env.BASE_URL}narration/${storyKey}/${lang}/`
@@ -450,17 +562,40 @@ export function useDemoNarration({
       parseNarrationLine(l).pieces.forEach((_, i) => learnDuration(pieceFile(base, id, i)))
     }
   }, [lines, base, voiceOn])
-  const { speaking, failed, mine, gateBeat, piece, busy } = useNarration({
+  const { speaking, failed, mine, gateBeat, piece, busy, id } = useNarration({
     enabled: voiceOn && active && !!lines,
     silence: !active, // switching to another demo silences this one
     paused,
-    // lang is part of the key: switching language re-reads the current beat
     beatKey,
     audioUrls: Array.from({ length: pieces }, (_, i) => pieceFile(base, beatId, i)),
     watchFirst: parsed?.watchFirst ?? 0,
     flow: parsed?.flow ?? false,
     run: parsed?.run ?? false,
   })
+  // 🌐 the language switch: the old voice fades, the new one picks up
+  // what was still to be said. Into a language without a script → the
+  // voice stops (the notice says so); back into one with a script → the
+  // re-enabled hook tells the current beat's unsaid pieces itself.
+  const prevLang = useRef(lang)
+  useEffect(() => {
+    const was = prevLang.current
+    prevLang.current = lang
+    if (was === lang || !storyKey || !scripts?.[was]) return
+    switchLanguage(
+      id,
+      lines
+        ? (beat) => {
+            const b = beat.slice(beat.indexOf(':') + 1)
+            const l = lines[b]
+            if (!l) return null
+            const ps = parseNarrationLine(l)
+            const urls = ps.pieces.map((_, i) => pieceFile(base, b, i))
+            return lineSpec(beat, urls, ps)
+          }
+        : null,
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang])
   const running = voiceOn && active && !!storyKey
   const run = !!parsed?.run
   // the last beat of a run waits until the voice has caught up with it

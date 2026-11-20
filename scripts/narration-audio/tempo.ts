@@ -8,6 +8,7 @@ import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { STARDUST_NARRATION } from '../../src/stage/stardustNarration'
 import { SUN_NARRATION } from '../../src/stage/sunNarration'
+import { DETECTIVE_NARRATION } from '../../src/stage/detectiveNarration'
 import { FIREWORK_NARRATION } from '../../src/stage/fireworkNarration'
 import { BOMB_MODES, bombNarration, bombStoryKey } from '../../src/stage/bombNarration'
 import { parseNarrationLine } from '../../src/stage/narrationScript'
@@ -52,6 +53,7 @@ export function storyTempo(key: string, lines: Record<string, string>) {
 if (process.argv[1]?.endsWith('tempo.ts')) {
   const stories: Array<[string, Record<string, string>]> = [
     ['stardust', STARDUST_NARRATION],
+    ['detective', DETECTIVE_NARRATION],
     ['sun', SUN_NARRATION],
     ['firework', FIREWORK_NARRATION],
     ...BOMB_MODES.map((m) => [bombStoryKey(m), bombNarration(m)] as [string, Record<string, string>]),

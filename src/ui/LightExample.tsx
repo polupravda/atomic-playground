@@ -13,14 +13,16 @@ import { Paras, SectionHeader, type Para } from './Paras'
 import { TimelineColumn, type TimelineItem } from './TimelineColumn'
 import { ColorsTable, LightParticleLegend, PhotonStats } from './LightLegend'
 import { LightIcon } from './LightIcon'
-import { FIREWORK_NARRATION } from '../stage/fireworkNarration'
+import { FIREWORK_SCRIPTS } from '../stage/fireworkNarration'
+import type { NarrationLang } from '../state/voiceStore'
 import { cancelNarration, useDemoNarration } from './useNarration'
 import { NarrationNotice } from './NarrationNotice'
 import { DemoControls, INFO_PANEL } from './DemoControls'
+import { KEY, TRAY } from './surfaces'
 
 /** each light story's narration scripts, per language */
-const NARRATION: Partial<Record<LightStoryId, { en: Record<string, string> }>> = {
-  firework: { en: FIREWORK_NARRATION },
+const NARRATION: Partial<Record<LightStoryId, Partial<Record<NarrationLang, Record<string, string>>>>> = {
+  firework: FIREWORK_SCRIPTS,
 }
 
 // R02 — ✨ Light & color: the second "Atoms in action" example. Same page
@@ -197,8 +199,8 @@ export function LightExample({ active }: { active: boolean }) {
               disabled={!running}
               aria-current={running ? undefined : 'page'}
               title="Go to the light selection screen"
-              className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-medium transition ${
-                running ? 'text-sky-100 hover:bg-sky-600 hover:text-white' : 'cursor-default bg-sky-600 text-white'
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm font-medium ${
+                running ? `text-slate-100 ${KEY}` : 'cursor-default rounded-lg bg-sky-600 text-white'
               }`}
             >
               <LightIcon className="h-6 w-9 shrink-0" />
@@ -251,10 +253,10 @@ export function LightExample({ active }: { active: boolean }) {
               type="button"
               onClick={() => setPaused((v) => !v)}
               aria-pressed={paused}
-              className={`absolute bottom-4 left-1/2 -translate-x-1/2 rounded-xl border px-4 py-2 text-sm transition ${
+              className={`absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 text-sm ${
                 paused
-                  ? 'border-sky-400 bg-sky-600 text-white hover:bg-sky-500'
-                  : 'border-slate-600 bg-slate-800/85 text-slate-200 hover:bg-slate-700'
+                  ? 'rounded-xl border border-sky-400 bg-sky-600 text-white transition hover:bg-sky-500'
+                  : `text-slate-200 ${KEY}`
               }`}
             >
               {paused ? '▶ Resume' : '⏸ Pause'}
@@ -265,7 +267,7 @@ export function LightExample({ active }: { active: boolean }) {
 
       {/* right: the story timeline, or the real photos */}
       <div className="col-start-3 row-start-1 flex min-h-0 flex-col gap-2">
-        <div className="flex gap-1 rounded-xl border border-slate-700 bg-slate-800/60 p-1 text-sm">
+        <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
           {(
             [
               ['story', '📖 Story'],
@@ -331,10 +333,8 @@ const LightPhotoPanel = memo(function LightPhotoPanel({ story }: { story: LightS
             {group.photos.map((ph) => (
               <figure
                 key={ph.file}
-                className={`rounded-xl border p-2 transition ${
-                  ph.story === story
-                    ? 'border-amber-500/60 bg-amber-500/10'
-                    : 'border-slate-700 bg-slate-800/40'
+                className={`rounded-xl p-2 transition ${
+                  ph.story === story ? 'border border-amber-500/60 bg-amber-500/10' : 'bg-slate-800/40'
                 }`}
               >
                 <img
@@ -395,7 +395,7 @@ function Chooser({ onChoose }: { onChoose: (id: LightStoryId) => void }) {
             className="absolute rounded-xl"
             style={{ left: r.left, top: r.top, width: r.right - r.left, height: r.bottom - r.top }}
           >
-            <span className="absolute right-3 top-1.5 rounded-full border border-slate-600 bg-slate-800/80 px-3 py-1 text-sm text-slate-400">
+            <span className="absolute right-3 top-1.5 rounded-full bg-slate-800/80 px-3 py-1 text-sm text-slate-400">
               🔜 coming soon
             </span>
           </div>

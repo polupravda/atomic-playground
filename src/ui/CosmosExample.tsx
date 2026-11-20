@@ -10,7 +10,8 @@ import {
 import { sunCloseupStory } from '../stage/sunStory'
 import { forgeStory } from '../stage/stardustStory'
 import { STARDUST_SCRIPTS } from '../stage/stardustNarration'
-import { SUN_NARRATION } from '../stage/sunNarration'
+import { SUN_SCRIPTS } from '../stage/sunNarration'
+import { DETECTIVE_SCRIPTS } from '../stage/detectiveNarration'
 import { cancelNarration, useDemoNarration } from './useNarration'
 import { NarrationNotice } from './NarrationNotice'
 import { DemoControls, INFO_PANEL } from './DemoControls'
@@ -23,6 +24,7 @@ import {
 } from '../core/cosmosPhotos'
 import { Paras, SectionHeader, type Para } from './Paras'
 import { TimelineColumn, type TimelineItem } from './TimelineColumn'
+import { FLAT, KEY, TRAY } from './surfaces'
 
 // R04 — 🌟 Cosmic origins: the third "Atoms in action" example. Same page
 // anatomy as the bomb and light demos. One journey so far: ☀️ Why the Sun
@@ -35,9 +37,64 @@ const defectPct = (sunMassDefectFraction() * 100).toFixed(1)
 const NARRATION: Partial<
   Record<CosmosJourneyId, Partial<Record<NarrationLang, Record<string, string>>>>
 > = {
+  detective: DETECTIVE_SCRIPTS,
   stardust: STARDUST_SCRIPTS,
-  sun: { en: SUN_NARRATION },
+  sun: SUN_SCRIPTS,
 }
+
+// 🔭 star detective — the info panel
+const HOW_DETECTIVE: Para[] = [
+  {
+    icon: '🌈',
+    text: 'A prism (or a fine grating) spreads light into its colors — a spectrum. Starlight makes a rainbow with thin DARK lines in it.',
+  },
+  {
+    icon: '🫧',
+    text: 'The dark lines come from the thin gas around the star: its atoms catch exactly the colors their electrons can jump UP with — the firework\'s jump, run the other way.',
+  },
+  {
+    icon: '🔍',
+    text: 'Every element catches its own set of colors — its barcode. Hold an element\'s barcode under the star\'s rainbow: if its lines sit on dark lines, the star contains it.',
+  },
+  {
+    icon: '🧪',
+    text: 'A suspect that doesn\'t fit is ruled out. That is how we know what stars are made of without ever going there.',
+  },
+]
+
+const HONEST_DETECTIVE: Para[] = [
+  {
+    icon: '⭐',
+    text: 'The star is a hot blue-white one, like Spica: those really show strong hydrogen AND helium lines. A star like our Sun shows thousands of lines (iron, sodium, calcium…); we keep just two elements.',
+  },
+  {
+    icon: '🌈',
+    text: 'Real dark lines differ in strength and width; ours are all drawn the same, and only visible light is shown.',
+  },
+  {
+    icon: '☀️',
+    text: 'In 1868 the yellow helium line was seen BRIGHT, in the glowing gas at the Sun\'s edge during an eclipse — the same fingerprint, seen glowing instead of missing.',
+  },
+  {
+    icon: '🫧',
+    text: 'The atoms and photons in the "why" scene are storybook-sized; a caught photon\'s energy is soon sent out again — but in any direction, so very little of that color reaches us.',
+  },
+]
+
+const TRUE_DETECTIVE: Para[] = [
+  {
+    icon: '🌑',
+    text: 'On 18 August 1868, during a total eclipse seen from India, Jules Janssen saw a bright yellow line in the Sun\'s light. Norman Lockyer realised no known element made it and named it helium, after helios — the Sun.',
+  },
+  {
+    icon: '🎈',
+    text: 'Helium was only found on Earth in 1895, by William Ramsay, 27 years later. Today it fills party balloons — an element discovered in the sky first.',
+  },
+  {
+    icon: '📐',
+    text: 'In 1814 Joseph von Fraunhofer mapped hundreds of dark lines in sunlight. The photo panel shows them — the Sun\'s barcode.',
+  },
+]
 
 const HOW_IT_WORKS: Para[] = [
   {
@@ -172,7 +229,18 @@ const JOURNEY_NAMES: Record<CosmosJourneyId, string> = {
   gold: 'Where gold comes from',
 }
 
+const DETECTIVE_STEPS: Record<string, TimelineItem> = {
+  star: { id: 'star', group: '🔭 Looking up', icon: '⭐', title: 'A far-away star', text: 'Too far to ever visit. But its light comes to us — a telescope catches it.' },
+  prism: { id: 'prism', group: '🔭 Looking up', icon: '🌈', title: 'A rainbow with gaps', text: 'A prism spreads the light into a spectrum. Some colors are missing: thin dark lines.' },
+  catch: { id: 'catch', group: '🫧 Why the gaps', icon: '🫧', title: 'Atoms catch their colors', text: 'The star\'s thin outer gas swallows exactly the colors its atoms glow with. Those never reach us.' },
+  hydrogen: { id: 'hydrogen', group: '🔍 Detective work', icon: '✅', title: 'Hydrogen? It fits!', text: 'Hydrogen\'s barcode lines up with dark lines: the star contains hydrogen.' },
+  oxygen: { id: 'oxygen', group: '🔍 Detective work', icon: '❌', title: 'Oxygen? No match', text: 'Its lines land where the rainbow is bright: ruled out.' },
+  helium: { id: 'helium', group: '🔍 Detective work', icon: '✅', title: 'Helium! Case closed', text: 'Helium explains the last dark lines. Light told us what the star is made of.' },
+  discovery: { id: 'discovery', group: '🎈 The payoff', icon: '🎈', title: 'Found in the Sun first', text: 'In 1868 a new yellow line in the Sun\'s light: helium, named after helios, the Sun — found on Earth only in 1895.' },
+}
+
 function timelineItems(journey: CosmosJourneyId): TimelineItem[] {
+  if (journey === 'detective') return cosmosStoryOrder(journey).map((id) => DETECTIVE_STEPS[id])
   const eq = (s: string) => (
     <span className="mt-1 block font-mono text-[12px] text-slate-100">{s}</span>
   )
@@ -362,8 +430,8 @@ export function CosmosExample({ active }: { active: boolean }) {
               disabled={!running}
               aria-current={running ? undefined : 'page'}
               title="Go to the journey selection screen"
-              className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-medium transition ${
-                running ? 'text-sky-100 hover:bg-sky-600 hover:text-white' : 'cursor-default bg-sky-600 text-white'
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm font-medium ${
+                running ? `text-slate-100 ${KEY}` : 'cursor-default rounded-lg bg-sky-600 text-white'
               }`}
             >
               <span aria-hidden>🌟</span>
@@ -373,11 +441,14 @@ export function CosmosExample({ active }: { active: boolean }) {
         />
         <div className={INFO_PANEL}>
           <SectionHeader>How it works</SectionHeader>
-          <Paras items={journey === 'stardust' ? HOW_STARDUST : HOW_IT_WORKS} />
+          <Paras items={journey === 'stardust' ? HOW_STARDUST : journey === 'detective' ? HOW_DETECTIVE : HOW_IT_WORKS} />
           <SectionHeader>Honest notes</SectionHeader>
-          <Paras items={journey === 'stardust' ? HONEST_STARDUST : HONEST} className="text-slate-400" />
+          <Paras
+            items={journey === 'stardust' ? HONEST_STARDUST : journey === 'detective' ? HONEST_DETECTIVE : HONEST}
+            className="text-slate-400"
+          />
           <SectionHeader>A true story</SectionHeader>
-          <Paras items={journey === 'stardust' ? TRUE_STARDUST : TRUE_STORY} />
+          <Paras items={journey === 'stardust' ? TRUE_STARDUST : journey === 'detective' ? TRUE_DETECTIVE : TRUE_STORY} />
         </div>
       </div>
 
@@ -391,6 +462,7 @@ export function CosmosExample({ active }: { active: boolean }) {
             active={active}
             timeScale={narration.timeScale}
             holdBeat={narration.holdBeat}
+            fit={narration.fit}
             onReport={setReport}
             onFinished={onFinished}
           />
@@ -401,10 +473,10 @@ export function CosmosExample({ active }: { active: boolean }) {
               type="button"
               onClick={() => setPaused((v) => !v)}
               aria-pressed={paused}
-              className={`absolute bottom-4 left-1/2 -translate-x-1/2 rounded-xl border px-4 py-2 text-sm transition ${
+              className={`absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 text-sm ${
                 paused
-                  ? 'border-sky-400 bg-sky-600 text-white hover:bg-sky-500'
-                  : 'border-slate-600 bg-slate-800/85 text-slate-200 hover:bg-slate-700'
+                  ? 'rounded-xl border border-sky-400 bg-sky-600 text-white transition hover:bg-sky-500'
+                  : `text-slate-200 ${KEY}`
               }`}
             >
               {paused ? '▶ Resume' : '⏸ Pause'}
@@ -415,7 +487,7 @@ export function CosmosExample({ active }: { active: boolean }) {
 
       {/* right: the story timeline, or the real photos */}
       <div className="col-start-3 row-start-1 flex min-h-0 flex-col gap-2">
-        <div className="flex gap-1 rounded-xl border border-slate-700 bg-slate-800/60 p-1 text-sm">
+        <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
           {(
             [
               ['story', '📖 Story'],
@@ -452,7 +524,7 @@ export function CosmosExample({ active }: { active: boolean }) {
               currentId={report.storyId}
               visible={active && rightTab === 'story'}
               onSeek={onSeek}
-              restartIds={['sun']}
+              restartIds={['sun', 'giant', 'star']}
               resetKey={journey}
             />
           )}
@@ -476,7 +548,9 @@ const CosmosPhotoPanel = memo(function CosmosPhotoPanel({
   const groups: CosmosPhotoGroup[] =
     journey === 'stardust'
       ? STARDUST_PHOTO_GROUPS
-      : journey === 'sun'
+      : journey === 'detective'
+        ? COSMOS_PHOTO_GROUPS.filter((g) => g.title === 'How we know the recipe' || g.title === 'The Sun itself')
+        : journey === 'sun'
         ? COSMOS_PHOTO_GROUPS
         : [...COSMOS_PHOTO_GROUPS, ...STARDUST_PHOTO_GROUPS]
   return (
@@ -488,7 +562,7 @@ const CosmosPhotoPanel = memo(function CosmosPhotoPanel({
           </h2>
           <div className="space-y-3">
             {group.photos.map((ph) => (
-              <figure key={ph.file} className="rounded-xl border border-slate-700 bg-slate-800/40 p-2">
+              <figure key={ph.file} className={`p-2 ${FLAT}`}>
                 <img
                   src={`${import.meta.env.BASE_URL}examples/${ph.file}`}
                   alt={ph.caption}
@@ -545,7 +619,7 @@ function Chooser({ onChoose }: { onChoose: (id: CosmosJourneyId) => void }) {
             className="absolute rounded-xl"
             style={{ left: r.left, top: r.top, width: r.right - r.left, height: r.bottom - r.top }}
           >
-            <span className="absolute right-3 top-1.5 rounded-full border border-slate-600 bg-slate-800/80 px-3 py-1 text-sm text-slate-400">
+            <span className="absolute right-3 top-1.5 rounded-full bg-slate-800/80 px-3 py-1 text-sm text-slate-400">
               🔜 coming soon
             </span>
           </div>

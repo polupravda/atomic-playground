@@ -8,6 +8,7 @@ import {
 import { useFeedbackStore, type FeedbackSegment } from '../state/feedbackStore'
 import { useEventStore } from '../state/eventStore'
 import { FeedbackToast } from './FeedbackToast'
+import { FLAT, KEY } from './surfaces'
 
 const ROWS: Array<{ kind: ParticleKind; label: string; dotClass: string }> = [
   { kind: 'protons', label: 'Protons', dotClass: 'bg-red-400' },
@@ -245,7 +246,7 @@ export function CountsPanel() {
   const clearStory = useEventStore((s) => s.clearStory)
 
   return (
-    <aside className="relative w-64 rounded-xl border border-slate-700 bg-slate-800/60 p-4">
+    <aside className={`relative w-64 p-4 ${FLAT}`}>
       {/* The correction bubble anchors to this panel — right next to the
           inputs it talks about. */}
       <FeedbackToast />
@@ -264,7 +265,7 @@ export function CountsPanel() {
           reset()
         }}
         disabled={protons + neutrons + electrons === 0}
-        className="mt-4 w-full rounded-lg bg-slate-700 px-3 py-1.5 text-sm text-slate-200 transition hover:bg-slate-600 disabled:opacity-30 disabled:hover:bg-slate-700"
+        className={`mt-4 w-full px-3 py-1.5 text-sm text-slate-200 ${KEY}`}
       >
         Reset atom
       </button>

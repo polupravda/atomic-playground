@@ -86,6 +86,12 @@ HUD (in the left panel, `BombLegend` style): splits per second, a **k meter**
 
 ## 📖 Story mode — beats
 
+> **2026-11-19:** the story was rewritten for a child's eyes (one aha,
+> two new words, "a very big kettle") in
+> [12-story-designs-for-kids.md](12-story-designs-for-kids.md), which
+> wins for the STORY. The beats below remain the reference for the scene
+> and for 🕹️ operator mode.
+
 R01 pacing throughout (5 s scene look, 1.2 s zooms, 2.2–3 s per beat).
 
 1. **The place** (~5 s): the cutaway, labels.
