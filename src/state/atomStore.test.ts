@@ -20,6 +20,14 @@ describe('atom store clamping', () => {
     expect(useAtomStore.getState().electrons).toBe(6)
   })
 
+  it('gives no extra electron to atoms with a negative electron affinity', () => {
+    expect(maxElectronsFor(10)).toBe(10) // Ne⁻ does not exist
+    expect(maxElectronsFor(2)).toBe(2) // He⁻
+    expect(maxElectronsFor(7)).toBe(7) // N⁻
+    expect(maxElectronsFor(17)).toBe(18) // Cl⁻ does
+    expect(maxElectronsFor(20)).toBe(21) // Ca⁻, barely (0.02 eV)
+  })
+
   it('addParticle respects the electron cap', () => {
     const s = useAtomStore.getState()
     s.setCount('protons', 1)

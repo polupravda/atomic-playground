@@ -8,6 +8,7 @@ import { USE_PHOTOS } from '../core/usePhotos'
 import { ElementBadge } from './ElementBadge'
 import { SideDrawer } from './SideDrawer'
 import { SpeakButton } from './SpeakButton'
+import { elementWord } from '../core/spokenWords'
 
 const STATE_PRESENTATION = {
   solid: { icon: '🧱', text: 'solid' },
@@ -97,7 +98,7 @@ export function ElementCard() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <SpeakButton text={element.name} />
+                  <SpeakButton word={elementWord(element.atomicNumber)} text={element.name} />
                   <span className="text-xl font-semibold text-slate-100">
                     {element.name}
                   </span>

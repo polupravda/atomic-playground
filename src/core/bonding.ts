@@ -60,7 +60,7 @@ export const BOND_SCENARIOS: BondScenario[] = [
     bondType: 'ionic',
     atoms: { Na: 1, Cl: 1 },
     explanation:
-      'Sodium has 1 lonely outer electron; chlorine has 7 and room for exactly one more. Sodium hands its electron over — now Na⁺ and Cl⁻ are ions, and their opposite charges snap them together. An ionic bond, just like in the charge playground!',
+      'Sodium holds its 1 outer electron loosely; chlorine has 7 and pulls hard on an eighth. The electron moves over to chlorine — that alone actually costs a little energy! But now Na⁺ and Cl⁻ are ions, and their opposite charges snap together, which pays it back many times over. An ionic bond, just like in the charge playground!',
   },
   {
     id: 'h2o',

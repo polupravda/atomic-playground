@@ -4,6 +4,7 @@ import Konva from 'konva'
 import { drawGlossyParticle } from '../stage/particleStyle'
 import { PageNav } from './PageNav'
 import { FLAT, KEY } from './surfaces'
+import { Paras, SECTION_MAX, SectionHeader, para, type Para } from './Paras'
 
 // A21/A22/A23 — the charge playground. Drag ➕ and ➖ charges onto the
 // field: amber force arrows make the invisible electric force visible,
@@ -380,33 +381,30 @@ function ChargeField({
   )
 }
 
+const SEEING: Para[] = [
+  para('⚛️', 'Each token is an ion:', ' the ➕ has an empty seat for a missing electron, the ➖ an extra one. Glow = charge.'),
+  para('🔗', 'Stuck ➕ and ➖ keep their own electrons:', ' the pull between them IS the bond — an ionic bond, like in salt.'),
+  para('🏹', 'Amber arrows show the electric force:', ' which way each charge is pulled or pushed.'),
+  para('📏', 'Closer = much stronger:', ' the arrows grow as the distance shrinks and almost vanish far apart.'),
+]
+
+const TIPS: Para[] = [
+  para('👆', 'Drag charges up', ' from the trays; drop one back there to remove it.'),
+  para('🧪', 'Try:', ' two ➕ together; then a ➕ and a ➖; then circle one charge slowly around another.'),
+  para('🧊', 'Drop in lots of ➕ and ➖:', ' they clump plus-next-to-minus, the way salt crystals grow.'),
+]
+
 export function ChargePlayground() {
   const [counts, setCounts] = useState({ plus: 0, minus: 0 })
   const [clearSignal, setClearSignal] = useState(0)
 
-  const rightNow: Array<{ icon: string; text: string }> = []
-  if (counts.plus + counts.minus === 0) {
-    rightNow.push({
-      icon: '👆',
-      text: 'The field is empty — drag a ➕ or ➖ charge up from the trays!',
-    })
-  } else {
-    rightNow.push({
-      icon: '⚡',
-      text: `${counts.plus} plus charge${counts.plus === 1 ? '' : 's'} and ${counts.minus} minus charge${counts.minus === 1 ? '' : 's'} on the field.`,
-    })
-    if (counts.plus > 0 && counts.minus > 0) {
-      rightNow.push({
-        icon: '🧲',
-        text: 'Opposite charges pull toward each other — watch them race together and stick! Stuck pairs keep their charges: the pull itself is the bond.',
-      })
-    }
-    if (counts.plus > 1 || counts.minus > 1) {
-      rightNow.push({
-        icon: '💨',
-        text: 'Same charges push each other away — they can never touch.',
-      })
-    }
+  // 📍 only what the field MEANS — the charges themselves are on screen
+  const rightNow: Para[] = []
+  if (counts.plus > 0 && counts.minus > 0) {
+    rightNow.push(para('🧲', 'Opposites pull together', ' and stick — each keeps its charge; the pull itself is the bond.'))
+  }
+  if (counts.plus > 1 || counts.minus > 1) {
+    rightNow.push(para('💨', 'Same charges push apart:', ' they can never touch.'))
   }
 
   return (
@@ -414,82 +412,16 @@ export function ChargePlayground() {
       <div className="col-start-1 row-start-1 flex min-h-0 flex-col gap-3">
         <PageNav />
             <div className={`min-h-0 flex-1 overflow-y-auto p-3 text-sm leading-relaxed text-slate-300 ${FLAT}`}>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Right now
-              </h3>
-              <div className="space-y-2 text-slate-200">
-                {rightNow.map((p, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <span aria-hidden className="shrink-0 leading-snug">
-                      {p.icon}
-                    </span>
-                    <p>{p.text}</p>
-                  </div>
-                ))}
-              </div>
-              <h3 className="mb-2 mt-4 border-t border-slate-700 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                What am I seeing?
-              </h3>
-              <div className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <span aria-hidden>⚛️</span>
-                  <p>
-                    Each token is a tiny atom — an ion. Look closely: the ➕
-                    ion has an empty seat where an electron is missing; the ➖
-                    ion has an extra electron squeezed in. The glow is its
-                    charge: red = positive, blue = negative.
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span aria-hidden>🔗</span>
-                  <p>
-                    When a ➕ and ➖ atom stick, each keeps its own electrons
-                    and its own charge — the pull between them IS the bond.
-                    That's called an ionic bond, and it's how salt holds
-                    together! (Atoms can also share electrons — that's a
-                    different kind of bond you'll meet soon.)
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span aria-hidden>🏹</span>
-                  <p>
-                    The amber arrows make the invisible electric force visible —
-                    each arrow shows which way a charge is being pulled or
-                    pushed.
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span aria-hidden>📏</span>
-                  <p>
-                    Drag charges closer and watch the arrows GROW — the force
-                    gets much stronger as the distance shrinks. Farther apart,
-                    the arrows almost disappear.
-                  </p>
-                </div>
-              </div>
-              <h3 className="mb-2 mt-4 border-t border-slate-700 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Tips
-              </h3>
-              <div className="space-y-2 text-slate-400">
-                <div className="flex items-start gap-2">
-                  <span aria-hidden>👆</span>
-                  <p>Drag charges up from the trays; drop one back down there to remove it.</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span aria-hidden>🧪</span>
-                  <p>
-                    Try: two ➕ near each other; then a ➕ and a ➖; then hold one
-                    charge and slowly circle it around another.
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span aria-hidden>🧊</span>
-                  <p>
-                    Drop in lots of ➕ and ➖ and watch them clump together,
-                    plus next to minus — that's how salt crystals grow!
-                  </p>
-                </div>
-              </div>
+              {rightNow.length > 0 && (
+                <>
+                  <SectionHeader type="now" first />
+                  <Paras items={rightNow} className="text-slate-200" />
+                </>
+              )}
+              <SectionHeader type="seeing" first={rightNow.length === 0} />
+              <Paras items={SEEING} max={SECTION_MAX} />
+              <SectionHeader type="tips" />
+              <Paras items={TIPS} max={SECTION_MAX} className="text-slate-400" />
             </div>
           </div>
       <div className="col-start-2 row-start-1 flex min-h-0 items-center justify-center">

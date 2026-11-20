@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  NO_STABLE_ANION,
   limitFor,
   maxElectronsFor,
   useAtomStore,
@@ -8,6 +9,7 @@ import {
 import { useFeedbackStore, type FeedbackSegment } from '../state/feedbackStore'
 import { useEventStore } from '../state/eventStore'
 import { FeedbackToast } from './FeedbackToast'
+import { elementForProtons } from '../core/elements'
 import { FLAT, KEY } from './surfaces'
 
 const ROWS: Array<{ kind: ParticleKind; label: string; dotClass: string }> = [
@@ -15,6 +17,16 @@ const ROWS: Array<{ kind: ParticleKind; label: string; dotClass: string }> = [
   { kind: 'neutrons', label: 'Neutrons', dotClass: 'bg-slate-400' },
   { kind: 'electrons', label: 'Electrons', dotClass: 'bg-sky-400' },
 ]
+
+/** Some atoms can't hold even one extra electron (negative electron
+ *  affinity) — say so instead of a bare "maximum". */
+export function noExtraElectronMessage(protons: number): FeedbackSegment[] {
+  return [
+    { text: `${elementForProtons(protons)?.name ?? 'This atom'} can't hold an extra ` },
+    { text: 'electron', color: 'electrons' },
+    { text: ' — it flies straight back off!' },
+  ]
+}
 
 function overLimitMessage(
   kind: ParticleKind,
@@ -39,6 +51,9 @@ function overLimitMessage(
       { text: ` proton${protons === 1 ? '' : 's'}`, color: 'protons' },
       { text: ' — extra neutrons just fall off the nucleus!' },
     ]
+  }
+  if (NO_STABLE_ANION.has(protons) && limit === protons) {
+    return noExtraElectronMessage(protons)
   }
   return [
     { text: 'Maximum ' },
@@ -226,7 +241,9 @@ function NumberRow({ kind, label, dotClass }: (typeof ROWS)[number]) {
         title={
           atLimit
             ? kind === 'electrons'
-              ? 'An atom can only bind about one electron more than its protons — add protons first'
+              ? NO_STABLE_ANION.has(protons)
+                ? `${elementForProtons(protons)?.name ?? 'This atom'} can't hold even one extra electron — it would fly straight back off`
+                : 'An atom can only bind about one electron more than its protons — add protons first'
               : 'The neutron drip line: this nucleus cannot hold any more neutrons'
             : undefined
         }

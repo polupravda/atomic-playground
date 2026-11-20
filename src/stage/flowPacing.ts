@@ -20,3 +20,24 @@ export const fitRate = (left: number, narration: number) =>
 /** the speed and the voice have drifted apart: time to choose again */
 export const drifted = (left: number, rate: number, narration: number) =>
   Math.abs(left / rate - narration - FIT_MARGIN_S) > FIT_DRIFT_S
+
+/** a 📖 transcript click: jump to beat `id`, landing `offset` story seconds
+ *  plus `frac` of the beat's story length in (narrationScript.ts
+ *  pieceLanding — where the clicked sentence's piece comes up); `n`
+ *  changes on every click */
+export interface StorySeek {
+  id: string
+  n: number
+  offset?: number
+  frac?: number
+}
+
+/** stay this far before a beat's end, so a landing never leaves the beat */
+const SEEK_MARGIN_S = 0.05
+
+/** story seconds into a beat `len` story seconds long where a seek lands */
+export const seekInto = (s: StorySeek, len: number) =>
+  Math.max(0, Math.min(len - SEEK_MARGIN_S, (s.offset ?? 0) + (s.frac ?? 0) * len))
+
+/** the seek lands past the beat's start (stages measure the beat only then) */
+export const seeksIn = (s: StorySeek) => (s.offset ?? 0) > 0 || (s.frac ?? 0) > 0

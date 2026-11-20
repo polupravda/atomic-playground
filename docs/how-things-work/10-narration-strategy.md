@@ -93,6 +93,13 @@ storyteller's voice, under these rules:
      nebula."* — unless the phrase is strictly wrong without it. The first,
      teaching mention keeps normal grammar ("This cloud is called a
      nebula"); the repeat is the bare word the child should keep.
+3a. **Kids don't read the text** (Elena, 2026-11-20) — not the 📖
+   transcript, not a translation, not a label. Everything that is set in
+   text must instead be obvious from the animation (and said by the
+   voice). Text is for reading along, for grown-ups, and for following
+   without sound. This is why the transcript's chapters and beats carry
+   ICONS, and why they stay the same in every language: the icon is what
+   a kid matches to the picture.
 3b. **Name what is on screen** (Elena, 2026-11-20). Kids don't read
    labels; the voice does for them what labels do for adults. When a new
    picture appears, the line says what each part IS before what it does:
@@ -534,6 +541,82 @@ Russian, so one engine could serve every non-English language).
    `npm run generate <lang>`.
 4. Tune the pace by ear; get the native-speaker read-through.
 
+## The 📖 transcript: the story column is the narration
+
+(Elena, 2026-11-20.) Every story's 📖 Story column shows the narration
+WORD FOR WORD — there is no separate caption text any more. The script
+(`stage/<story>Narration.ts`) is the single source for both the voice and
+the column (`ui/TimelineColumn.tsx`), so they can never drift apart.
+
+- **Language**: the column follows the voice language (EN · DE · RU); a
+  story without a script in it shows English. Chapter headings are
+  translated too (`ui/storyChapters.ts` — a heading without a
+  translation is a type error); their icons never change (rule 3a).
+- **What the voice needs, the eye doesn't**: pacing marks and ` ... `
+  pauses are not shown, and **Russian stress marks are never shown**
+  (Elena, 2026-11-20 — they stay in the script for an engine that honours
+  them). `displayPiece` in `stage/narrationScript.ts`; a test checks every
+  RU line. Voice-only respellings (`RU_RESPELL`, the Russian names) live
+  in the generator, so the script stays correctly spelled.
+- **What the picture shows but the voice doesn't say** (the close-ups'
+  equations, iron → gold) stays, as a small extra under the beat's words.
+- **Every sentence is its own target, in every story** (Elena,
+  2026-11-20: star stuff's one-piece lines used to be one big click
+  target, the science stories' pieces several). `splitSentences` in
+  `stage/narrationScript.ts` is the one splitter for the app, the timing
+  analysis and the tests: a sentence ends at . ! ? before a capital; a
+  fragment of one or two words stays with its neighbour (the taught-term
+  repeat "It is called carbon. ... Carbon." is one target; an opener like
+  "Look!" joins the sentence it opens).
+- **Where each sentence starts** in its piece's audio:
+  `public/narration/<story>/<lang>/sentences.json`, read from the
+  finished files by `scripts/narration-audio/timings.ts` (`npm run
+  timings`; the generator re-runs it after rendering — audio is never
+  re-rendered for it). Silences are placed in VOICE time (silence taken
+  out) and matched to each sentence's share of the syllables; pauses as
+  long as a sentence gap win. It flags a boundary more than 15% of the
+  voice off the estimate — none are flagged now; three were 12–14% and
+  checked by eye on the waveform. A test checks every story and language
+  has a start per sentence.
+- **Tracking**: the beat on screen is framed in amber and pinned to the
+  top; inside it the sentence being said lights up (the player follows
+  the audio's time against sentences.json), sentences already said stay
+  bright, sentences to come are softer; beats not reached yet are dimmed.
+  Voice off: the whole current beat is bright.
+- **Click a sentence → that sentence.** The voice restarts AT it (the
+  piece's file from that second, a media fragment `#t=`), and the picture
+  lands where it is said (`pieceLanding`, `stage/narrationScript.ts`).
+  The first sentence of a piece lands at the start of the watch break
+  before the piece (the picture it names pops in there — show first):
+  science / show-first lines `watchFirst + (k − 1) × 2.5 s` (their story
+  only moves in watch breaks); flow lines the same share of the beat as of
+  the line's narration time; run lines the audio and breaths before the
+  piece. A later sentence, `t` s into its piece: science / show-first
+  lines stand where that piece is said (they are frozen while the voice
+  talks); flow and run lines `t` s further; a plain one-piece line
+  `0.15 × t` (its slow motion while speaking). Never the chapter's start
+  (the voice would speak over the wrong picture). Every stage takes
+  `seek: StorySeek` (`stage/flowPacing.ts`) and steps into the beat from
+  its start; the voice restarts via `seekTo(beat, piece, sentence)` from
+  `useDemoNarration`. The beat's icon jumps to its start.
+- **Write pieces so each is one picture moment** — the picture of a
+  science line only changes between pieces.
+
+## 🔊 Speak buttons use the narration voice too
+
+(Elena, 2026-11-20.) The 🔊 buttons (element names; the bonding lab's
+molecules) play pre-rendered Kokoro clips (af_heart, `EN_SPEED`) — never
+the browser's speech synthesis. Lines are written only in
+`src/core/spokenWords.ts`; `npm run generate words` renders them to
+`public/narration/words/en/`. English only, because they pronounce the
+English label next to them. A tap plays even with the Voice switch off
+(it is an explicit request), on its own audio element (`ui/wordAudio.ts`);
+a new tap cuts the previous word off. No fallback: a clip that fails
+stays silent. Words Kokoro says wrong are fixed in the generator's
+`EN_PHONEMES` (voice only), never by misspelling them in the app.
+Formulas are read letter by letter with digits as words; a formula with
+an "A" is spelled with commas ("N, A, C, L") or the "A" comes out as "uh".
+
 ## The pipeline
 
 ```
@@ -574,9 +657,16 @@ recording keeps playing.
    scripts, active, paused })`, pass its `timeScale` and `holdBeat` to the
    stage, render
    `<NarrationNotice failed missingLang />` over the canvas, and call
-   `cancelNarration()` on deliberate navigation (choosing a story,
-   seeking) — never on the automatic return to the chooser, so the last
-   line can finish.
+   `cancelNarration()` on deliberate navigation (choosing a story) —
+   never on the automatic return to the chooser, so the last line can
+   finish. A transcript click goes through `seekTo(beat, piece)` instead
+   (it restarts the voice itself); spread its landing into the stage's
+   `seek`.
+5. The story column: `<TimelineColumn beats script lang speakingPiece
+   voiced …>` — `beats` give each beat only its chapter, icon and
+   optional non-spoken extra; the words come from the script
+   (`transcriptScript(scripts, lang)`). New chapter headings need their
+   DE/RU text in `ui/storyChapters.ts`.
 
 All demos stay mounted, so the player tracks which demo OWNS the voice:
 a demo going hidden silences only its own lines, never the line another

@@ -3,6 +3,7 @@ import { useAtomStore } from '../state/atomStore'
 import { elementForProtons } from '../core/elements'
 import { charge, chargeLabel, massNumber } from '../core/atom'
 import { SpeakButton } from './SpeakButton'
+import { elementWord } from '../core/spokenWords'
 import { FLAT } from './surfaces'
 
 // A03: the proton count alone determines the element. The badge re-mounts on
@@ -59,7 +60,7 @@ export function ElementBadge() {
           </motion.div>
           <div>
             <div className="flex items-center gap-2">
-              <SpeakButton text={element.name} className="h-6 w-6 text-xs" />
+              <SpeakButton word={elementWord(element.atomicNumber)} text={element.name} className="h-6 w-6 text-xs" />
               <span className="text-lg font-semibold text-slate-100">
                 {element.name}
               </span>

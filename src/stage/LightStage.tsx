@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { Layer, Shape, Stage } from 'react-konva'
 import Konva from 'konva'
-import { drifted, fitRate } from './flowPacing'
+import { drifted, fitRate, seekInto, seeksIn, type StorySeek } from './flowPacing'
 import { drawGlossyParticle } from './particleStyle'
 import { clamp01, easeOut } from './canvasUtil'
 import { FISSION_W, FISSION_H } from './FissionStage'
@@ -697,7 +697,7 @@ export const LightStage = memo(function LightStage({
   /** the story being shown; null = the lineup chooser */
   story: LightStoryId | null
   paused: boolean
-  seek: { id: string; n: number } | null
+  seek: StorySeek | null
   active: boolean
   /** story-time rate: 1 = normal; lower holds the scene in slow motion
    *  while the narrator talks */
@@ -800,6 +800,15 @@ export const LightStage = memo(function LightStage({
       for (let i = 0; i < 60 * 90 && idx(storyId(sim.current)) < ti; i++) {
         step(sim.current, 1 / 60)
         record()
+      }
+    }
+    // a clicked transcript sentence: on to where its piece comes up
+    if (seeksIn(seek)) {
+      let left = seekInto(seek, beatTimeLeft(sim.current))
+      while (left > 1e-9) {
+        const dt = Math.min(1 / 60, left)
+        step(sim.current, dt)
+        left -= dt
       }
     }
     report()

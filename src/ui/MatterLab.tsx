@@ -8,6 +8,7 @@ import { matterData, phaseAt, type MatterPhase } from '../core/matter'
 import { drawGlossyParticle } from '../stage/particleStyle'
 import { SideDrawer } from './SideDrawer'
 import { SpeakButton } from './SpeakButton'
+import { elementWord } from '../core/spokenWords'
 import { KEY } from './surfaces'
 
 // P08/P09/X03: the states-of-matter lab. Many atoms of the CURRENT element
@@ -26,17 +27,17 @@ const PHASE_INFO: Record<MatterPhase, { icon: string; label: string; text: strin
   solid: {
     icon: '🧊',
     label: 'Solid',
-    text: 'The atoms are locked in a neat grid — they can only vibrate in place.',
+    text: 'atoms locked in a neat grid, only vibrating in place.',
   },
   liquid: {
     icon: '💧',
     label: 'Liquid',
-    text: 'The atoms tumble and slide around each other, but still stick together.',
+    text: 'atoms tumble and slide past each other, but still stick together.',
   },
   gas: {
     icon: '💨',
     label: 'Gas',
-    text: 'The atoms fly free, bouncing around the whole box!',
+    text: 'atoms fly free, bouncing around the whole box.',
   },
 }
 
@@ -236,7 +237,7 @@ export function MatterLab() {
                     {element.symbol}
                   </span>
                 </div>
-                <SpeakButton text={element.name} />
+                <SpeakButton word={elementWord(element.atomicNumber)} text={element.name} />
                 <span className="text-lg font-semibold text-slate-100">
                   {element.name}
                 </span>
@@ -316,12 +317,13 @@ export function MatterLab() {
                   />
                 </Slider.Root>
               </div>
+              {/* bold-led, like every info item (Paras.tsx) */}
               <p className="text-sm leading-relaxed text-slate-400">
-                {info!.text}
+                <b className="font-semibold text-slate-100">{info!.label}:</b> {info!.text}
               </p>
               <p className="text-xs text-slate-500">
-                Still {element.name}, no matter how hot or cold — only the
-                arrangement of the atoms changes! (All at normal air pressure.)
+                <b className="font-semibold text-slate-300">Still {element.name}</b>, however hot or
+                cold — only the arrangement of the atoms changes (normal air pressure).
               </p>
               </div>
             </>

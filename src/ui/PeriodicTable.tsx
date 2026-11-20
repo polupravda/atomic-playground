@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { motion } from 'motion/react'
 import { SideDrawer } from './SideDrawer'
 import { SpeakButton } from './SpeakButton'
+import { Paras, SECTION_MAX, SectionHeader, para, type Para } from './Paras'
+import { elementWord } from '../core/spokenWords'
 import { ELEMENTS } from '../core/elements'
 import {
   elementCategory,
@@ -17,9 +19,9 @@ import { searchElements, type ElementMatch } from '../core/elementNames'
 /** Kid-level description of each element family (🎨 patterns bubble). */
 const FAMILY_INFO: Record<ElementCategory, string> = {
   'alkali-metal':
-    'soft, shiny metals that react wildly — some even explode in water! They all have one outer electron they want to give away.',
+    'soft, shiny metals that react wildly — some even explode in water! They all have one outer electron, held only loosely, so it is easy to pull away.',
   'alkaline-earth':
-    'reactive metals that burn with brilliant colors. They have two outer electrons to give away.',
+    'reactive metals that burn with brilliant colors. Their two outer electrons are fairly easy to pull away.',
   'transition-metal':
     'the big block of classic metals — strong, shiny, and great at carrying electricity.',
   'post-transition-metal':
@@ -29,9 +31,9 @@ const FAMILY_INFO: Record<ElementCategory, string> = {
   nonmetal:
     'the stuff of life — carbon, oxygen, nitrogen… your body is mostly built from this family.',
   halogen:
-    'fierce electron-grabbers, one electron short of a full shell. Never found alone in nature.',
+    'fierce electron-grabbers: one electron short of a full shell, and their nucleus pulls hard on an extra one. Never found alone in nature.',
   'noble-gas':
-    'the loners: their outer shells are full, so they almost never react with anything.',
+    'the loners: their full outer shells hold on to their electrons very tightly and have no room for more, so they almost never react.',
   lanthanide:
     'rare-earth metals hiding inside magnets, screens and lasers.',
   actinide: 'heavy radioactive metals — uranium and plutonium live here.',
@@ -41,9 +43,9 @@ const FAMILY_INFO: Record<ElementCategory, string> = {
 function valenceFlavor(z: number): string {
   const v = valenceOf(z)
   if (elementCategory(z) === 'noble-gas')
-    return `a completely full outer shell — perfectly happy, reacts with almost nothing.`
-  if (v === 1) return `just 1 outer electron — it can't wait to give it away!`
-  if (v === 7) return `7 outer electrons — one short of a full shell, so it grabs electrons greedily!`
+    return `a completely full outer shell — its electrons are held very tightly, so it reacts with almost nothing.`
+  if (v === 1) return `just 1 outer electron, held loosely — easy for another atom to pull away.`
+  if (v === 7) return `7 outer electrons — one short of a full shell, and it pulls hard on an extra electron.`
   return `${v} outer electron${v === 1 ? '' : 's'} to share when it makes friends (bonds) with other atoms.`
 }
 
@@ -66,115 +68,50 @@ function valenceOf(z: number): number {
   return shells[shells.length - 1] ?? 0
 }
 
-function InfoPara({ icon, text }: { icon: string; text: string }) {
-  return (
-    <div className="flex items-start gap-2">
-      <span aria-hidden className="shrink-0 leading-snug">
-        {icon}
-      </span>
-      <p>{text}</p>
-    </div>
-  )
-}
-
-/** Always-visible info panel, structured like the main page's info panel:
- *  "Right now" (the live, selection-specific facts), "What am I seeing?"
- *  (the view + active overlays), and "Tips". Scrolls internally. */
+/** Always-visible info panel, structured like the builder's: 📍 Right now
+ *  (the live, selection-specific facts), 👀 What am I seeing? and 💡 Tips —
+ *  typed headers, bold-led items (Paras.tsx). Scrolls internally. */
 function TableInfoPanel({ selectedZ }: { selectedZ: number | null }) {
   const element = selectedZ !== null ? ELEMENTS[selectedZ - 1] : null
 
-  const rightNow: Array<{ icon: string; text: string }> = []
+  const rightNow: Para[] = []
   if (element) {
-    const cat = elementCategory(element.atomicNumber)
-    rightNow.push({
-      icon: '⚛️',
-      text: `${element.name} is selected — element number ${element.atomicNumber}.`,
-    })
-    rightNow.push({
-      icon: '🏷️',
-      text: `It belongs to the ${CATEGORY_STYLE[cat].label.toLowerCase()}: ${FAMILY_INFO[cat]}`,
-    })
-    rightNow.push({
-      icon: '🔢',
-      text: `${element.name} has ${valenceFlavor(element.atomicNumber)}`,
-    })
-    const fact = funFactFor(element.atomicNumber)
-    const facts = elementFacts(element.atomicNumber)
-    if (fact) {
-      rightNow.push({ icon: '✨', text: fact })
-    } else if (facts.examples) {
-      rightNow.push({
-        icon: '🔧',
-        text: `We use ${element.name.toLowerCase()} in ${facts.examples.join(', ')}.`,
-      })
-    }
-  } else {
-    rightNow.push({
-      icon: '👆',
-      text: 'No element selected yet — click any square in the table!',
-    })
+    const z = element.atomicNumber
+    const cat = elementCategory(z)
+    rightNow.push(para('🏷️', `${CATEGORY_STYLE[cat].label}:`, ` ${FAMILY_INFO[cat]}`))
+    rightNow.push(para('🔢', 'Outer shell:', ` ${valenceFlavor(z)}`))
+    const fact = funFactFor(z)
+    const facts = elementFacts(z)
+    if (fact) rightNow.push({ icon: '✨', text: fact })
+    else if (facts.examples) rightNow.push(para('🔧', 'Uses:', ` ${facts.examples.join(', ')}.`))
   }
 
-  const seeing: Array<{ icon: string; text: string }> = [
-    {
-      icon: '🧪',
-      text: 'Every square is one element — one kind of atom. Everything in the universe is built from these 118!',
-    },
+  const seeing: Para[] = [
+    para('🧪', 'Each square is one element', ' — one kind of atom. These 118 build everything in the universe.'),
+    para('🎨', 'Colors are families:', ' relatives that behave alike.'),
+    para('⚡', 'The amber number counts outer electrons:', ' it repeats down each column and decides how an element reacts.'),
   ]
-  seeing.push(
-    {
-      icon: '🎨',
-      text: 'The colors group elements into families — relatives that behave alike. Click the chips under the table to spotlight a family.',
-    },
-    {
-      icon: '⚡',
-      text: 'The little amber number counts the electrons in the outer shell — watch it repeat down each column! Those outer electrons decide how an element behaves with others.',
-    },
-    {
-      icon: '🖼️',
-      text: 'The photos below show the selected element and something we make from it.',
-    },
-  )
 
-  const tips: Array<{ icon: string; text: string }> = [
-    {
-      icon: '👆',
-      text: 'Click a square to select an element. Double-click it — or press "Open in editor" — to build it.',
-    },
-    {
-      icon: '🔍',
-      text: 'Search by name in English, Deutsch or русский (gold, Gold, золото), or by the symbol in the square (Au).',
-    },
+  const tips: Para[] = [
+    para('👆', 'Click a square', ' to select it; double-click it (or "Open in editor") to build it.'),
+    para('🔍', 'Search', ' by name in English, Deutsch or русский (gold, Gold, золото), or by symbol (Au).'),
+    para('🎨', 'The chips under the table', ' spotlight one family.'),
   ]
 
   return (
     <div
       className={`min-h-0 basis-2/5 overflow-y-auto p-3 text-sm leading-relaxed text-slate-300 ${FLAT}`}
     >
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-        Right now
-      </h3>
-      <div className="space-y-2 text-slate-200">
-        {rightNow.map((p, i) => (
-          <InfoPara key={i} {...p} />
-        ))}
-      </div>
-      <h3 className="mb-2 mt-4 border-t border-slate-700 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-        What am I seeing?
-      </h3>
-      <div className="space-y-2">
-        {seeing.map((p, i) => (
-          <InfoPara key={i} {...p} />
-        ))}
-      </div>
-      <h3 className="mb-2 mt-4 border-t border-slate-700 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-        Tips
-      </h3>
-      <div className="space-y-2 text-slate-400">
-        {tips.map((p, i) => (
-          <InfoPara key={i} {...p} />
-        ))}
-      </div>
+      {rightNow.length > 0 && (
+        <>
+          <SectionHeader type="now" first />
+          <Paras items={rightNow} className="text-slate-200" />
+        </>
+      )}
+      <SectionHeader type="seeing" first={rightNow.length === 0} />
+      <Paras items={seeing} max={SECTION_MAX} />
+      <SectionHeader type="tips" />
+      <Paras items={tips} max={SECTION_MAX} className="text-slate-400" />
     </div>
   )
 }
@@ -369,7 +306,7 @@ export function PeriodicTable() {
             {/* the current selection, prominent and isolated */}
             <div className="mr-6 flex w-64 items-center gap-2">
               {selectedZ !== null && (
-                <SpeakButton text={ELEMENTS[selectedZ - 1].name} />
+                <SpeakButton word={elementWord(selectedZ)} text={ELEMENTS[selectedZ - 1].name} />
               )}
               <span
                 className="truncate text-2xl font-bold text-sky-200"

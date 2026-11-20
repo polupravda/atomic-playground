@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { PageNav } from './PageNav'
 import { SideDrawer } from './SideDrawer'
 import { SegmentedSwitch } from './SegmentedSwitch'
-import { Paras, SectionHeader, type Para } from './Paras'
+import { Paras, SECTION_MAX, SectionHeader, para, type Para } from './Paras'
 import { NarrationLangSwitch, VoiceSwitch } from './VoiceSwitch'
 import { interruptNarration, useDemoNarration } from './useNarration'
 import { FLAT, KEY } from './surfaces'
@@ -103,71 +103,68 @@ interface SceneInfo {
 const INFO: Record<CarbonScene, SceneInfo> = {
   look: {
     seeing: [
-      { icon: '⚛️', text: 'Every carbon atom here is drawn the way the 🧪 Bonding lab draws it: a tiny nucleus in the middle, its electrons on two rings.' },
-      { icon: '⚪', text: 'Balls and sticks: every ball is one whole atom, every stick shows two atoms holding on to each other. The same block, easier to see who holds whom.' },
-      { icon: '✏️', text: 'Graphite: inside a sheet the atoms hold tight; between the sheets they barely hold. So sheets slide off — that is how a pencil writes.' },
-      { icon: '💎', text: 'Diamond: every atom holds four neighbours, up, down and sideways. Nothing can slide. That makes it the hardest natural material.' },
+      para('✏️', 'Graphite:', ' tight inside a sheet, loose between sheets — sheets slide off, so a pencil writes.'),
+      para('💎', 'Diamond:', ' every atom holds four neighbours, so nothing slides — the hardest natural material.'),
+      para('⚛️', 'Atoms or balls and sticks:', ' a nucleus with two electron rings, or one ball per atom and a stick per hold.'),
     ],
     tips: [
-      { icon: '🔄', text: 'Drag the block to turn it. Look at graphite from the side: you see the gaps between the sheets.' },
-      { icon: '🧰', text: 'Under the controls are five things to do to the block. Try each with graphite, then with diamond.' },
+      para('🔄', 'Drag the block to turn it', ' — from the side you see the gaps between graphite\'s sheets.'),
+      para('🧰', 'Five things to try', ' under the controls: each with graphite, then with diamond.'),
     ],
-    honest: [{ icon: '🔢', text: 'The block shows 63 atoms. A real pencil tip holds more atoms than there are grains of sand on a beach.' }],
+    honest: [para('🔢', 'Only 63 atoms:', ' a real pencil tip holds more than a beach has grains of sand.')],
   },
   write: {
     seeing: [
-      { icon: '✏️', text: 'The block is the very tip of a pencil, seen up close. Its carbon atoms lie in flat sheets.' },
-      { icon: '📄', text: 'The sheets barely hold on to each other. Rub the tip on paper and atoms slide off the bottom sheet and stay on the paper. Those grey dots are your line!' },
-      { icon: '⬇️', text: 'When the bottom sheet is used up, the sheets above move down, and the next one takes its turn.' },
-      { icon: '💎', text: 'Graphite draws a line. Diamond does not: nothing comes off it, because every atom is held from four sides. Its hard tip only tears the paper.' },
+      para('📄', 'Atoms slide off the bottom sheet', ' onto the paper — those grey dots are your line.'),
+      para('⬇️', 'A sheet used up?', ' The sheets above move down and the next one takes its turn.'),
+      para('💎', 'Diamond draws nothing:', ' every atom is held from four sides; its tip only tears the paper.'),
     ],
     honest: [
-      { icon: '🔍', text: 'Here a sheet is used up quickly and only a few atoms fall, so you can follow each one. A real pencil line is thousands of sheets thick.' },
-      { icon: '🧩', text: 'Real graphite comes off in little flakes of sheets, not one atom at a time.' },
+      para('🔍', 'Sped up and thinned out:', ' a real pencil line is thousands of sheets thick.'),
+      para('🧩', 'Really flakes, not atoms:', ' graphite comes off in little flakes of sheets.'),
     ],
   },
   push: {
     seeing: [
-      { icon: '👉', text: 'Push one sheet from the side: it slides, and the sheets above and below hardly notice. Inside a sheet the atoms hold tight; between the sheets they barely hold.' },
-      { icon: '💎', text: 'Diamond: every atom holds four neighbours, up, down and sideways. There is nothing that could slide — your finger just bumps into it.' },
+      para('👉', 'A pushed sheet slides', ' — the sheets above and below hardly notice: they barely hold each other.'),
+      para('💎', 'Diamond has nothing to slide:', ' four neighbours hold every atom; your finger just bumps into it.'),
     ],
-    tips: [{ icon: '↔️', text: 'Start left of the block to push to the right, start right of it to push to the left. Try the top, the middle and the bottom sheet.' }],
-    honest: [{ icon: '🔨', text: '"Hardest" means hardest to scratch. A hammer can still shatter a diamond.' }],
+    tips: [para('↔️', 'Start left to push right,', ' start right to push left; try top, middle and bottom sheets.')],
+    honest: [para('🔨', '"Hardest" means hardest to scratch:', ' a hammer can still shatter a diamond.')],
   },
   light: {
     seeing: [
-      { icon: '💡', text: 'Light flies out of the torch in tiny bits (photons, as in the 💡 Light lab).' },
-      { icon: '⚫', text: 'Graphite has free electrons — the same ones that carry electricity. They catch light of every color and turn it into a little warmth. No light gets through, so graphite looks dark.' },
-      { icon: '💎', text: 'Diamond holds every electron tight in a bond. The light cannot move them, so it flies on through. Inside, it bounces off the faces and comes out split into its colors: the sparkle.' },
-      { icon: '🔗', text: 'Same atoms, opposite results. It all depends on whether the electrons are free or held.' },
+      para('⚫', 'Graphite looks dark:', ' its free electrons catch light of every color and turn it into warmth.'),
+      para('💎', 'Diamond lets light through:', ' bonded electrons can\'t take it; faces split it into colors — the sparkle.'),
+      para('🔗', 'Same atoms, opposite results:', ' it depends on free or held electrons.'),
     ],
     honest: [
-      { icon: '⚡', text: 'An electron only catches light that brings exactly the push it needs. Graphite\'s free electrons take any color. Diamond\'s would need a much bigger push than any color of light has.' },
-      { icon: '💍', text: 'A cut gem sparkles much more than a rough crystal: its faces are cut to send the light bouncing around inside.' },
+      para('⚡', 'Exact pushes only:', ' diamond\'s electrons would need a bigger push than any color of light has.'),
+      para('💍', 'Cut gems sparkle most:', ' their faces are cut to bounce the light around inside.'),
     ],
   },
   power: {
     seeing: [
-      { icon: '🔋', text: 'Electricity is electrons on the move. Close the switch and the battery pushes electrons out of its minus end, all the way round, back into its plus end.' },
-      { icon: '✏️', text: 'In graphite every atom holds three neighbours and has one electron left over. Those free electrons can run along the sheets — the bulb lights up.' },
-      { icon: '💎', text: 'In diamond every outer electron is busy holding a neighbour. None can run — the bulb stays dark.' },
+      para('🔋', 'Electricity is electrons on the move,', ' pushed out of the battery\'s minus end, round, back into plus.'),
+      para('✏️', 'Graphite conducts:', ' each atom has one electron left over, free to run along the sheets.'),
+      para('💎', 'Diamond doesn\'t:', ' every outer electron is busy holding a neighbour — the bulb stays dark.'),
     ],
     honest: [
-      { icon: '🐌', text: 'Real electrons in a wire crawl slowly; the push goes round the circuit almost at once.' },
-      { icon: '🏫', text: 'That is why pencil lead is used in school circuit experiments.' },
+      para('🐌', 'Electrons crawl:', ' in a real wire they drift slowly; the push goes round almost at once.'),
+      para('🏫', 'Pencil lead conducts,', ' which is why schools use it in circuit experiments.'),
     ],
   },
   squeeze: {
     seeing: [
-      { icon: '🗜️', text: 'Deep under the ground, rock squeezes and heats carbon. Squeezed hard AND hot enough, the sheets buckle and lock into the diamond grid.' },
-      { icon: '🔢', text: 'Count them: the same 63 atoms before and after. Nothing is added — they only hold on to each other in a new way.' },
+      para('🗜️', 'Squeezed hard AND hot,', ' the sheets buckle and lock into the diamond grid — as deep underground.'),
+      para('🔢', 'The same 63 atoms', ' before and after: nothing added, they only hold on in a new way.'),
     ],
-    tips: [{ icon: '🔥', text: 'Drag the fire up first, then hold the red PUSH button. Only one of the two is not enough.' }],
+    tips: [para('🔥', 'Fire first, then hold PUSH:', ' one of the two alone is not enough.')],
     honest: [
-      { icon: '🕰️', text: 'In nature this took millions of years, about 150 km under the ground. A factory press does it in days.' },
-      { icon: '💎', text: 'Let go of the squeeze and a diamond stays a diamond. It would turn back, but far too slowly to ever see.' },
+      para('🕰️', 'Millions of years, ~150 km down,', ' in nature; a factory press does it in days.'),
+      para('💎', 'A diamond stays a diamond:', ' it would turn back, but far too slowly to ever see.'),
     ],
-    story: [{ icon: '🏭', text: 'The first factory-made diamonds came out of a giant press in 1954.' }],
+    story: [para('🏭', '1954:', ' the first factory-made diamonds came out of a giant press.')],
   },
 }
 
@@ -271,25 +268,11 @@ function CrystalView({
 }) {
   const [material, setMaterial] = useState<CarbonMaterial>('graphite')
   const [resetKey, setResetKey] = useState(0)
-  const [sheets, setSheets] = useState(0)
   const info = INFO[scene]
 
-  const rightNow: Para[] = [
-    {
-      icon: material === 'diamond' ? '💎' : '✏️',
-      text:
-        material === 'diamond'
-          ? 'Diamond: the same carbon atoms, locked into a grid.'
-          : 'Graphite, the grey stuff inside a pencil: carbon atoms in flat sheets.',
-    },
-    ...(scene === 'write' && sheets > 0 && material === 'graphite'
-      ? [{ icon: '📄', text: `Your line has used up ${sheets} ${sheets === 1 ? 'sheet' : 'sheets'} so far.` }]
-      : []),
-  ]
   const reset = () => {
     // squeeze and heat starts again from graphite: that is its point
     if (scene === 'squeeze') setMaterial('graphite')
-    setSheets(0)
     setResetKey((n) => n + 1)
   }
 
@@ -307,22 +290,21 @@ function CrystalView({
           </>
         )}
         <div className={`min-h-0 flex-1 overflow-y-auto p-3 text-sm leading-relaxed text-slate-300 ${FLAT}`}>
-          <SectionHeader first>Right now</SectionHeader>
-          <Paras items={rightNow} className="text-slate-200" />
-          <SectionHeader>What am I seeing?</SectionHeader>
-          <Paras items={info.seeing} />
+          {/* no 📍 Right now: the material and the sheets used are on the canvas */}
+          <SectionHeader first type="seeing" />
+          <Paras items={info.seeing} max={SECTION_MAX} />
           {info.tips && (
             <>
-              <SectionHeader>Tips</SectionHeader>
-              <Paras items={info.tips} className="text-slate-400" />
+              <SectionHeader type="tips" />
+              <Paras items={info.tips} max={SECTION_MAX} className="text-slate-400" />
             </>
           )}
-          <SectionHeader>Honest notes</SectionHeader>
-          <Paras items={info.honest} className="text-slate-400" />
+          <SectionHeader type="honest" />
+          <Paras items={info.honest} max={SECTION_MAX} className="text-slate-400" />
           {info.story && (
             <>
-              <SectionHeader>A true story</SectionHeader>
-              <Paras items={info.story} />
+              <SectionHeader type="true" />
+              <Paras items={info.story} max={SECTION_MAX} />
             </>
           )}
         </div>
@@ -339,7 +321,6 @@ function CrystalView({
           look={look}
           resetKey={resetKey}
           onBecameDiamond={() => setMaterial('diamond')}
-          onSheets={setSheets}
           onResult={onResult}
         />
         {/* the view switch lives ON the canvas — the 🩻 X-ray scene's pill */}

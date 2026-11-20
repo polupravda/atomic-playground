@@ -1,5 +1,8 @@
-// 🔊 pronunciation button, styled like the amber 💡 affordance. Uses the
-// browser's built-in speech synthesis — no downloads, works offline.
+import { sayWord } from './wordAudio'
+
+// 🔊 pronunciation button, styled like the amber 💡 affordance. Plays a
+// pre-rendered clip in the stories' voice (core/spokenWords.ts, ui/
+// wordAudio.ts) — never the browser's robotic speech synthesis.
 // Rendered as a span[role=button] so it can live inside other buttons
 // (e.g. the element badge) without invalid nesting.
 
@@ -31,21 +34,20 @@ export function SpeakerIcon({ size = 14 }: { size?: number }) {
 }
 
 export function SpeakButton({
+  word,
   text,
   className,
 }: {
+  /** the clip to play (core/spokenWords.ts: elementWord(z), bondWord(id)) */
+  word: string
+  /** what it says, for the tooltip and screen readers */
   text: string
   className?: string
 }) {
   const speak = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation()
     e.preventDefault()
-    if (!('speechSynthesis' in window)) return
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'en-US'
-    utterance.rate = 0.85 // a touch slower, for young ears
-    window.speechSynthesis.speak(utterance)
+    sayWord(word)
   }
   return (
     <span

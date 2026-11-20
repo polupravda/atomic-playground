@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Stage, Layer, Circle, Group, Rect, Shape, Text } from 'react-konva'
 import Konva from 'konva'
-import { limitFor, useAtomStore, type ParticleKind } from '../state/atomStore'
+import { NO_STABLE_ANION, limitFor, useAtomStore, type ParticleKind } from '../state/atomStore'
 import { useViewStore } from '../state/viewStore'
 import { useFeedbackStore } from '../state/feedbackStore'
 import { useDecayStore } from '../state/decayStore'
@@ -9,6 +9,7 @@ import { useEventStore } from '../state/eventStore'
 import { useDiscoveryStore } from '../state/discoveryStore'
 import { charge, isotopeLabel, shellCapacity } from '../core/atom'
 import { nuclideStability, type DecayMode } from '../core/nuclides'
+import { elementForProtons } from '../core/elements'
 import {
   ATOM_ZONE_R,
   BUCKETS,
@@ -18,6 +19,7 @@ import {
   ELECTRON_R,
   ENTER_DURATION,
   EXIT_DURATION,
+  INNER_SHELL_R,
   NUCLEON_R,
   REARRANGE_DURATION,
   STAGE_H,
@@ -530,9 +532,13 @@ function ChargeSparkEmitter({ chargeValue }: { chargeValue: number }) {
 /** A07–A10 — decay animation, mode-aware.
  *  α: the nucleus rattles, then a compact 2p+2n cluster (a helium nucleus!)
  *  shoots out. β⁻: one neutron visibly turns into a proton, then a fast
- *  electron escapes; β⁺ the mirror image with a positron. Every decay ends
- *  with a γ photon — daughters are typically born excited and settle by
- *  emitting one — which also teaches that γ changes NOTHING about identity.
+ *  electron escapes; β⁺ the mirror image with a positron. Electron capture:
+ *  an inner electron falls INTO the nucleus, a proton turns into a neutron,
+ *  and only a ghostly neutrino leaves. Proton / neutron emission: a single
+ *  nucleon simply falls out. The animation ends with a γ photon — many (not
+ *  all) daughters are born excited and settle by emitting one — which also
+ *  teaches that γ changes NOTHING about identity. Fission is not animated
+ *  here (see the ☢ examples).
  *  onTransform fires at the moment of transformation so the particle counts
  *  change exactly when the story says so. */
 const ALPHA_OFFSETS: Array<{ dx: number; dy: number; proton: boolean }> = [
@@ -564,8 +570,10 @@ function DecayOverlay({
   // Kid-paced: the β transform (one nucleon changing color) needs the most
   // reading time; emissions travel slowly enough to follow; the γ photon is
   // the closing beat, not a blink.
-  const WIGGLE_MS = mode === 'alpha' ? 1700 : 2600
-  const EMIT_MS = mode === 'alpha' ? 2800 : 3000
+  const transforms =
+    mode === 'beta-minus' || mode === 'beta-plus' || mode === 'electron-capture'
+  const WIGGLE_MS = transforms ? 2600 : 1700
+  const EMIT_MS = transforms ? 3000 : 2800
   const GAMMA_MS = 2200
 
   useEffect(() => {
@@ -619,15 +627,32 @@ function DecayOverlay({
           native.beginPath()
           native.arc(CENTER.x, CENTER.y, nucleusRadius + 7, 0, Math.PI * 2)
           native.stroke()
-          if (mode === 'alpha') {
-            // the alpha cluster rattling, ready to break free
+          if (!transforms) {
+            // the escaping piece rattling, ready to break free
             const rattle = 3 + 3 * (t / WIGGLE_MS)
             const cx = CENTER.x + rattle * Math.sin(t / 26)
             const cy = CENTER.y + rattle * Math.cos(t / 21)
-            drawAlphaCluster(native, cx, cy, 1)
+            if (mode === 'alpha') drawAlphaCluster(native, cx, cy, 1)
+            else drawGlossyParticle(native, mode === 'proton' ? 'protons' : 'neutrons', cx, cy, NUCLEON_R)
           } else {
-            // one nucleon transforming: color lerps n→p (β⁻) or p→n (β⁺)
-            const k = t / WIGGLE_MS
+            // electron capture: an inner electron falls into the nucleus
+            // first, THEN the proton changes
+            let k = t / WIGGLE_MS
+            if (mode === 'electron-capture') {
+              const fall = Math.min(1, t / (WIGGLE_MS * 0.55))
+              if (fall < 1) {
+                const r = INNER_SHELL_R * (1 - fall * fall)
+                drawGlossyParticle(
+                  native,
+                  'electrons',
+                  CENTER.x + spot.current.dx * fall + r * Math.cos(emitAngle.current),
+                  CENTER.y + spot.current.dy * fall + r * Math.sin(emitAngle.current),
+                  ELECTRON_R,
+                )
+              }
+              k = Math.max(0, (t / WIGGLE_MS - 0.55) / 0.45)
+            }
+            // one nucleon transforming: color lerps n→p (β⁻) or p→n (β⁺, capture)
             const from = mode === 'beta-minus' ? [148, 163, 184] : [248, 113, 113]
             const to = mode === 'beta-minus' ? [248, 113, 113] : [148, 163, 184]
             const c = from.map((v, i) => Math.round(v + (to[i] - v) * k))
@@ -654,7 +679,11 @@ function DecayOverlay({
               ? `rgba(251, 191, 36, ${alpha * 0.35})`
               : mode === 'beta-minus'
                 ? `rgba(56, 189, 248, ${alpha * 0.4})`
-                : `rgba(248, 113, 113, ${alpha * 0.4})`
+                : mode === 'electron-capture'
+                  ? `rgba(226, 232, 240, ${alpha * 0.18})`
+                  : mode === 'neutron'
+                    ? `rgba(148, 163, 184, ${alpha * 0.4})`
+                    : `rgba(248, 113, 113, ${alpha * 0.4})`
           native.strokeStyle = trailColor
           native.lineWidth = 3
           native.lineCap = 'round'
@@ -671,6 +700,21 @@ function DecayOverlay({
             native.fillStyle = `rgba(251, 191, 36, ${alpha})`
             native.font = '15px monospace'
             native.fillText('α', cx + 18, cy - 15)
+          } else if (mode === 'proton' || mode === 'neutron') {
+            const kind = mode === 'proton' ? 'protons' : 'neutrons'
+            drawGlossyParticle(native, kind, cx, cy, NUCLEON_R, alpha)
+            native.fillStyle =
+              mode === 'proton' ? `rgba(248, 113, 113, ${alpha})` : `rgba(203, 213, 225, ${alpha})`
+            native.font = '15px monospace'
+            native.fillText(mode === 'proton' ? 'p' : 'n', cx + 16, cy - 14)
+          } else if (mode === 'electron-capture') {
+            // the neutrino: almost nothing — it flies through whole planets
+            native.fillStyle = `rgba(241, 245, 249, ${alpha * 0.8})`
+            native.beginPath()
+            native.arc(cx, cy, 2.5, 0, Math.PI * 2)
+            native.fill()
+            native.font = '15px monospace'
+            native.fillText('ν', cx + 10, cy - 10)
           } else {
             // positron drawn in proton red (positive antimatter twin)
             drawGlossyParticle(
@@ -1005,11 +1049,17 @@ export function AtomStage() {
       // Explain a rejected drop instead of silently swallowing the particle.
       notify(
         kind === 'electrons'
-          ? [
-              { text: 'No room! Add ' },
-              { text: 'protons', color: 'protons' as const },
-              { text: ' first.' },
-            ]
+          ? NO_STABLE_ANION.has(protons) && protons > 0
+            ? [
+                { text: `${elementForProtons(protons)?.name ?? 'This atom'} can't hold an extra ` },
+                { text: 'electron', color: 'electrons' as const },
+                { text: ' — it flies straight back off!' },
+              ]
+            : [
+                { text: 'No room! Add ' },
+                { text: 'protons', color: 'protons' as const },
+                { text: ' first.' },
+              ]
           : kind === 'protons'
             ? [
                 { text: '118', color: 'protons' as const, big: true },
@@ -1232,13 +1282,24 @@ export function AtomStage() {
               onTransform={() => {
                 skipExitAnim.current = true
                 skipEnterAnim.current = true
-                if (decayActive.mode === 'alpha') {
+                const m = decayActive.mode
+                if (m === 'alpha') {
                   addParticle('protons', -2)
                   addParticle('neutrons', -2)
-                } else if (decayActive.mode === 'beta-minus') {
+                } else if (m === 'beta-minus') {
                   addParticle('protons', 1)
                   addParticle('neutrons', -1)
+                } else if (m === 'proton') {
+                  addParticle('protons', -1)
+                } else if (m === 'neutron') {
+                  addParticle('neutrons', -1)
                 } else {
+                  // β⁺ and electron capture: a proton becomes a neutron; a
+                  // capture also uses up one of the atom's electrons (an
+                  // outer one drops down to fill the hole)
+                  // (electron first: the store clamps electrons to what the
+                  // NEW element can hold, which would otherwise shed one more)
+                  if (m === 'electron-capture') addParticle('electrons', -1)
                   addParticle('protons', -1)
                   addParticle('neutrons', 1)
                 }

@@ -67,6 +67,38 @@ The left panel has four sections with different persistence rules:
    e.g. "height of the wave — it never changes the color", are content, not
    coaching, and stay allowed.)
 
+### Info panels are for grown-ups (2026-11-20, Elena)
+
+Every info panel — stories, labs, the builder, the periodic table — must
+be scannable by an adult at a glance (kids don't read; the canvas and the
+voice are theirs).
+
+- **Typed headers**: every section header carries a fixed CONTENT-TYPE
+  icon from one vocabulary (`SECTION_TYPES` in `ui/Paras.tsx`,
+  `<SectionHeader type="…">`): 📍 Right now · 💬 What just happened ·
+  👀 What am I seeing? · 💡 Tips · ⚙️ How it works · ⚖️ Honest notes ·
+  📜 A true story · 🎨 legends · 📊 Live counts · 🗂️ facts / tables.
+- **Never restate what the screen shows** (Elena, 2026-11-20: "red
+  light, one wave 670 nm long — very bright … ok thanks cap, I am not
+  blind"). No item may repeat a name, number, count, color, label or
+  selected option that the canvas, a badge or a control already shows —
+  only what it MEANS (why, what follows, what it can't do). This hits 📍
+  Right now hardest: it keeps only the meaning of the current state, and
+  when nothing is left to add the section is not shown at all (the
+  Crystal lab has none; the Light lab's visible wave, a single lamp, an
+  empty builder or table show none).
+- **One sentence per item**, opening with its key phrase in bold
+  (`para(icon, key, rest)`) — the bold words alone tell the story.
+- **At most three items per section** (`<Paras max={SECTION_MAX}>`), the
+  most important first; the rest wait behind "＋ N more". Live sections
+  (📍 Right now, 📊 Live counts) show everything — and are kept short
+  themselves.
+- **Honest notes are shortened, never dropped**: every simplification
+  stays disclosed (behind "＋ more" if needed).
+- **No info panel on a story-selection screen** — the panel belongs to a
+  running story; the chooser shows only the menu and the demo controls.
+- The four persistence rules above still apply.
+
 ## Visual language
 
 Shared color/typography vocabulary — every new feature must stay inside it:

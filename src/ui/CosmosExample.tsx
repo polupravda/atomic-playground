@@ -17,7 +17,7 @@ import { GOLD_SCRIPTS } from '../stage/goldNarration'
 import { cancelNarration, useDemoNarration } from './useNarration'
 import { NarrationNotice } from './NarrationNotice'
 import { DemoControls, INFO_PANEL } from './DemoControls'
-import type { NarrationLang } from '../state/voiceStore'
+import { useVoiceStore, type NarrationLang } from '../state/voiceStore'
 import { sunMassDefectFraction } from '../core/cosmos'
 import {
   COSMOS_PHOTO_GROUPS,
@@ -25,8 +25,10 @@ import {
   STARDUST_PHOTO_GROUPS,
   type CosmosPhotoGroup,
 } from '../core/cosmosPhotos'
-import { Paras, SectionHeader, type Para } from './Paras'
-import { TimelineColumn, type TimelineItem } from './TimelineColumn'
+import { Paras, SectionHeader, para, type Para, SECTION_MAX } from './Paras'
+import { Eq, TimelineColumn, type StoryBeat } from './TimelineColumn'
+import { transcriptScript } from './storyChapters'
+import type { StorySeek } from '../stage/flowPacing'
 import { FLAT, KEY, TRAY } from './surfaces'
 
 // R04 — 🌟 Cosmic origins: the third "Atoms in action" example. Same page
@@ -46,258 +48,98 @@ const NARRATION: Partial<
   sun: SUN_SCRIPTS,
 }
 
-// 🔭 star detective — the info panel
+// 🔭 star detective — the info panel (for adults: one scannable sentence
+// per item, key phrase in bold — see Paras.tsx)
 const HOW_DETECTIVE: Para[] = [
-  {
-    icon: '🌈',
-    text: 'A prism (or a fine grating) spreads light into its colors — a spectrum. Starlight makes a rainbow with thin DARK lines in it.',
-  },
-  {
-    icon: '🫧',
-    text: 'The dark lines come from the thin gas around the star: its atoms catch exactly the colors their electrons can jump UP with — the firework\'s jump, run the other way.',
-  },
-  {
-    icon: '🔍',
-    text: 'Every element catches its own set of colors — its barcode. Hold an element\'s barcode under the star\'s rainbow: if its lines sit on dark lines, the star contains it.',
-  },
-  {
-    icon: '🧪',
-    text: 'A suspect that doesn\'t fit is ruled out. That is how we know what stars are made of without ever going there.',
-  },
+  para('🌈', 'A prism spreads starlight', ' into a rainbow with thin dark lines in it.'),
+  para('🫧', 'Dark lines = colors caught', ' by the star\'s thin outer gas: electrons jumping UP — the firework run backwards.'),
+  para('🔍', 'Every element catches its own barcode;', ' if its lines sit on dark lines, the star contains it.'),
+  para('🧪', 'A suspect that doesn\'t fit is ruled out', ' — so we learn a star\'s recipe without ever going there.'),
 ]
 
 const HONEST_DETECTIVE: Para[] = [
-  {
-    icon: '⭐',
-    text: 'The star is a hot blue-white one, like Spica: those really show strong hydrogen AND helium lines. A star like our Sun shows thousands of lines (iron, sodium, calcium…); we keep just two elements.',
-  },
-  {
-    icon: '🌈',
-    text: 'Real dark lines differ in strength and width; ours are all drawn the same, and only visible light is shown.',
-  },
-  {
-    icon: '☀️',
-    text: 'In 1868 the yellow helium line was seen BRIGHT, in the glowing gas at the Sun\'s edge during an eclipse — the same fingerprint, seen glowing instead of missing.',
-  },
-  {
-    icon: '🫧',
-    text: 'The atoms and photons in the "why" scene are storybook-sized; a caught photon\'s energy is soon sent out again — but in any direction, so very little of that color reaches us.',
-  },
+  para('⭐', 'A hot blue-white star', ' (like Spica) really shows strong hydrogen and helium lines; Sun-like stars show thousands — we keep two elements.'),
+  para('🌈', 'All dark lines drawn alike', ' (real ones differ in strength and width); visible light only.'),
+  para('☀️', 'In 1868 the helium line was seen BRIGHT', ', glowing at the Sun\'s edge in an eclipse — the same fingerprint, glowing instead of missing.'),
+  para('🫧', 'Storybook-sized atoms and photons;', ' a caught photon is soon sent out again, but in any direction — so little of that color reaches us.'),
 ]
 
 const TRUE_DETECTIVE: Para[] = [
-  {
-    icon: '🌑',
-    text: 'On 18 August 1868, during a total eclipse seen from India, Jules Janssen saw a bright yellow line in the Sun\'s light. Norman Lockyer realised no known element made it and named it helium, after helios — the Sun.',
-  },
-  {
-    icon: '🎈',
-    text: 'Helium was only found on Earth in 1895, by William Ramsay, 27 years later. Today it fills party balloons — an element discovered in the sky first.',
-  },
-  {
-    icon: '📐',
-    text: 'In 1814 Joseph von Fraunhofer mapped hundreds of dark lines in sunlight. The photo panel shows them — the Sun\'s barcode.',
-  },
+  para('🌑', '18 August 1868:', ' in an eclipse seen from India, Jules Janssen saw a new yellow solar line; Norman Lockyer named its element helium, after helios, the Sun.'),
+  para('🎈', 'Found on Earth only in 1895', ' (William Ramsay): the party-balloon gas was discovered in the sky first.'),
+  para('📐', '1814, Joseph von Fraunhofer', ' mapped hundreds of dark lines in sunlight — the Sun\'s barcode (📷 panel).'),
 ]
 
 // 💍 where gold comes from — the info panel
 const HOW_GOLD: Para[] = [
-  {
-    icon: '🔥',
-    text: 'Fire, acids and factories only move atoms around — they never change what an atom IS. That is decided by its protons: 79 protons is gold (type 79 into the builder!).',
-  },
-  {
-    icon: '⚫',
-    text: 'When a giant star collapses, its core can be crushed into a neutron star: more matter than the whole Sun, squeezed into a ball about 20 km across, made almost only of neutrons.',
-  },
-  {
-    icon: '🌀',
-    text: 'Two neutron stars circling each other slowly lose energy as ripples in space itself. They spiral closer, faster and faster, and finally crash.',
-  },
-  {
-    icon: '💥',
-    text: 'The crash flings out a spray of hot matter packed with free neutrons. Small atoms in it swallow neutrons faster than they can fall apart; then neutrons turn into protons, and the atoms climb up the periodic table — to gold, platinum and uranium.',
-  },
-  {
-    icon: '🌍',
-    text: 'That gold drifted through space and mixed into the cloud from which the Sun and the Earth formed, 4.6 billion years ago. Every gold atom on Earth is older than the Earth.',
-  },
+  para('🔥', 'Fire, acids and factories only move atoms;', ' what an atom IS depends on its protons — 79 is gold.'),
+  para('⚫', 'Neutron star:', ' a giant star\'s crushed core — more than the Sun\'s mass in a ball ~20 km across, almost all neutrons.'),
+  para('🌀', 'Two neutron stars spiral in,', ' losing energy as ripples in space itself, faster and faster, until they crash.'),
+  para('💥', 'The crash sprays free neutrons:', ' atoms swallow them, neutrons turn into protons, and atoms climb to gold, platinum and uranium.'),
+  para('🌍', 'Older than the Earth:', ' that gold joined the cloud that formed the Sun and the Earth, 4.6 billion years ago.'),
 ]
 
 const HONEST_GOLD: Para[] = [
-  {
-    icon: '🧪',
-    text: 'People CAN make a few gold atoms — in particle accelerators and nuclear reactors — but only a handful, far too few to see, at a cost far above the gold. No fire, chemistry or factory can.',
-  },
-  {
-    icon: '🥄',
-    text: 'A teaspoon of neutron star weighs roughly a billion tonnes: a mountain about half a kilometre high, not Mount Everest. A neutron star is about 20 km across, like a big city.',
-  },
-  {
-    icon: '⚡',
-    text: 'The stuffing is called rapid neutron capture (the r-process). Really the atoms first swallow neutrons in less than a second, and most neutrons turn into protons just after, as the new atoms settle. We show both at once, slowed down.',
-  },
-  {
-    icon: '❓',
-    text: 'Scientists still argue how much of our gold comes from neutron-star crashes and how much from rare kinds of exploding stars.',
-  },
-  {
-    icon: '⚛️',
-    text: 'In the stuffing scene the atoms have no electron rings, on purpose. The spray is billions of degrees hot: no electron can stay on a nucleus, so the atoms are bare cores with their electrons flying around loose. The electrons settle back into shells days later, when the cloud has cooled. That is why the gold atom in the ring has all 79.',
-  },
-  {
-    icon: '🌋',
-    text: 'Most of the young Earth\'s gold sank deep into its iron core. Much of the gold near the surface may have arrived a little later, inside meteorites — made in the same kind of crash either way.',
-  },
-  {
-    icon: '⏱️',
-    text: 'The year counter is real only at the Earth (4.5 billion years) and the Sun\'s cloud (4.6 billion). How long one nugget sat in rock or rode a river differs for every nugget; there the counter just spins.',
-  },
-  {
-    icon: '🎯',
-    text: 'The hero\'s path is a story, not a record — and stars, atoms, the scale and the city are drawn at storybook scale, not a shared one.',
-  },
+  para('🧪', 'Accelerators and reactors CAN make gold', ' — a handful of atoms, far too few to see, costing far more than gold; no fire, chemistry or factory can.'),
+  para('❓', 'Still debated:', ' how much of our gold comes from neutron-star crashes and how much from rare exploding stars.'),
+  para('⚛️', 'Bare nuclei on purpose:', ' at billions of degrees electrons fly loose; they settle into shells days later, so the ring\'s gold has all 79.'),
+  para('🥄', '"A mountain" ≈ a billion tonnes:', ' a hill about half a kilometre high, not Everest; a neutron star is ~20 km across, a big city.'),
+  para('⚡', 'r-process timing squeezed:', ' atoms swallow neutrons in under a second, and most neutrons turn into protons just after; we show both at once, slowed.'),
+  para('🌋', 'Most early gold sank into Earth\'s core;', ' surface gold may have come later in meteorites — from the same kind of crash.'),
+  para('⏱️', 'The year counter is real only at the Earth and the Sun\'s cloud', ' (4.5 and 4.6 billion years); a nugget\'s own years vary, so there it just spins.'),
+  para('🎯', 'The hero\'s path is a story,', ' not a record; stars, atoms, the scale and the city are drawn at storybook scale.'),
 ]
 
 const TRUE_GOLD: Para[] = [
-  {
-    icon: '📡',
-    text: 'On 17 August 2017 the LIGO and Virgo detectors felt a ripple in space from two neutron stars crashing 130 million light-years away. Telescopes then found the glow — and read freshly made heavy elements in its light, with the star-detective barcode trick.',
-  },
-  {
-    icon: '💰',
-    text: 'That one crash probably made more gold than the whole Earth weighs.',
-  },
-  {
-    icon: '⚗️',
-    text: 'For centuries alchemists tried to turn lead into gold with fire and potions. They could never succeed: the change has to happen inside the nucleus.',
-  },
+  para('📡', '17 August 2017:', ' LIGO and Virgo felt two neutron stars crash 130 million light-years away; telescopes read fresh heavy elements in the glow.'),
+  para('💰', 'That one crash', ' probably made more gold than the whole Earth weighs.'),
+  para('⚗️', 'Alchemists failed for centuries:', ' lead into gold must happen inside the nucleus, out of reach of fire and potions.'),
 ]
 
+// ☀️ why the Sun shines — the info panel
 const HOW_IT_WORKS: Para[] = [
-  {
-    icon: '🥣',
-    text: 'The Sun is mostly hydrogen (73 kg of every 100), some helium (25 kg), and a pinch of everything else. We read the recipe from its light — the dark-line barcode.',
-  },
-  {
-    icon: '🔥',
-    text: 'Its core is 15 million degrees and monstrously squeezed. Bare hydrogen nuclei crash all day; the rare PERFECT crash sticks.',
-  },
-  {
-    icon: '🤝',
-    text: 'In three steps, four hydrogens become one helium: p+p → deuterium (+ a positron and a neutrino), +p → helium-3 (+ γ), and two helium-3 → helium-4 + two protons back.',
-  },
-  {
-    icon: '⚖️',
-    text: 'The helium weighs 0.7% LESS than the hydrogens that made it. The missing mass leaves as light — that is why the Sun shines.',
-  },
-  {
-    icon: '⛰️',
-    text: 'Joining small nuclei releases energy (fusion); splitting huge ones does too (fission, the bomb demo). Iron is the bottom of the hill — the fire stops there.',
-  },
+  para('🥣', 'Recipe by weight:', ' 73 kg hydrogen, 25 kg helium, 2 kg the rest in every 100 — read from the Sun\'s dark-line barcode.'),
+  para('🔥', 'Core: 15 million degrees,', ' crushed; bare hydrogen nuclei crash all day, and the rare perfect crash sticks.'),
+  para('🤝', 'Four hydrogens → one helium', ' in three steps: p+p → deuterium (+ positron, neutrino); +p → helium-3 (+ γ); 2 helium-3 → helium-4 + 2 p.'),
+  para('⚖️', `Helium weighs ${defectPct}% less`, ' than the hydrogens that made it; the missing mass leaves as light — why the Sun shines.'),
+  para('⛰️', 'Energy valley:', ' joining small nuclei (fusion) and splitting huge ones (fission) both release energy; iron sits at the bottom.'),
 ]
 
 const HONEST: Para[] = [
-  {
-    icon: '🐢',
-    text: 'Slowed down beyond imagining: a single proton in the core waits, on average, BILLIONS of years for its lucky crash. We showed you the lucky one.',
-  },
-  {
-    icon: '👻',
-    text: 'The neutrino is real and drawn barely-there on purpose: trillions fly through your body every second and almost never touch an atom.',
-  },
-  {
-    icon: '🪜',
-    text: 'The Sun also uses helper recipes (bigger stars run a carbon-powered cycle); we show the main one, which makes most of the Sun\'s energy.',
-  },
-  {
-    icon: '🥣',
-    text: 'The recipe bar is by WEIGHT, rounded. Counted by atoms, hydrogen is ~92%. And the recipe is the whole Sun\'s: the core, after 4.6 billion years of burning, is already about half helium.',
-  },
-  {
-    icon: '📏',
-    text: 'The Sun, Earth, nuclei, the photon\'s zigzag and the valley chart are not on one shared scale — except where the picture says so (Earth next to the Sun really is to scale).',
-  },
-  {
-    icon: '⚖️',
-    text: 'The scale beat shows mass "turning into" light; really mass and energy are two faces of the same thing — that is all E = mc² says.',
-  },
+  para('🐢', 'Slowed beyond imagining:', ' a core proton waits, on average, BILLIONS of years for its lucky crash — we show the lucky one.'),
+  para('⚖️', '"Mass turns into light" is simplified:', ' mass and energy are two faces of one thing — all E = mc² says.'),
+  para('🥣', 'Recipe by weight, rounded, for the whole Sun:', ' by atoms hydrogen is ~92%, and the core is already about half helium.'),
+  para('📏', 'No shared scale', ' — except Earth beside the Sun, which is to scale.'),
+  para('👻', 'The neutrino is drawn faint on purpose:', ' trillions pass through you every second and almost never touch an atom.'),
+  para('🪜', 'Main recipe only:', ' the Sun has helper recipes too (bigger stars run a carbon cycle).'),
 ]
 
 const TRUE_STORY: Para[] = [
-  {
-    icon: '🔭',
-    text: 'In 1925 Cecilia Payne proved the Sun is mostly hydrogen — by reading its light barcode (the exact trick from the ✨ Light & color demo and the 💡 Light lab). Almost nobody believed her at first. She was right.',
-  },
-  {
-    icon: '🎈',
-    text: 'Helium is named after the Sun (helios): it was found in the Sun\'s barcode in 1868, 27 years before anyone found it on Earth. Today it fills party balloons.',
-  },
-  {
-    icon: '🧒',
-    text: '"We are made of star-stuff" — Carl Sagan. That journey is this demo\'s next story.',
-  },
+  para('🔭', '1925, Cecilia Payne', ' proved the Sun is mostly hydrogen by reading its light barcode; almost nobody believed her at first.'),
+  para('🎈', 'Helium is named after the Sun', ' (helios): seen in its barcode in 1868, found on Earth 27 years later.'),
 ]
 
+// 🧒 you are star stuff — the info panel
 const HOW_STARDUST: Para[] = [
-  {
-    icon: '🏭',
-    text: 'Stars are element factories. When a big star\'s hydrogen is spent, its core gets hot enough to burn the ash: helium fuses into carbon (and later oxygen and more).',
-  },
-  {
-    icon: '💎',
-    text: 'Three heliums → one carbon: 4 + 4 + 4 = 12 nucleons, 2 + 2 + 2 = 6 protons — and six protons IS carbon, the builder\'s first lesson.',
-  },
-  {
-    icon: '💥',
-    text: 'When the star dies — explosively or gently — its atoms are sown into space as a glowing cloud.',
-  },
-  {
-    icon: '🌍',
-    text: 'New stars and planets curdle out of old stars\' dust. The Sun and Earth are second-hand.',
-  },
-  {
-    icon: '♻️',
-    text: 'On a living planet the atoms keep moving: volcano → air → leaf → food → you. Your body borrows star-made atoms and passes them on.',
-  },
+  para('🏭', 'Stars are element factories:', ' once its hydrogen is spent, a big star\'s core fuses helium into carbon (later oxygen and more).'),
+  para('💎', 'Three heliums → one carbon:', ' 4+4+4 = 12 nucleons, 2+2+2 = 6 protons — and 6 protons IS carbon.'),
+  para('💥', 'A dying star', ' — explosively or gently — sows its atoms into space as a glowing cloud.'),
+  para('🌍', 'The Sun and Earth are second-hand:', ' new stars and planets form from old stars\' dust.'),
+  para('♻️', 'Atoms keep moving:', ' volcano → air → leaf → food → you, borrowed and passed on.'),
 ]
 
 const HONEST_STARDUST: Para[] = [
-  {
-    icon: '🎯',
-    text: 'The marked atom\'s path is a STORY, not a record — no one can trace one real atom. But every carbon atom in you really did travel some road like this.',
-  },
-  {
-    icon: '🌬️',
-    text: 'Much of the universe\'s carbon leaves smaller stars gently (a puffed-off glowing shell), not in a supernova. We show the dramatic road; both are real.',
-  },
-  {
-    icon: '⏱️',
-    text: 'The journey squeezes billions of years into a minute — the drift alone took longer than the Earth has existed.',
-  },
-  {
-    icon: '🤏',
-    text: 'Beryllium-8\'s "blink of an eye" is real physics: it survives about a billionth of a billionth of a second, and the universe\'s whole carbon supply squeezes through that blink.',
-  },
-  {
-    icon: '📏',
-    text: 'Stars, nebulas, planets, molecules and the kid are drawn at storybook scale, not a shared one.',
-  },
+  para('🎯', 'The hero\'s path is a story,', ' not a record — but every carbon atom in you travelled some road like it.'),
+  para('🌬️', 'Much carbon leaves smaller stars gently', ' (a puffed-off glowing shell), not in a supernova; both roads are real.'),
+  para('⏱️', 'Billions of years squeezed into a minute', ' — the drift alone took longer than the Earth has existed.'),
+  para('🤏', 'Beryllium-8\'s "blink" is real:', ' it lasts about a billionth of a billionth of a second, and all carbon squeezes through it.'),
+  para('📏', 'Storybook scale', ' for stars, nebulas, planets, molecules and the kid — not a shared one.'),
 ]
 
 const TRUE_STARDUST: Para[] = [
-  {
-    icon: '🧒',
-    text: '"We are made of star-stuff" — Carl Sagan\'s famous line. This story is that line, checked and drawn.',
-  },
-  {
-    icon: '🔮',
-    text: 'In 1953 Fred Hoyle PREDICTED that carbon must have a special energy state — otherwise the triple-helium trick could never work and we could not exist. The state was found that same year, exactly where he said.',
-  },
-  {
-    icon: '👀',
-    text: 'In 1054, people in China and Japan watched a "guest star" blaze for weeks. Its wreck is the Crab Nebula in the 📷 panel — a star\'s atoms, still flying.',
-  },
+  para('🧒', '"We are made of star-stuff"', ' — Carl Sagan\'s famous line, checked and drawn.'),
+  para('🔮', '1953, Fred Hoyle predicted', ' a special energy state of carbon, without which we could not exist; it was found that same year.'),
+  para('👀', '1054, a "guest star"', ' blazed for weeks over China and Japan; its wreck is the Crab Nebula (📷 panel).'),
 ]
 
 const JOURNEY_NAMES: Record<CosmosJourneyId, string> = {
@@ -307,179 +149,66 @@ const JOURNEY_NAMES: Record<CosmosJourneyId, string> = {
   gold: 'Where gold comes from',
 }
 
-const DETECTIVE_STEPS: Record<string, TimelineItem> = {
-  star: { id: 'star', group: '🔭 Looking up', icon: '⭐', title: 'A far-away star', text: 'Too far to ever visit. But its light comes to us — a telescope catches it.' },
-  prism: { id: 'prism', group: '🔭 Looking up', icon: '🌈', title: 'A rainbow with gaps', text: 'A prism spreads the light into a spectrum. Some colors are missing: thin dark lines.' },
-  catch: { id: 'catch', group: '🫧 Why the gaps', icon: '🫧', title: 'Atoms catch their colors', text: 'The star\'s thin outer gas swallows exactly the colors its atoms glow with. Those never reach us.' },
-  hydrogen: { id: 'hydrogen', group: '🔍 Detective work', icon: '✅', title: 'Hydrogen? It fits!', text: 'Hydrogen\'s barcode lines up with dark lines: the star contains hydrogen.' },
-  oxygen: { id: 'oxygen', group: '🔍 Detective work', icon: '❌', title: 'Oxygen? No match', text: 'Its lines land where the rainbow is bright: ruled out.' },
-  helium: { id: 'helium', group: '🔍 Detective work', icon: '✅', title: 'Helium! Case closed', text: 'Helium explains the last dark lines. Light told us what the star is made of.' },
-  discovery: { id: 'discovery', group: '🎈 The payoff', icon: '🎈', title: 'Found in the Sun first', text: 'In 1868 a new yellow line in the Sun\'s light: helium, named after helios, the Sun — found on Earth only in 1895.' },
+// 📖 the story column: each beat's chapter, icon and non-spoken extras —
+// its words are the narration script itself (TimelineColumn)
+const DETECTIVE_BEATS: Record<string, StoryBeat> = {
+  star: { id: 'star', group: '🔭 Looking up', icon: '⭐' },
+  prism: { id: 'prism', group: '🔭 Looking up', icon: '🌈' },
+  catch: { id: 'catch', group: '🫧 Why the gaps', icon: '🫧' },
+  hydrogen: { id: 'hydrogen', group: '🔍 Detective work', icon: '✅' },
+  oxygen: { id: 'oxygen', group: '🔍 Detective work', icon: '❌' },
+  helium: { id: 'helium', group: '🔍 Detective work', icon: '✅' },
+  discovery: { id: 'discovery', group: '🎈 The payoff', icon: '🎈' },
 }
 
-const GOLD_STEPS: Record<string, TimelineItem> = {
-  ring: { id: 'ring', group: '💍 A question', icon: '💍', title: 'Who made this gold?', text: 'No fire and no factory can make gold. So where did the gold in a ring come from?' },
-  zoom: { id: 'zoom', group: '💍 A question', icon: '🔍', title: 'Our hero: one gold atom', text: 'Zoom into the metal: atoms packed side by side. One gets the amber ring — we follow it.' },
-  rewind: { id: 'rewind', group: '⏪ Back in time', icon: '⏪', title: 'Rewind!', text: 'Ring → nugget in a river → rock → the young, glowing Earth → a dust cloud → dark space. More than 4.6 billion years back.' },
-  stars: { id: 'stars', group: '⚫ Two dead stars', icon: '⚫', title: 'Neutron stars', text: 'What a giant star can leave behind when it dies: a tiny, heavy ball made almost only of neutrons.' },
-  teaspoon: { id: 'teaspoon', group: '⚫ Two dead stars', icon: '🥄', title: 'A teaspoon weighs a mountain', text: 'One teaspoon of neutron star weighs as much as a mountain. The whole star is no wider than a city.' },
-  crash: { id: 'crash', group: '💥 The crash', icon: '💥', title: 'They collide', text: 'They spiral in, faster and faster, and crash. A blinding spray full of free neutrons flies out.' },
-  stuff: {
-    id: 'stuff',
-    group: '💥 The crash',
-    icon: '⚛️',
-    title: 'Stuffed with neutrons',
-    text: (
-      <>
-        Atoms in the spray swallow neutrons; some neutrons turn into protons. Platinum, uranium — and with 79 protons, gold!
-        <span className="mt-1 block font-mono text-[12px] text-slate-100">iron (26 protons) → gold (79 protons)</span>
-      </>
-    ),
-  },
-  forward: { id: 'forward', group: '⏩ Forward again', icon: '⏩', title: 'The long way to a hand', text: 'Drifting for ages → a new cloud → the Sun and the Earth → rock → a river nugget → a ring.' },
-  older: { id: 'older', group: '💍 The payoff', icon: '🌟', title: 'Older than the Earth', text: 'Two dead stars made this gold. The gold in a ring is older than the Earth it is worn on.' },
+const GOLD_BEATS: Record<string, StoryBeat> = {
+  ring: { id: 'ring', group: '💍 A question', icon: '💍' },
+  zoom: { id: 'zoom', group: '💍 A question', icon: '🔍' },
+  rewind: { id: 'rewind', group: '⏪ Back in time', icon: '⏪' },
+  stars: { id: 'stars', group: '⚫ Two dead stars', icon: '⚫' },
+  teaspoon: { id: 'teaspoon', group: '⚫ Two dead stars', icon: '🥄' },
+  crash: { id: 'crash', group: '💥 The crash', icon: '💥' },
+  stuff: { id: 'stuff', group: '💥 The crash', icon: '⚛️', extra: <Eq>iron (26 protons) → gold (79 protons)</Eq> },
+  forward: { id: 'forward', group: '⏩ Forward again', icon: '⏩' },
+  older: { id: 'older', group: '💍 The payoff', icon: '🌟' },
 }
 
-function timelineItems(journey: CosmosJourneyId): TimelineItem[] {
-  if (journey === 'detective') return cosmosStoryOrder(journey).map((id) => DETECTIVE_STEPS[id])
-  if (journey === 'gold') return cosmosStoryOrder(journey).map((id) => GOLD_STEPS[id])
-  const eq = (s: string) => (
-    <span className="mt-1 block font-mono text-[12px] text-slate-100">{s}</span>
-  )
+const STARDUST_BEATS: Record<string, StoryBeat> = {
+  giant: { id: 'giant', group: '🔴 An old star', icon: '🔴' },
+  zoom: { id: 'zoom', group: '🔥 The forge', icon: '🔍' },
+  boom: { id: 'boom', group: '💥 Set free', icon: '💥' },
+  drift: { id: 'drift', group: '🌫️ Adrift', icon: '🌫️' },
+  earth: { id: 'earth', group: '🌍 A new world', icon: '🌍' },
+  alive: { id: 'alive', group: '♻️ Alive', icon: '🌋' },
+  you: { id: 'you', group: '🧒 The payoff', icon: '🧒' },
+}
+
+const SUN_BEATS: Record<string, StoryBeat> = {
+  sun: { id: 'sun', group: '☀️ Our star', icon: '☀️' },
+  recipe: { id: 'recipe', group: '☀️ Our star', icon: '🥣' },
+  zoom: { id: 'zoom', group: '🔍 Into the core', icon: '🔍' },
+  scale: { id: 'scale', group: '⚖️ The missing mass', icon: '⚖️' },
+  walk: { id: 'walk', group: '🥾 The long way out', icon: '🥾' },
+  valley: { id: 'valley', group: '⛰️ The payoff', icon: '⛰️' },
+}
+
+function storyBeats(journey: CosmosJourneyId): StoryBeat[] {
+  const order = cosmosStoryOrder(journey)
+  if (journey === 'detective') return order.map((id) => DETECTIVE_BEATS[id])
+  if (journey === 'gold') return order.map((id) => GOLD_BEATS[id])
   if (journey === 'stardust') {
     const forge = forgeStory()
-    const texts: Record<string, TimelineItem> = {
-      giant: {
-        id: 'giant',
-        group: '🔴 An old star',
-        icon: '🔴',
-        title: 'Long before the Sun',
-        text: 'A giant star, its hydrogen already spent. Its core burns helium now.',
-      },
-      zoom: {
-        id: 'zoom',
-        group: '🔥 The forge',
-        icon: '🔍',
-        title: 'Into its core',
-        text: 'Over 100 million degrees — hot enough to fuse helium itself.',
-      },
-      boom: {
-        id: 'boom',
-        group: '💥 Set free',
-        icon: '💥',
-        title: 'Supernova',
-        text: 'The star explodes and sows its atoms into space. Our carbon rides the blast wave.',
-      },
-      drift: {
-        id: 'drift',
-        group: '🌫️ Adrift',
-        icon: '🌫️',
-        title: 'Millions of years pass',
-        text: 'The atoms drift as a glowing nebula. Nothing happens, beautifully, for ages.',
-      },
-      earth: {
-        id: 'earth',
-        group: '🌍 A new world',
-        icon: '🌍',
-        title: 'The Sun and Earth are born',
-        text: 'The cloud curdles: a new star lights up, dust clumps into planets — our atom lands in the third one.',
-      },
-      alive: {
-        id: 'alive',
-        group: '♻️ Alive',
-        icon: '🌋',
-        title: 'Volcano → leaf → kid',
-        text: 'A volcano breathes the carbon out as CO₂, a leaf keeps it, an apple grows — and gets eaten.',
-      },
-      you: {
-        id: 'you',
-        group: '🧒 The payoff',
-        icon: '🧒',
-        title: 'You are star stuff',
-        text: 'Almost every atom in you was made inside a star. The hydrogen is from the Big Bang itself.',
-      },
-    }
-    return cosmosStoryOrder(journey).map((id) => {
-      if (id.startsWith('forge')) {
-        const st = forge[Number(id.slice(5))]
-        return {
-          id,
-          group: '🔥 The forge',
-          icon: st.icon,
-          title: st.title,
-          text: (
-            <>
-              {st.caption}
-              {eq(st.equation)}
-            </>
-          ),
-        }
-      }
-      return texts[id]
+    return order.map((id) => {
+      if (!id.startsWith('forge')) return STARDUST_BEATS[id]
+      const st = forge[Number(id.slice(5))]
+      return { id, group: '🔥 The forge', icon: st.icon, extra: <Eq>{st.equation}</Eq> }
     })
   }
   const close = sunCloseupStory()
-  const texts: Record<string, TimelineItem> = {
-    sun: {
-      id: 'sun',
-      group: '☀️ Our star',
-      icon: '☀️',
-      title: 'The Sun',
-      text: 'A ball of glowing gas, 109 Earths wide — see Earth beside it, drawn to scale.',
-    },
-    recipe: {
-      id: 'recipe',
-      group: '☀️ Our star',
-      icon: '🥣',
-      title: 'What it is made of',
-      text: 'Out of every 100 kg: 73 kg hydrogen, 25 kg helium, 2 kg everything else. The proof: the dark lines in the Sun\'s own light.',
-    },
-    zoom: {
-      id: 'zoom',
-      group: '🔍 Into the core',
-      icon: '🔍',
-      title: 'Diving in',
-      text: '15 million degrees, squeezed by the weight of the whole Sun.',
-    },
-    scale: {
-      id: 'scale',
-      group: '⚖️ The missing mass',
-      icon: '⚖️',
-      title: '4 in, 1 out, lighter!',
-      text: `The helium weighs ${defectPct}% less than the four hydrogens. The missing bit left as LIGHT.`,
-    },
-    walk: {
-      id: 'walk',
-      group: '🥾 The long way out',
-      icon: '🥾',
-      title: '100,000 years, then 8 minutes',
-      text: 'The newborn photon zigzags out of the crowded Sun for ages — then crosses empty space to Earth in 8 minutes.',
-    },
-    valley: {
-      id: 'valley',
-      group: '⛰️ The payoff',
-      icon: '⛰️',
-      title: 'The energy valley',
-      text: 'Joining rolls down one slope (the Sun), splitting down the other (the bomb demo). Iron sits at the bottom.',
-    },
-  }
-  return cosmosStoryOrder(journey).map((id) => {
-    if (id.startsWith('closeup')) {
-      const st = close[Number(id.slice(7))]
-      return {
-        id,
-        group: '🔍 Into the core',
-        icon: st.icon,
-        title: st.title,
-        text: (
-          <>
-            {st.caption}
-            {eq(st.equation)}
-          </>
-        ),
-      }
-    }
-    return texts[id]
+  return order.map((id) => {
+    if (!id.startsWith('closeup')) return SUN_BEATS[id]
+    const st = close[Number(id.slice(7))]
+    return { id, group: '🔍 Into the core', icon: st.icon, extra: <Eq>{st.equation}</Eq> }
   })
 }
 
@@ -499,13 +228,9 @@ export function CosmosExample({ active }: { active: boolean }) {
     setJourney(null)
     setPaused(false)
   }, [])
-  const [seek, setSeek] = useState<{ id: string; n: number } | null>(null)
+  const [seek, setSeek] = useState<StorySeek | null>(null)
   const [rightTab, setRightTab] = useState<'story' | 'photos'>('story')
   const [report, setReport] = useState<CosmosReport>(initialReport)
-  const onSeek = useCallback((id: string) => {
-    cancelNarration()
-    setSeek((prev) => ({ id, n: (prev?.n ?? 0) + 1 }))
-  }, [])
   const running = journey !== null
   // ⎵ Space = ⏸ Pause / ▶ Resume while a story plays
   useSpaceToPause(active && running, () => setPaused((v) => !v))
@@ -520,6 +245,18 @@ export function CosmosExample({ active }: { active: boolean }) {
     active,
     paused,
   })
+  // 📖 a clicked sentence: the voice restarts at it, the story
+  // lands where that piece comes up
+  const { seekTo } = narration
+  const onSeek = useCallback(
+    (id: string, piece: number, sentence: number) => {
+      const land = seekTo(id, piece, sentence)
+      setSeek((prev) => ({ id, n: (prev?.n ?? 0) + 1, ...land }))
+    },
+    [seekTo],
+  )
+  const voiceLang = useVoiceStore((s) => s.lang)
+  const transcript = transcriptScript(journey ? NARRATION[journey] : null, voiceLang)
 
   return (
     <div className="grid h-full min-h-0 grid-cols-[16rem_minmax(0,1fr)_18rem] grid-rows-[minmax(0,1fr)] gap-x-6">
@@ -543,19 +280,22 @@ export function CosmosExample({ active }: { active: boolean }) {
             </button>
           }
         />
-        <div className={INFO_PANEL}>
-          <SectionHeader>How it works</SectionHeader>
-          <Paras items={journey === 'stardust' ? HOW_STARDUST : journey === 'detective' ? HOW_DETECTIVE : journey === 'gold' ? HOW_GOLD : HOW_IT_WORKS} />
-          <SectionHeader>Honest notes</SectionHeader>
-          <Paras
-            items={
-              journey === 'stardust' ? HONEST_STARDUST : journey === 'detective' ? HONEST_DETECTIVE : journey === 'gold' ? HONEST_GOLD : HONEST
-            }
-            className="text-slate-400"
-          />
-          <SectionHeader>A true story</SectionHeader>
-          <Paras items={journey === 'stardust' ? TRUE_STARDUST : journey === 'detective' ? TRUE_DETECTIVE : journey === 'gold' ? TRUE_GOLD : TRUE_STORY} />
-        </div>
+        {/* the info panel belongs to a story: none on the chooser */}
+        {running && (
+          <div className={INFO_PANEL}>
+            <SectionHeader type="how" />
+            <Paras max={SECTION_MAX} key={journey ?? ''} items={journey === 'stardust' ? HOW_STARDUST : journey === 'detective' ? HOW_DETECTIVE : journey === 'gold' ? HOW_GOLD : HOW_IT_WORKS} />
+            <SectionHeader type="honest" />
+            <Paras max={SECTION_MAX} key={journey ?? ''}
+              items={
+                journey === 'stardust' ? HONEST_STARDUST : journey === 'detective' ? HONEST_DETECTIVE : journey === 'gold' ? HONEST_GOLD : HONEST
+              }
+              className="text-slate-400"
+            />
+            <SectionHeader type="true" />
+            <Paras max={SECTION_MAX} key={journey ?? ''} items={journey === 'stardust' ? TRUE_STARDUST : journey === 'detective' ? TRUE_DETECTIVE : journey === 'gold' ? TRUE_GOLD : TRUE_STORY} />
+          </div>
+        )}
       </div>
 
       {/* middle: the demo canvas */}
@@ -627,7 +367,12 @@ export function CosmosExample({ active }: { active: boolean }) {
             </p>
           ) : (
             <TimelineColumn
-              items={timelineItems(journey)}
+              beats={storyBeats(journey)}
+              script={transcript.script}
+              lang={transcript.lang}
+              speakingPiece={narration.speakingPiece}
+              speakingSentence={narration.speakingSentence}
+              voiced={narration.voiced}
               currentId={report.storyId}
               visible={active && rightTab === 'story'}
               onSeek={onSeek}

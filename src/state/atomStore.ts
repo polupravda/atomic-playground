@@ -10,11 +10,21 @@ export type ParticleKind = 'protons' | 'neutrons' | 'electrons'
 
 export const MAX_NEUTRONS = 200
 
-/** Physics limit: an isolated atom binds at most ~one electron beyond its
+/** Neutral atoms that cannot hold even ONE extra electron: their electron
+ *  affinity is negative, so an added electron flies straight back off —
+ *  the noble gases, Be, N, Mg, Mn, Zn, Cd, Yb, Hg and some heavy actinides.
+ *  Source: Wikipedia "Electron affinity (data page)", read 2026-11-20; most
+ *  of these values are estimates (a stable anion was never seen). */
+export const NO_STABLE_ANION: ReadonlySet<number> = new Set([
+  2, 4, 7, 10, 12, 18, 25, 30, 36, 48, 54, 70, 80, 86, 94, 97, 98, 99, 102, 103,
+])
+
+/** Physics limit: an isolated atom binds at most one electron beyond its
  *  proton count — no stable gas-phase atomic dianion exists (Lieb's bound
- *  N < 2Z + 1 is the theoretical ceiling; Z + 1 is what's observed). */
+ *  N < 2Z + 1 is the theoretical ceiling; Z + 1 is what's observed) — and
+ *  some atoms cannot bind even that one (NO_STABLE_ANION). */
 export function maxElectronsFor(protons: number): number {
-  return protons + 1
+  return protons + (NO_STABLE_ANION.has(protons) ? 0 : 1)
 }
 
 /** Upper bound for a particle kind given the current proton count. */

@@ -1,168 +1,78 @@
-import { memo, type ReactNode } from 'react'
+import { memo } from 'react'
 import { storyOrder } from '../stage/FissionStage'
 import { closeupStory } from '../stage/fissionCloseup'
-import { BOMB_DESIGNS, BOMB_HISTORY, CLOUD_TOP_KM, type BombDesignId } from '../core/fission'
-import { TimelineColumn } from './TimelineColumn'
+import { BOMB_DESIGNS, type BombDesignId } from '../core/fission'
+import type { NarrationLang } from '../state/voiceStore'
+import { Eq, TimelineColumn, type StoryBeat } from './TimelineColumn'
 
-// R01 story timeline (right column): the bomb-run steps, rendered by the
-// shared TimelineColumn (scroll-following, click-to-seek — see there).
+// R01 story column (right): the bomb run's narration transcript, rendered
+// by the shared TimelineColumn (scroll-following, click-a-sentence-to-seek
+// — see there). The words come from the bomb's narration script; here
+// only each beat's chapter, icon and non-spoken extras.
 
-interface StoryItem {
-  group: string
-  icon: string
-  title: string
-  text: ReactNode
-}
+const EXPLOSION_ICONS = ['🔥', '💨', '🌪️', '🍄', '📏']
 
-const eq = (s: string) => (
-  <span className="mt-1 block font-mono text-[12px] text-slate-100">{s}</span>
-)
-
-function storyItem(mode: BombDesignId, id: string): StoryItem {
+function storyBeat(mode: BombDesignId, id: string): StoryBeat {
   if (id.startsWith('closeup')) {
     const st = closeupStory(BOMB_DESIGNS[mode].fuel)[Number(id.slice(7))]
-    return {
-      group: '🔍 Close-up: atoms being hit',
-      icon: st.icon,
-      title: st.title,
-      text: (
-        <>
-          {st.caption}
-          {eq(st.equation)}
-        </>
-      ),
-    }
+    return { id, group: '🔍 Close-up: atoms being hit', icon: st.icon, extra: <Eq>{st.equation}</Eq> }
   }
   if (id.startsWith('explosion')) {
-    const i = Number(id.slice(9))
-    const steps: Array<[string, string, string]> = [
-      ['🔥', 'Flash and fireball', 'A ball of glowing air, hotter than the surface of the Sun.'],
-      [
-        '💨',
-        'Shock wave',
-        'A wall of squeezed air races out along the ground. The coloured rings appear as it passes — that is the damage.',
-      ],
-      ['🌪️', 'Dust stem', 'The rising fireball sucks a column of dust up behind it.'],
-      [
-        '🍄',
-        'Mushroom cloud',
-        `The hot fireball rises like a hot-air balloon, up to about ${CLOUD_TOP_KM[mode]} km.`,
-      ],
-      [
-        '📏',
-        'Size comparison',
-        'All three explosions side by side, on the same scale. The red rings show where houses were flattened.',
-      ],
-    ]
-    const [icon, title, text] = steps[i]
-    return { group: '💥 The explosion', icon, title, text }
+    return { id, group: '💥 The explosion', icon: EXPLOSION_ICONS[Number(id.slice(9))] }
   }
-  const setup = '🧨 Getting ready'
-  const chain = '⚛️ Chain reaction'
-  switch (id) {
-    case 'intro': {
-      const h = BOMB_HISTORY[mode]
-      return {
-        group: '📏 The bomb',
-        icon: '🧍',
-        title: 'Your bomb',
-        text: `Built in the ${h.country} in ${h.year} by ${h.builders}. It comes closer — next to a grown-up, so you can see how big it really was. It was ${h.fate}.`,
-      }
-    }
-    case 'armed':
-      return {
-        group: setup,
-        icon: '🧰',
-        title: 'Ready',
-        text: {
-          gun: 'Two pieces of uranium-235 wait apart in the gun barrel. Each piece alone is too small for a chain reaction.',
-          implosion: 'A ball of plutonium-239 sits inside 16 explosive blocks all around it. Its atoms are as close as in any metal — like Little Boy\'s uranium — but the ball is too small for a chain reaction.',
-          tsar: 'Stage 1 is the trigger: a small plutonium implosion bomb. Stage 2 is hydrogen fuel: deuterium + tritium.',
-        }[mode],
-      }
-    case 'countdown':
-      return {
-        group: setup,
-        icon: '⏳',
-        title: 'Countdown',
-        text: mode === 'gun'
-            ? '3… 2… 1… the firing unit\'s plunger goes down and a spark runs along the wire to the explosive.'
-            : '3… 2… 1… the firing unit\'s plunger goes down and a spark runs round the ring to every block at once.',
-      }
-    case 'assembling':
-      return {
-        group: setup,
-        icon: '💥',
-        title: 'The explosive fires',
-        text: {
-          gun: 'The explosive fires the uranium "bullet" into the target: one lump, big enough — critical!',
-          implosion: 'Every explosive block fires at the same instant and squeezes the plutonium ball. Its atoms are pushed closer than in normal metal — critical!',
-          tsar: "The trigger's explosives fire together and squeeze its plutonium closer than in normal metal — critical!",
-        }[mode],
-      }
-    case 'chain':
-      return {
-        group: chain,
-        icon: '⚛️',
-        title: 'The chain reaction starts',
-        text:
-          mode === 'tsar'
-            ? 'Stage 1 explodes like a small Fat Man: each split nucleus frees 2–3 neutrons, which split more nuclei…'
-            : 'One neutron splits a nucleus, which frees 2–3 neutrons, which split more nuclei…',
-      }
-    case 'chainAfter':
-      return {
-        group: chain,
-        icon: '📈',
-        title: 'The chain races on',
-        text: 'Back to the whole bomb: the chain reaction races through the rest of the metal.',
-      }
-    case 'xray':
-      return {
-        group: '☀️ The hydrogen stage',
-        icon: '💜',
-        title: 'X-rays',
-        text: 'The trigger blasts out X-rays (violet). They squeeze and heat the hydrogen fuel.',
-      }
-    case 'fusion':
-      return {
-        group: '☀️ The hydrogen stage',
-        icon: '☀️',
-        title: 'Fusion',
-        text: 'Hydrogen nuclei crash together into helium — like inside the Sun.',
-      }
-    case 'chainDone':
-      return {
-        group: chain,
-        icon: '⚡',
-        title: 'All the energy at once',
-        text:
-          mode === 'tsar'
-            ? 'Fusion made about 97% of the energy — all in a few millionths of a second.'
-            : 'Every split released energy, and it all comes out in less than a millionth of a second.',
-      }
-    default:
-      return { group: '', icon: '', title: id, text: '' }
+  const icon: Record<string, string> = {
+    intro: '🧍',
+    armed: '🧰',
+    countdown: '⏳',
+    assembling: '💥',
+    chain: '⚛️',
+    chainAfter: '📈',
+    xray: '💜',
+    fusion: '☀️',
+    chainDone: '⚡',
   }
+  const group: StoryBeat['group'] =
+    id === 'intro'
+      ? '📏 The bomb'
+      : ['armed', 'countdown', 'assembling'].includes(id)
+        ? '🧨 Getting ready'
+        : id === 'xray' || id === 'fusion'
+          ? '☀️ The hydrogen stage'
+          : '⚛️ Chain reaction'
+  return { id, group, icon: icon[id] ?? '' }
 }
 
 export const StoryTimeline = memo(function StoryTimeline({
   mode,
+  script,
+  lang,
   currentId,
+  speakingPiece,
+  speakingSentence,
+  voiced,
   visible,
   onSeek,
 }: {
   mode: BombDesignId
+  script: Record<string, string>
+  lang: NarrationLang
   currentId: string
+  speakingPiece: number | null
+  speakingSentence: number | null
+  voiced: boolean
   /** the column is on screen (page shown, Story tab picked) */
   visible: boolean
-  onSeek: (id: string) => void
+  onSeek: (id: string, piece: number, sentence: number) => void
 }) {
-  const items = storyOrder(mode).map((id) => ({ id, ...storyItem(mode, id) }))
   return (
     <TimelineColumn
-      items={items}
+      beats={storyOrder(mode).map((id) => storyBeat(mode, id))}
+      script={script}
+      lang={lang}
       currentId={currentId}
+      speakingPiece={speakingPiece}
+      speakingSentence={speakingSentence}
+      voiced={voiced}
       visible={visible}
       onSeek={onSeek}
       // a new run (back to "Ready", or another bomb) follows again

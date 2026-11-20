@@ -13,10 +13,13 @@ import { ComingSoonExample } from './ComingSoonExample'
 import { PlantExample } from './PlantExample'
 import { LightExample } from './LightExample'
 import { CosmosExample } from './CosmosExample'
-import { Paras, SectionHeader, type Para } from './Paras'
+import { Paras, SectionHeader, type Para, SECTION_MAX } from './Paras'
 import { DemoControls, INFO_PANEL } from './DemoControls'
 import { bombScripts, bombStoryKey } from '../stage/bombNarration'
 import { cancelNarration, useDemoNarration } from './useNarration'
+import { useVoiceStore } from '../state/voiceStore'
+import { transcriptScript } from './storyChapters'
+import type { StorySeek } from '../stage/flowPacing'
 import { NarrationNotice } from './NarrationNotice'
 import { KEY, TRAY } from './surfaces'
 
@@ -42,59 +45,112 @@ const howItWorks = (mode: BombDesignId): Para[] => [
   {
     icon: '⚛️',
     text:
-      BOMB_DESIGNS[mode].fuel === 'uranium-235'
-        ? 'Uranium-235 has a huge, wobbly nucleus: 92 protons all pushing each other apart, held together just barely.'
-        : 'Plutonium-239 has a huge, wobbly nucleus: 94 protons all pushing each other apart, held together just barely.',
+      BOMB_DESIGNS[mode].fuel === 'uranium-235' ? (
+        <>
+          <b>Uranium-235</b> has a huge, wobbly nucleus: 92 protons pushing apart, barely held together.
+        </>
+      ) : (
+        <>
+          <b>Plutonium-239</b> has a huge, wobbly nucleus: 94 protons pushing apart, barely held together.
+        </>
+      ),
   },
   {
     icon: '🎯',
-    text: 'When a neutron hits it, the nucleus stretches and SPLITS into two smaller nuclei. That is called fission. It also throws out 2 or 3 new neutrons.',
+    text: (
+      <>
+        A neutron hit <b>splits the nucleus in two</b> (fission) and frees 2 or 3 new neutrons.
+      </>
+    ),
   },
   {
     icon: '🔥',
-    text: 'The two halves fly apart incredibly fast — that speed becomes heat. One split gives about 50 million times more energy than burning one carbon atom.',
+    text: (
+      <>
+        The halves fly apart fast: <b>one split gives ~50 million times</b> the energy of burning one carbon atom.
+      </>
+    ),
   },
   {
     icon: '🔁',
-    text: 'The new neutrons split more nuclei, which free more neutrons: 1 → 2 → 4 → 8 → … That is a chain reaction.',
+    text: (
+      <>
+        New neutrons split more nuclei, 1 → 2 → 4 → 8 …: a <b>chain reaction</b>.
+      </>
+    ),
   },
   {
     icon: '⚖️',
-    text: 'Critical mass: in a small lump most neutrons escape through the surface and the chain dies. With enough fuel packed together, the chain grows by itself.',
+    text: (
+      <>
+        <b>Critical mass:</b> a small lump loses its neutrons through the surface; enough fuel packed together keeps the chain growing.
+      </>
+    ),
   },
 ]
 
 const DESIGN_INFO: Record<'gun' | 'implosion' | 'tsar', Para> = {
   gun: {
     icon: '🔫',
-    text: 'Gun type (Little Boy, uranium): fire one too-small piece into another so together they are critical. Simple — the scientists were so sure it would work they never tested it.',
+    text: (
+      <>
+        <b>Gun type</b> (Little Boy, uranium) fires one too-small piece into another — so simple it was never tested.
+      </>
+    ),
   },
   implosion: {
     icon: '💣',
-    text: 'Implosion (Fat Man, plutonium): squeeze a small ball until it is about twice as dense as normal metal. Squeezed this hard, only about 6 kg of plutonium was enough — Little Boy, never squeezed, needed 64 kg of uranium. Plutonium needs this: it starts splitting on its own so quickly that a slow gun would blow the pieces apart too early — a fizzle. It is much harder to build: every block must go off within a millionth of a second of the others — if one side goes off late, the ball squirts out sideways instead of being squeezed.',
+    text: (
+      <>
+        <b>Implosion</b> (Fat Man, plutonium) squeezes a ball to about twice normal density: ~6 kg was enough (Little Boy needed 64 kg of uranium).
+      </>
+    ),
   },
   tsar: {
     icon: '☀️',
-    text: 'Hydrogen bomb (Tsar Bomba): a small fission bomb is only the match. Its heat makes hydrogen nuclei FUSE — join together — like inside the Sun. Fusion fuel has no critical mass, so these bombs can be made enormous.',
+    text: (
+      <>
+        <b>Hydrogen bomb</b> (Tsar Bomba): a small fission bomb lights hydrogen <b>fusion</b>, which has no critical mass — so no size limit.
+      </>
+    ),
   },
 }
 
 const honestNotes = (mode: BombDesignId): Para[] => [
   {
     icon: '📐',
-    text: 'Every run starts with the three real outlines on one scale, then zooms to your bomb next to a grown-up; the parts inside it are a diagram, shrunk to fit. After DETONATE we zoom in: there the dashed casing shows the parts, not the real shape of the bomb.',
+    text: (
+      <>
+        <b>Outlines to scale, insides not:</b> the lineup and the grown-up are true size; the parts inside (and the dashed casing after DETONATE) are a diagram.
+      </>
+    ),
   },
   {
     icon: '🐢',
-    text: 'Super slow motion: the real chain reaction is about a billion times faster.',
+    text: (
+      <>
+        <b>Super slow motion:</b> the real chain reaction is about a billion times faster.
+      </>
+    ),
   },
   {
     icon: '🔢',
-    text: `We draw ${BOMB_DESIGNS[mode].nucleusCount} nuclei${mode === 'tsar' ? ' in the trigger' : ''}. A real bomb has trillions of trillions — and only a small part of them split. In Little Boy only about 1 kg of its 64 kg of uranium split before the bomb blew itself apart.`,
+    text: (
+      <>
+        <b>
+          {BOMB_DESIGNS[mode].nucleusCount} nuclei{mode === 'tsar' ? ' in the trigger' : ''}
+        </b>
+        , not trillions of trillions — and in Little Boy only ~1 kg of its 64 kg of uranium split.
+      </>
+    ),
   },
   {
     icon: '🔭',
-    text: 'Nuclei are drawn huge and close together. Really each nucleus is about 100,000 times smaller than its atom, so many neutrons fly past without hitting anything.',
+    text: (
+      <>
+        <b>Nuclei drawn huge and close:</b> each is ~100,000 times smaller than its atom, so many neutrons miss.
+      </>
+    ),
   },
   {
     icon: '🔍',
@@ -102,39 +158,71 @@ const honestNotes = (mode: BombDesignId): Para[] => [
   },
   {
     icon: '🧪',
-    text: 'Tsar Bomba really had three stages, and its hydrogen fuel was a solid (lithium deuteride) that makes tritium during the blast. We show two stages and ready-made deuterium + tritium.',
+    text: (
+      <>
+        <b>Tsar Bomba simplified:</b> really three stages and solid lithium deuteride (it makes tritium in the blast); we show two stages and ready-made deuterium + tritium.
+      </>
+    ),
   },
   {
     icon: '🧨',
-    text: 'The firing unit is drawn as a plunger box for every bomb. Real bombs fired themselves: a radar measured their height as they fell. Little Boy fired bags of gun powder; Fat Man really had 32 explosive blocks (we draw 16). We draw every explosive the same way so you can compare the bombs.',
+    text: (
+      <>
+        <b>Firing drawn alike</b> for comparison: real bombs fired by radar height, Little Boy with bags of gunpowder, Fat Man with 32 explosive blocks (we draw 16).
+      </>
+    ),
   },
   {
     icon: '📏',
-    text: 'In the explosion picture the cloud height and the damage rings ARE to scale (see the km ruler and the scale bar). The early fireball is drawn much bigger. At this scale a house would be smaller than one pixel — so the rings are the town map.',
+    text: (
+      <>
+        <b>Cloud height and damage rings are to scale</b>; the early fireball is drawn much bigger (a house would be under one pixel).
+      </>
+    ),
   },
   {
     icon: '⛰️',
-    text: 'The damage distances are typical textbook values for a bomb exploding high above flat ground. Real cities differ: in Nagasaki, hills sheltered whole districts.',
+    text: (
+      <>
+        <b>Damage distances are textbook values</b> for a high burst over flat ground; in Nagasaki, hills sheltered whole districts.
+      </>
+    ),
   },
 ]
 
-function closeupNote(mode: BombDesignId): string {
+function closeupNote(mode: BombDesignId) {
   const f = closeupFuelInfo(BOMB_DESIGNS[mode].fuel)
-  return `In the close-up the nucleus is drawn thousands of times too big — really it is 100,000 times smaller than its atom. Each nucleus shows ~30 particles instead of ${f.mass}, and ${f.name} can also split into other pairs than ${f.firstPair[0]} + ${f.firstPair[1]}. The real halves fly off as charged ions that lose many electrons.`
+  return (
+    <>
+      <b>Close-up nucleus thousands of times too big</b>, with ~30 particles instead of {f.mass}; {f.name} also splits into other pairs than {f.firstPair[0]} + {f.firstPair[1]}, and the real halves fly off as charged ions.
+    </>
+  )
 }
 
 const TRUE_STORY: Para[] = [
   {
     icon: '🕊️',
-    text: 'Atomic bombs have been used in war only twice: on Hiroshima (6 August 1945) and Nagasaki (9 August 1945), in Japan. Well over 100,000 people died, and both cities were left in ruins — see the photos.',
+    text: (
+      <>
+        <b>Used in war only twice:</b> Hiroshima (6 August 1945) and Nagasaki (9 August 1945) — well over 100,000 died, both cities ruined.
+      </>
+    ),
   },
   {
     icon: '🧊',
-    text: 'Tsar Bomba was only a test, over an empty Arctic island on 30 October 1961. It was so big it was never turned into a weapon.',
+    text: (
+      <>
+        <b>Tsar Bomba was only a test</b>, over an empty Arctic island on 30 October 1961 — too big ever to become a weapon.
+      </>
+    ),
   },
   {
     icon: '🤝',
-    text: 'Since then, countries have signed treaties to stop testing these bombs and to stop them spreading. The same physics, controlled gently, runs nuclear power plants.',
+    text: (
+      <>
+        <b>Treaties</b> now limit testing and spreading; the same physics, controlled gently, runs nuclear power plants.
+      </>
+    ),
   },
 ]
 
@@ -194,13 +282,9 @@ function BombExample({ active }: { active: boolean }) {
     setMode(null)
     setPaused(false)
   }, [])
-  const [seek, setSeek] = useState<{ id: string; n: number } | null>(null)
+  const [seek, setSeek] = useState<StorySeek | null>(null)
   const [rightTab, setRightTab] = useState<'story' | 'photos'>('story')
   const [report, setReport] = useState<FissionReport>(initialReport)
-  const onSeek = useCallback((id: string) => {
-    cancelNarration()
-    setSeek((prev) => ({ id, n: (prev?.n ?? 0) + 1 }))
-  }, [])
 
   // 🔊 narration — listen first, then watch (10-narration-strategy.md)
   const narration = useDemoNarration({
@@ -210,6 +294,18 @@ function BombExample({ active }: { active: boolean }) {
     active,
     paused,
   })
+  // 📖 a clicked sentence: the voice restarts at it, the bomb lands
+  // where that piece comes up
+  const { seekTo } = narration
+  const onSeek = useCallback(
+    (id: string, piece: number, sentence: number) => {
+      const land = seekTo(id, piece, sentence)
+      setSeek((prev) => ({ id, n: (prev?.n ?? 0) + 1, ...land }))
+    },
+    [seekTo],
+  )
+  const voiceLang = useVoiceStore((s) => s.lang)
+  const transcript = transcriptScript(mode ? BOMB_NARRATION[mode] : null, voiceLang)
 
   const designOrder: Array<'gun' | 'implosion' | 'tsar'> =
     mode === 'tsar'
@@ -245,51 +341,45 @@ function BombExample({ active }: { active: boolean }) {
             </button>
           }
         />
-        <div className={INFO_PANEL}>
-          {mode === null ? (
-            <>
-              <SectionHeader>The bombs themselves</SectionHeader>
-              <BombsTable />
-            </>
-          ) : (
-            <>
-              {counting(report) && (
-                <>
-                  <SectionHeader>Live counts</SectionHeader>
-                  <ChainStats mode={mode} r={report} />
-                </>
-              )}
-              {report.phase === 'explosion' && report.explosionStep < 4 && (
-                <>
-                  <SectionHeader>Damage on the ground (to scale)</SectionHeader>
-                  <DamageLegend mode={mode} />
-                </>
-              )}
-              {report.phase === 'explosion' && report.explosionStep === 4 && (
-                <>
-                  <SectionHeader>The three bombs compared</SectionHeader>
-                  <CompareTable mode={mode} />
-                </>
-              )}
-              {report.intro && (
-                <>
-                  <SectionHeader>The bombs themselves</SectionHeader>
-                  <BombsTable mode={mode} />
-                </>
-              )}
-              <SectionHeader>What the dots mean</SectionHeader>
-              <ParticleLegend mode={mode} />
-            </>
-          )}
-          <SectionHeader>How it works</SectionHeader>
-          <Paras items={howItWorks(m)} />
-          <SectionHeader>Three ways to build one</SectionHeader>
-          <Paras items={designOrder.map((d) => DESIGN_INFO[d])} />
-          <SectionHeader>Honest notes</SectionHeader>
-          <Paras items={honestNotes(m)} className="text-slate-400" />
-          <SectionHeader>A true story</SectionHeader>
-          <Paras items={TRUE_STORY} />
-        </div>
+        {/* the info panel belongs to a story: none on the chooser */}
+        {mode !== null && (
+          <div className={INFO_PANEL}>
+            {counting(report) && (
+              <>
+                <SectionHeader type="live" />
+                <ChainStats mode={mode} r={report} />
+              </>
+            )}
+            {report.phase === 'explosion' && report.explosionStep < 4 && (
+              <>
+                <SectionHeader type="legend">Damage on the ground (to scale)</SectionHeader>
+                <DamageLegend mode={mode} />
+              </>
+            )}
+            {report.phase === 'explosion' && report.explosionStep === 4 && (
+              <>
+                <SectionHeader type="facts">The three bombs compared</SectionHeader>
+                <CompareTable mode={mode} />
+              </>
+            )}
+            {report.intro && (
+              <>
+                <SectionHeader type="facts">The bombs themselves</SectionHeader>
+                <BombsTable mode={mode} />
+              </>
+            )}
+            <SectionHeader type="legend" />
+            <ParticleLegend mode={mode} />
+            <SectionHeader type="how" />
+            <Paras max={SECTION_MAX} key={m} items={howItWorks(m)} />
+            <SectionHeader type="how">Three ways to build one</SectionHeader>
+            <Paras max={SECTION_MAX} key={m} items={designOrder.map((d) => DESIGN_INFO[d])} />
+            <SectionHeader type="honest" />
+            <Paras max={SECTION_MAX} key={m} items={honestNotes(m)} className="text-slate-400" />
+            <SectionHeader type="true" />
+            <Paras max={SECTION_MAX} key={m} items={TRUE_STORY} />
+          </div>
+        )}
       </div>
 
       {/* middle: the demo canvas */}
@@ -363,7 +453,12 @@ function BombExample({ active }: { active: boolean }) {
           ) : (
           <StoryTimeline
             mode={mode}
+            script={transcript.script}
+            lang={transcript.lang}
             currentId={report.storyId}
+            speakingPiece={narration.speakingPiece}
+            speakingSentence={narration.speakingSentence}
+            voiced={narration.voiced}
             visible={active && rightTab === 'story'}
             onSeek={onSeek}
           />

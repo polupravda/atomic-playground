@@ -2,8 +2,11 @@ import { memo, useCallback, useState } from 'react'
 import { PageNav } from './PageNav'
 import { DemoControls, INFO_PANEL } from './DemoControls'
 import { NarrationNotice } from './NarrationNotice'
-import { Paras, SectionHeader, type Para } from './Paras'
-import { TimelineColumn, type TimelineItem } from './TimelineColumn'
+import { Paras, SectionHeader, para, type Para, SECTION_MAX } from './Paras'
+import { TimelineColumn, type StoryBeat } from './TimelineColumn'
+import { transcriptScript } from './storyChapters'
+import { useVoiceStore } from '../state/voiceStore'
+import type { StorySeek } from '../stage/flowPacing'
 import { Thumb } from './ComingSoonExample'
 import { FLAT, KEY, TRAY } from './surfaces'
 import { cancelNarration, useDemoNarration } from './useNarration'
@@ -25,40 +28,46 @@ const BUTTON_ZONE = 86
 
 type PlantJourney = 'story'
 
+// the info panel, for adults: one scannable sentence per item, key phrase
+// in bold (Paras.tsx)
 const HOW: Para[] = [
-  { icon: '⚛️', text: 'The same uranium and the same splits as the bomb. The only difference is control: here every split may cause just ONE more split.' },
-  { icon: '🦯', text: 'Control rods are made of materials that swallow neutrons (boron, cadmium). Push them in: fewer splits. Pull them out: more.' },
-  { icon: '💧', text: 'The water does two jobs: it carries the heat away, and it slows the neutrons down, which helps them split uranium.' },
-  { icon: '🌀', text: 'Heat boils water, the steam spins the turbine, the turbine turns the generator, the generator makes electricity. Coal and gas plants work the same way; only the fire is different.' },
-  { icon: '🥄', text: `One fuel pellet, the size of a fingertip, gives about as much energy as ${PELLET_COAL_TONNES} tonne of coal.` },
+  para('⚛️', 'Same uranium, same splits as the bomb;', ' the difference is control — each split may cause just ONE more.'),
+  para('🦯', 'Control rods swallow neutrons', ' (boron, cadmium): in → fewer splits, out → more.'),
+  para('💧', 'The water does two jobs:', ' it carries the heat away and slows the neutrons, which helps them split uranium.'),
+  para('🌀', 'Heat → steam → turbine → generator → electricity;', ' coal and gas plants work the same, only the fire differs.'),
+  para('🥄', 'One fingertip-sized pellet', ` gives about as much energy as ${PELLET_COAL_TONNES} tonne of coal.`),
 ]
 
 const HONEST: Para[] = [
-  { icon: '🐢', text: 'Slowed down and simplified: a real core holds trillions of trillions of atoms and keeps splitting them for years. Our atoms and rods are storybook-sized.' },
-  { icon: '⏱️', text: 'Steering works because a few neutrons come out late — about 1 in 150, up to a minute later. Those late ones give the rods time to act.' },
-  { icon: '🔀', text: 'A split turns one uranium atom into two smaller ones — often barium and krypton. Its 92 electrons are shared between them (56 + 36), never lost. For a moment the fast pieces are missing a few electrons; they pick them up again as they slow down. These new atoms stay in the fuel, and they are part of why used fuel is radioactive.' },
-  { icon: '🛑', text: 'The automatic drop of the rods is called a scram. After it, the plant is shut down, and people start it again later, slowly.' },
-  { icon: '💥', text: `Power-plant fuel holds only about ${FUEL_SPLITTABLE_PER_100} splitting uranium atoms in 100 (bomb fuel about 90). It cannot explode like a bomb. A plant CAN overheat badly — that is what the big accidents were.` },
-  { icon: '🔁', text: 'Most plants keep two separate loops of water, so the water that touches the fuel never reaches the turbine. We draw one loop.' },
-  { icon: '🗄️', text: 'Used fuel stays radioactive for many thousands of years. Today it first cools in a pool for about five to ten years, then moves into dry steel-and-concrete casks, usually at the plant. Finland is building the first deep underground store (Onkalo), meant to keep it safe for 100,000 years. The rays are drawn like the Sun story\'s γ rays; they are really invisible.' },
-  { icon: '🔵', text: 'In real photos the water around the fuel glows blue. That glow is called Cherenkov light.' },
+  para('🐢', 'Slowed and simplified:', ' a real core holds trillions of trillions of atoms and splits them for years; atoms and rods are storybook-sized.'),
+  para('💥', 'It cannot explode like a bomb:', ` only ~${FUEL_SPLITTABLE_PER_100} splitting atoms in 100 (bomb fuel ~90) — but it CAN overheat badly, as in the big accidents.`),
+  para('🗄️', 'Used fuel stays radioactive for many thousands of years:', ' 5–10 years in a pool, then steel-and-concrete casks; Finland\'s Onkalo is the first deep store, built for 100,000 years.'),
+  para('⏱️', 'Late neutrons make steering possible:', ' about 1 in 150 comes out up to a minute later, giving the rods time to act.'),
+  para('🔀', 'A split makes two smaller atoms', ' (often barium + krypton) sharing its 92 electrons (56 + 36; the fast pieces briefly lack a few) — they stay in the fuel, part of why it is radioactive.'),
+  para('🛑', 'The automatic rod drop is a scram:', ' the plant is then shut down, and restarted later, slowly.'),
+  para('🔁', 'One water loop drawn:', ' most plants keep two, so the water touching the fuel never reaches the turbine.'),
+  para('👁️', 'The rays are drawn', ' like the Sun story\'s γ rays; really they are invisible.'),
+  para('🔵', 'Real photos show the water glowing blue:', ' Cherenkov light.'),
 ]
 
 const TRUE: Para[] = [
-  { icon: '🏟️', text: 'On 2 December 1942, Enrico Fermi\'s team ran the first reactor, Chicago Pile-1, under the stands of a university sports field. It had one control rod on a rope, and a man stood ready with an axe to cut the rope if needed.' },
-  { icon: '💡', text: 'Today about 400 reactors make about a tenth of the world\'s electricity, with no smoke while they run.' },
-  { icon: '🕊️', text: 'Two accidents changed how reactors are built. In Chernobyl (1986) a badly designed reactor was pushed too far during a test and overheated. In Fukushima (2011) a giant earthquake and tsunami knocked out the cooling. Neither was a bomb-like explosion, but many people had to leave their homes, and some places are still empty today. Newer plants are designed to cool down and shut down by themselves.' },
+  para('🏟️', '2 December 1942, Chicago Pile-1:', ' Enrico Fermi\'s team ran the first reactor under a sports-field stand — one control rod on a rope, a man with an axe ready to cut it.'),
+  para('🕊️', 'Chernobyl (1986) and Fukushima (2011):', ' a badly designed reactor pushed too far in a test, and a quake and tsunami that knocked out cooling.'),
+  para('🏚️', 'Neither was a bomb-like explosion,', ' but many people had to leave home, some places are still empty, and newer plants cool and shut down by themselves.'),
+  para('💡', 'About 400 reactors', ' make about a tenth of the world\'s electricity, with no smoke while they run.'),
 ]
 
-const STEPS: Record<string, TimelineItem> = {
-  remember: { id: 'remember', group: '💥 Remember', icon: '💥', title: 'The bomb\'s chain', text: 'One split makes two, two make four … 128 in a blink. Can the same atoms light a city instead?' },
-  rods: { id: 'rods', group: '🦯 The trick', icon: '🦯', title: 'Control rods', text: 'Fuel rods (uranium atoms inside) stand in water; grey control rods hang between them. Of a split\'s two new neutrons, one is swallowed by a control rod; the other crosses the water and splits just one atom in the next fuel rod.' },
-  steady: { id: 'steady', group: '🦯 The trick', icon: '➖', title: 'One, then one, then one', text: 'The bomb doubles and doubles. The power plant: every split makes exactly one more. Steady.' },
-  heat: { id: 'heat', group: '♨️ A very big kettle', icon: '🔥', title: 'How splits make heat', text: 'One fuel rod, very close, standing in water. The two pieces of a split atom crash into the atoms next to them, which shake harder and harder: that shaking is heat. The hot rod bumps the water around it; the water shakes faster and boils.' },
-  kettle: { id: 'kettle', group: '♨️ A very big kettle', icon: '🌀', title: 'Steam spins a turbine', text: 'The steady splits make heat, the heat boils water, the steam spins a big fan: the turbine.' },
-  lights: { id: 'lights', group: '♨️ A very big kettle', icon: '💡', title: 'The generator lights a town', text: 'The turbine turns a generator. Electricity runs along wires and reaches every house at the same moment: lights, fridges and TVs work.' },
-  safe: { id: 'safe', group: '🛡️ Safety', icon: '🛑', title: 'Safe by itself', text: 'Rods pulled too far: the splits branch. The rods drop back by themselves and it dies down. And the fuel cannot explode like a bomb.' },
-  waste: { id: 'waste', group: '🗄️ The honest part', icon: '☢️', title: 'The used fuel', text: 'The used fuel is radioactive: it sends out invisible, harmful rays. It cools for years in a deep pool (water stops the rays), then goes into thick steel-and-concrete casks under guard. It stays radioactive for a very long time; that problem is not solved yet.' },
+// 📖 the story column: each beat's chapter and icon — its words are the
+// narration script itself (TimelineColumn)
+const BEATS: Record<string, StoryBeat> = {
+  remember: { id: 'remember', group: '💥 Remember', icon: '💥' },
+  rods: { id: 'rods', group: '🦯 The trick', icon: '🦯' },
+  steady: { id: 'steady', group: '🦯 The trick', icon: '➖' },
+  heat: { id: 'heat', group: '♨️ A very big kettle', icon: '🔥' },
+  kettle: { id: 'kettle', group: '♨️ A very big kettle', icon: '🌀' },
+  lights: { id: 'lights', group: '♨️ A very big kettle', icon: '💡' },
+  safe: { id: 'safe', group: '🛡️ Safety', icon: '🛑' },
+  waste: { id: 'waste', group: '🗄️ The honest part', icon: '☢️' },
 }
 
 const ROW_M = 18
@@ -70,7 +79,7 @@ export function PlantExample({ active }: { active: boolean }) {
   const [journey, setJourney] = useState<PlantJourney | null>(null)
   const [paused, setPaused] = useState(false)
   const [beat, setBeat] = useState<string>(PLANT_ORDER[0])
-  const [seek, setSeek] = useState<{ id: string; n: number } | null>(null)
+  const [seek, setSeek] = useState<StorySeek | null>(null)
   const [rightTab, setRightTab] = useState<'story' | 'photos'>('story')
   const choose = (j: PlantJourney | null) => {
     cancelNarration() // navigating is a deliberate interruption
@@ -83,10 +92,6 @@ export function PlantExample({ active }: { active: boolean }) {
     setJourney(null)
     setPaused(false)
   }, [])
-  const onSeek = useCallback((id: string) => {
-    cancelNarration()
-    setSeek((prev) => ({ id, n: (prev?.n ?? 0) + 1 }))
-  }, [])
   const running = journey !== null
   // ⎵ Space = ⏸ Pause / ▶ Resume while the story plays
   useSpaceToPause(active && running, () => setPaused((v) => !v))
@@ -98,6 +103,18 @@ export function PlantExample({ active }: { active: boolean }) {
     active,
     paused,
   })
+  // 📖 a clicked sentence: the voice restarts at it, the story
+  // lands where that piece comes up
+  const { seekTo } = narration
+  const onSeek = useCallback(
+    (id: string, piece: number, sentence: number) => {
+      const land = seekTo(id, piece, sentence)
+      setSeek((prev) => ({ id, n: (prev?.n ?? 0) + 1, ...land }))
+    },
+    [seekTo],
+  )
+  const voiceLang = useVoiceStore((s) => s.lang)
+  const transcript = transcriptScript(PLANT_SCRIPTS, voiceLang)
 
   const rowW = FISSION_W - 2 * ROW_M
   return (
@@ -122,14 +139,17 @@ export function PlantExample({ active }: { active: boolean }) {
             </button>
           }
         />
-        <div className={INFO_PANEL}>
-          <SectionHeader>How it works</SectionHeader>
-          <Paras items={HOW} />
-          <SectionHeader>Honest notes</SectionHeader>
-          <Paras items={HONEST} className="text-slate-400" />
-          <SectionHeader>A true story</SectionHeader>
-          <Paras items={TRUE} />
-        </div>
+        {/* the info panel belongs to a story: none on the chooser */}
+        {running && (
+          <div className={INFO_PANEL}>
+            <SectionHeader type="how" />
+            <Paras max={SECTION_MAX} items={HOW} />
+            <SectionHeader type="honest" />
+            <Paras max={SECTION_MAX} items={HONEST} className="text-slate-400" />
+            <SectionHeader type="true" />
+            <Paras max={SECTION_MAX} items={TRUE} />
+          </div>
+        )}
       </div>
 
       {/* middle: the canvas, with the chooser over it */}
@@ -234,7 +254,12 @@ export function PlantExample({ active }: { active: boolean }) {
             <p className="px-1 pt-2 text-sm text-slate-400">👈 Pick a story — it will appear here, step by step.</p>
           ) : (
             <TimelineColumn
-              items={PLANT_ORDER.map((id) => STEPS[id])}
+              beats={PLANT_ORDER.map((id) => BEATS[id])}
+              script={transcript.script}
+              lang={transcript.lang}
+              speakingPiece={narration.speakingPiece}
+              speakingSentence={narration.speakingSentence}
+              voiced={narration.voiced}
               currentId={beat}
               visible={active && rightTab === 'story'}
               onSeek={onSeek}

@@ -1,6 +1,13 @@
-import { useEffect, useId, useRef, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useId, useRef, useSyncExternalStore } from 'react'
 import { useVoiceStore, type NarrationLang } from '../state/voiceStore'
-import { PIECE_MARK, WATCH_BREAK_S, parseNarrationLine } from '../stage/narrationScript'
+import {
+  LINE_GAP_S,
+  PIECE_MARK,
+  WATCH_BREAK_S,
+  parseNarrationLine,
+  pieceLanding,
+  type PieceLanding,
+} from '../stage/narrationScript'
 
 export { PIECE_MARK, WATCH_BREAK_S }
 
@@ -24,8 +31,6 @@ export { PIECE_MARK, WATCH_BREAK_S }
 // player remembers which demo OWNS the current narration, so a demo going
 // quiet can only silence itself — never a line another demo just queued.
 
-const LINE_GAP_S = 1 // the breath between two back-to-back lines
-
 /** story-time rate while the narrator talks: listen first, then watch */
 export const NARRATION_HOLD = 0.15
 
@@ -47,11 +52,14 @@ export interface NarrationStatus {
   piece: string | null
   /** something is playing or queued (a piece, a break, a breath) */
   busy: boolean
+  /** the sentence of that piece being said (its index; null = none, or
+   *  the piece's sentence timings aren't known) */
+  sentence: number | null
 }
 
 // ---- the module-level player (one narrator per page) ----
 
-let status: NarrationStatus = { speaking: false, failed: false, gateBeat: null, piece: null, busy: false }
+let status: NarrationStatus = { speaking: false, failed: false, gateBeat: null, piece: null, busy: false, sentence: null }
 const listeners = new Set<() => void>()
 
 function setStatus(patch: Partial<NarrationStatus>) {
@@ -61,7 +69,8 @@ function setStatus(patch: Partial<NarrationStatus>) {
     next.failed === status.failed &&
     next.gateBeat === status.gateBeat &&
     next.piece === status.piece &&
-    next.busy === status.busy
+    next.busy === status.busy &&
+    next.sentence === status.sentence
   )
     return
   status = next
@@ -79,7 +88,31 @@ const getStatus = () => status
  *  piece opens its beat again. `piece` = `<beat>#<index>`: the piece itself,
  *  or (on a watch break) the piece it leads into — so a language switch
  *  knows exactly what is still to be said. */
-type Item = { url: string; endsGate?: boolean; piece: string } | { watch: number; piece?: string }
+type Item = { url: string; endsGate?: boolean; piece: string; from?: number } | { watch: number; piece?: string }
+
+/** where each sentence starts in each piece's audio (seconds), by piece
+ *  url — from the story's sentences.json (scripts/narration-audio/
+ *  timings.ts), loaded when the story starts */
+const sentenceTimes = new Map<string, number[]>()
+const timingsLoaded = new Set<string>()
+function loadSentenceTimes(base: string, lines: Record<string, string>) {
+  if (timingsLoaded.has(base)) return
+  timingsLoaded.add(base)
+  fetch(`${base}sentences.json`)
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+    .then((t: Record<string, number[][]>) => {
+      for (const beat of Object.keys(lines)) t[beat]?.forEach((starts, i) => sentenceTimes.set(pieceFile(base, beat, i), starts))
+    })
+    .catch(() => timingsLoaded.delete(base)) // the next story start tries again
+}
+/** the sentence playing at `t` seconds into the piece at `url` */
+function sentenceAt(url: string, t: number): number | null {
+  const starts = sentenceTimes.get(url)
+  if (!starts) return null
+  let i = 0
+  while (i + 1 < starts.length && starts[i + 1] <= t + 0.05) i++
+  return i
+}
 
 /** how many pieces of each beat's line have been said to the end (a
  *  language switch or re-enable picks up after them, never repeats them);
@@ -193,7 +226,7 @@ function gateSecondsLeft(): number {
       continue
     }
     if (afterAudio) t += LINE_GAP_S
-    t += pieceSeconds(it.url)
+    t += Math.max(0, pieceSeconds(it.url) - (it.from ?? 0))
     if (it.endsGate) return t
     afterAudio = true
   }
@@ -205,7 +238,7 @@ function fail() {
   queue.length = 0
   playing = false
   clearWait()
-  setStatus({ speaking: false, failed: true, gateBeat: null, piece: null, busy: false })
+  setStatus({ speaking: false, failed: true, gateBeat: null, piece: null, busy: false, sentence: null })
 }
 
 function advance() {
@@ -231,19 +264,27 @@ function advance() {
     const { beat, index } = splitPiece(item.piece)
     told.set(beat, Math.max(told.get(beat) ?? 0, index + 1))
     current = null
-    setStatus(item.endsGate ? { speaking: false, gateBeat: null, piece: null } : { speaking: false, piece: null })
+    setStatus(
+      item.endsGate
+        ? { speaking: false, gateBeat: null, piece: null, sentence: null }
+        : { speaking: false, piece: null, sentence: null },
+    )
     // a science piece flows straight into its watch break; between lines,
     // a breath before the next one (if any is waiting)
     if (queue[0] && 'watch' in queue[0]) advance()
     else startWait(LINE_GAP_S, () => my === seq && advance())
   }
   a.onerror = () => my === seq && fail()
+  // the 📖 transcript lights up the sentence being said
+  a.ontimeupdate = () => my === seq && setStatus({ sentence: sentenceAt(item.url, a.currentTime) })
   unlocked = true
   a.volume = 1 // a language switch fades it out
-  a.src = item.url
+  // a transcript click on a later sentence starts the piece there (a
+  // media fragment: the browser starts at that second, never at 0 first)
+  a.src = item.from ? `${item.url}#t=${item.from}` : item.url
   // speaking from the moment the piece is requested: the story must not
   // creep on while the file loads (it would drift ahead of the voice)
-  setStatus({ speaking: true, piece: item.piece })
+  setStatus({ speaking: true, piece: item.piece, sentence: sentenceAt(item.url, item.from ?? 0) })
   a.play().then(
     () => {
       if (my !== seq) return
@@ -310,8 +351,9 @@ export interface LineSpec {
 }
 
 /** append a line from piece `from` on; `lead` = a watch break to open with
- *  instead of the line's own (what was left of an interrupted break) */
-function pushLine(spec: LineSpec, from: number, lead?: number) {
+ *  instead of the line's own (what was left of an interrupted break);
+ *  `into` = seconds into that first piece's audio to start at */
+function pushLine(spec: LineSpec, from: number, lead?: number, into = 0) {
   const { beat, urls, gated, watchFirst, run } = spec
   const first = Math.min(from, urls.length - 1)
   const opening = lead ?? (first === 0 ? watchFirst : 0)
@@ -320,7 +362,12 @@ function pushLine(spec: LineSpec, from: number, lead?: number) {
     learnDuration(urls[i])
     // a run line has no watch breaks: the animation never waits for it
     if (i > first && !run) queue.push({ watch: WATCH_BREAK_S, piece: `${beat}#${i}` })
-    queue.push({ url: urls[i], endsGate: gated && i === urls.length - 1, piece: `${beat}#${i}` })
+    queue.push({
+      url: urls[i],
+      endsGate: gated && i === urls.length - 1,
+      piece: `${beat}#${i}`,
+      ...(i === first && into > 0 ? { from: into } : {}),
+    })
   }
   if (gated) setStatus({ gateBeat: beat })
 }
@@ -368,10 +415,11 @@ function stopNow() {
   if (audioEl) {
     audioEl.onended = null
     audioEl.onerror = null
+    audioEl.ontimeupdate = null
     audioEl.pause()
     audioEl.removeAttribute('src')
   }
-  setStatus({ speaking: false, gateBeat: null, piece: null, busy: false })
+  setStatus({ speaking: false, gateBeat: null, piece: null, busy: false, sentence: null })
 }
 
 /**
@@ -470,7 +518,7 @@ export function useNarration({
   flow?: boolean
   /** run pacing: never gated, no watch breaks */
   run?: boolean
-}): NarrationStatus & { mine: boolean; id: string } {
+}): NarrationStatus & { mine: boolean; id: string; restart: (spec: LineSpec | null, from: number, into?: number) => void } {
   const id = useId()
   const lastKey = useRef<string | null>(null)
   const urlsKey = audioUrls.join('\n')
@@ -504,8 +552,30 @@ export function useNarration({
   // leaving the page silences the narrator
   useEffect(() => () => cancelNarration(id), [id])
 
+  /** a 📖 transcript click: drop everything, then say `spec`'s line from
+   *  piece `from` on — opening with the watch break before it, where the
+   *  stage lands (pieceLanding). The beat counts as queued, so the stage
+   *  reporting it afterwards does not queue it a second time. */
+  const enabledRef = useRef(enabled)
+  enabledRef.current = enabled
+  const restart = useCallback(
+    (spec: LineSpec | null, from: number, into = 0) => {
+      cancelNarration()
+      if (!spec || !enabledRef.current || status.failed || !spec.urls.length) return
+      lastKey.current = spec.beat
+      owner = id
+      const first = Math.min(from, spec.urls.length - 1)
+      // a later voice toggle or language switch picks up from here too
+      if (first > 0) told.set(spec.beat, first)
+      // a later sentence starts at once, mid-piece: no break before it
+      pushLine(spec, first, into > 0 ? 0 : first > 0 && !spec.run ? WATCH_BREAK_S : undefined, into)
+      advance()
+    },
+    [id],
+  )
+
   const s = useSyncExternalStore(subscribe, getStatus)
-  return { ...s, mine: owner === id, id }
+  return { ...s, mine: owner === id, id, restart }
 }
 
 /** a beat's line as the player queues it: science pieces and show-first
@@ -562,7 +632,14 @@ export function useDemoNarration({
       parseNarrationLine(l).pieces.forEach((_, i) => learnDuration(pieceFile(base, id, i)))
     }
   }, [lines, base, voiceOn])
-  const { speaking, failed, mine, gateBeat, piece, busy, id } = useNarration({
+  // where each sentence starts (the 📖 transcript) — also with the voice
+  // off: a click on a later sentence still lands where it is said
+  const seekLines = lines ?? scripts?.en
+  const seekBase = lines ? base : `${import.meta.env.BASE_URL}narration/${storyKey}/en/`
+  useEffect(() => {
+    if (storyKey && seekLines) loadSentenceTimes(seekBase, seekLines)
+  }, [storyKey, seekLines, seekBase])
+  const { speaking, failed, mine, gateBeat, piece, busy, id, restart, sentence } = useNarration({
     enabled: voiceOn && active && !!lines,
     silence: !active, // switching to another demo silences this one
     paused,
@@ -604,13 +681,40 @@ export function useDemoNarration({
   const endOfRun = run && !(next && parseNarrationLine(next).run)
   const holdBeat = running && mine && (gateBeat === beatKey || (endOfRun && busy))
   const fit = holdBeat && !!parsed?.flow ? gateSecondsLeft : null
+  // 📖 a transcript click on sentence `j` of piece `k` of `beat`: the
+  // voice restarts at that sentence, and the stage is told where in the
+  // beat to land (the English script paces the landing when this
+  // language has none)
+  const seekTo = useCallback(
+    (beat: string, k: number, j = 0): PieceLanding => {
+      const l = seekLines?.[beat]
+      if (!l) {
+        cancelNarration()
+        return { offset: 0, frac: 0 }
+      }
+      const ps = parseNarrationLine(l)
+      const piece = Math.max(0, Math.min(k, ps.pieces.length - 1))
+      const urls = ps.pieces.map((_, i) => pieceFile(seekBase, beat, i))
+      // seconds into the piece's audio where sentence j starts (0 when the
+      // timings are not loaded: the piece's start)
+      const into = j > 0 ? (sentenceTimes.get(urls[piece])?.[j] ?? 0) : 0
+      restart(lines ? lineSpec(`${storyKey}:${beat}`, urls, ps) : null, piece, into)
+      return pieceLanding(ps, urls.map(pieceSeconds), piece, into, NARRATION_HOLD)
+    },
+    [seekLines, lines, seekBase, storyKey, restart],
+  )
   return {
+    seekTo,
+    /** narration is on and telling this demo's story (pieces are tracked) */
+    voiced: running && !!lines && !failed && mine,
     timeScale: fit || run ? 1 : running && speaking && mine ? (holdBeat ? SCIENCE_HOLD : NARRATION_HOLD) : 1,
     holdBeat,
     fit,
     /** which piece of this beat's line is being said (null = none) */
     speakingPiece:
       running && mine && piece?.startsWith(`${beatKey}#`) ? Number(piece.slice(beatKey.length + 1)) : null,
+    /** which sentence of that piece is being said (null = unknown) */
+    speakingSentence: running && mine && piece?.startsWith(`${beatKey}#`) ? sentence : null,
     failed: running && !!lines && failed,
     /** the chosen language has no script for this story yet */
     missingLang: running && !lines ? lang : null,

@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef } from 'react'
 import { Layer, Shape, Stage } from 'react-konva'
 import Konva from 'konva'
-import { drifted, fitRate } from './flowPacing'
+import { drifted, fitRate, seekInto, type StorySeek } from './flowPacing'
 
 // A story canvas for demos whose story is a plain SEQUENCE of beats with
 // fixed lengths (⚡ power plant first; the same shape as the 🔭 detective
@@ -13,8 +13,9 @@ import { drifted, fitRate } from './flowPacing'
 //   - `holdBeat` = the beat gate: the story never leaves a beat (or
 //     finishes) while the narrator still has pieces to say about it;
 //   - `fit` = flow pacing: one steady speed per beat, fitted to its line;
-//   - `seek` jumps to a beat's start (the beats are fixed-length, so a
-//     jump is exact without snapshots).
+//   - `seek` jumps into a beat — its start, or where a clicked transcript
+//     sentence comes up (the beats are fixed-length, so a jump is exact
+//     without snapshots).
 
 export interface SequenceStory {
   order: readonly string[]
@@ -53,7 +54,7 @@ export const SequenceStage = memo(function SequenceStage({
   /** a change restarts the story from its first beat */
   storyKey: string | null
   paused: boolean
-  seek: { id: string; n: number } | null
+  seek: StorySeek | null
   active: boolean
   timeScale?: number
   holdBeat?: boolean
@@ -102,7 +103,7 @@ export const SequenceStage = memo(function SequenceStage({
     if (!seek || !s) return
     const i = s.order.indexOf(seek.id)
     if (i < 0) return
-    sim.current = { i, t: 0 }
+    sim.current = { i, t: seekInto(seek, s.durations[seek.id]) }
     finishedSent.current = false
     flow.current = null
     report()

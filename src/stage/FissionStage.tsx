@@ -24,7 +24,7 @@ import {
   strokeBomb,
 } from './bombShapes'
 import { CARDS_OUT_AT, CARD_STEP, drawIntroCards, preloadPortraits } from './bombIntro'
-import { drifted, fitRate } from './flowPacing'
+import { drifted, fitRate, seekInto, seeksIn, type StorySeek } from './flowPacing'
 import type { ParticleKind } from '../state/atomStore'
 import {
   BOMB_DESIGNS,
@@ -2048,8 +2048,8 @@ export const FissionStage = memo(function FissionStage({
   mode: BombDesignId | null
   /** freeze the whole demo (so kids can read the info panel) */
   paused: boolean
-  /** jump to a story step (n changes on every click) */
-  seek: { id: string; n: number } | null
+  /** jump into a story step (n changes on every click) */
+  seek: StorySeek | null
   active: boolean
   /** story-time rate: 1 = normal; lower holds the scene in slow motion
    *  while the narrator talks */
@@ -2201,6 +2201,19 @@ export const FissionStage = memo(function FissionStage({
         step(sim.current, 1 / 60)
         record()
       }
+    }
+    // a clicked transcript sentence: on to where its piece comes up. The
+    // beat's length is measured on a copy played ahead (like flow pacing)
+    if (seeksIn(seek)) {
+      const id = storyId(sim.current)
+      const look = structuredClone(sim.current)
+      let len = 0
+      while (len < LOOK_MAX_S && storyId(look) === id) {
+        step(look, STEP_DT)
+        len += STEP_DT
+      }
+      const into = seekInto(seek, len)
+      for (let t = STEP_DT; t <= into; t += STEP_DT) step(sim.current, STEP_DT)
     }
     report()
     shapeRef.current?.getLayer()?.batchDraw()

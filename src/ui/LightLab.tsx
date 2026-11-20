@@ -28,7 +28,6 @@ import {
   EM_BANDS,
   bandOf,
   colorName,
-  formatWavelength,
   isVisible,
   photonPunch,
   ringsBell,
@@ -52,7 +51,7 @@ import {
   type XrayLamp,
   type XrayObjectId,
 } from '../core/xray'
-import { Paras, SectionHeader, type Para } from './Paras'
+import { Paras, SECTION_MAX, SectionHeader, para, type Para } from './Paras'
 import { SideDrawer } from './SideDrawer'
 import { SegmentedSwitch } from './SegmentedSwitch'
 import { CHIP_KEY, FLAT, KEY, TRAY } from './surfaces'
@@ -285,7 +284,6 @@ function LightLabView({
   const [u, setU] = useState(wavelengthToU(670e-9)) // start on lithium red
   const [brightness, setBrightness] = useState(0.75)
   const [view, setView] = useState<WaveView>('wave')
-  const [rings, setRings] = useState(0)
   // all three lamps start on: the white-is-a-mixture surprise comes first
   const [lamps, setLamps] = useState<LampLevels>({ r: 0.85, g: 0.85, b: 0.85 })
   // the eye scene: a red apple under white light is the classic opening
@@ -349,7 +347,6 @@ function LightLabView({
   const nm = m * 1e9
   const visible = isVisible(m)
   const band = bandOf(m)
-  const brightWord = brightness < 0.35 ? 'a soft glow' : brightness < 0.7 ? 'nicely bright' : 'very bright'
   const punch = photonPunch(m)
   const punchText =
     punch >= 1
@@ -357,273 +354,83 @@ function LightLabView({
       : `about ${Number((1 / punch).toPrecision(2)).toLocaleString('en-US')}× softer than`
   const colorWord = visible ? colorName(nm) : band.label
 
+  // ---- ℹ️ the info panel: for grown-ups, scannable by its bold words.
+  // 📍 Right now is live (never sticky), the rest follows the scene.
+
+  // 📍 Right now says only what the screen does NOT (Elena, 2026-11-20:
+  // "ok thanks cap, I am not blind") — never the color, length, count or
+  // label already on the canvas or the controls; only what it MEANS. When
+  // there is nothing to add, the section is not shown.
   const rightNowWave: Para[] = visible
-    ? [
-        {
-          icon: '🌈',
-          text: (
-            <>
-              You are making <strong style={{ color: wavelengthToCss(nm) }}>{colorName(nm)}</strong>{' '}
-              light: one wave is <strong>{formatWavelength(m)}</strong> long, and it is {brightWord}.
-            </>
-          ),
-        },
-        {
-          icon: '👁️',
-          text: 'This wave is inside the rainbow sliver on the bar — one of the few your eyes can catch.',
-        },
-      ]
+    ? []
     : [
-        {
-          icon: '🥷',
-          text: (
-            <>
-              You are making <strong>{band.label}</strong> — one wave is{' '}
-              <strong>{formatWavelength(m)}</strong> long. Your eyes catch NOTHING, but the wave is
-              just as real as red or blue.
-            </>
-          ),
-        },
-        { icon: '📡', text: `${band.anchor[0].toUpperCase()}${band.anchor.slice(1)}.` },
-        {
-          icon: '🥊',
-          text: `One packet of this light hits ${punchText} a packet of deep-red light.`,
-        },
+        para('🥷', 'Invisible to eyes,', ' but as real as red light.'),
+        para('📡', 'In daily life:', ` ${band.anchor}.`),
+        para('🥊', `One packet hits ${punchText}`, ' a deep-red one.'),
       ]
-
   const rightNowPhotons: Para[] = [
-    {
-      icon: '⚪',
-      text: (
-        <>
-          Same light, the other true picture: a stream of <strong>{colorWord}</strong> PHOTONS —
-          little packets of light, every one of them identical.
-        </>
-      ),
-    },
-    {
-      icon: '🥊',
-      text: `Each packet hits ${punchText} a deep-red packet — the little meter on every photon shows it. The COLOR decides the punch; nothing else can.`,
-    },
-    {
-      icon: '💡',
-      text: 'The brightness slider now means HOW MANY photons fly by each second — never how hard each one hits.',
-    },
-    ...(visible
-      ? []
-      : [
-          {
-            icon: '🥷',
-            text: `These are ${band.label} photons — invisible to eyes. ${band.anchor[0].toUpperCase()}${band.anchor.slice(1)}.`,
-          },
-        ]),
+    para('🥊', `Each hits ${punchText}`, ' a deep-red packet — only the color sets the punch.'),
+    ...(visible ? [para('💡', 'Brightness = how many', ' photons per second, never how hard each hits.')] : []),
   ]
-
   const rightNowDoorbell: Para[] = ringsBell(m)
     ? [
-        {
-          icon: '🔔',
-          text: (
-            <>
-              RING! Every <strong>{colorWord}</strong> packet that lands pays the metal&apos;s whole
-              price by itself and knocks one electron off — <strong>{rings}</strong> ring
-              {rings === 1 ? '' : 's'} so far.
-            </>
-          ),
-        },
-        {
-          icon: '🏃',
-          text: 'Shorter waves pay MORE than the price — the spare energy becomes the electron\'s speed. Watch how fast they fly off.',
-        },
+        para('🔔', 'One packet frees one electron:', <> a {colorWord} packet pays the metal&apos;s price alone.</>),
+        para('🏃', 'Shorter waves pay extra:', ' the spare energy becomes the electron’s speed.'),
       ]
     : [
-        {
-          icon: '🔕',
-          text: (
-            <>
-              <strong>{colorWord}</strong> packets land… and NOTHING. Each packet alone is too weak
-              for this metal — and packets can never team up. ({rings} ring
-              {rings === 1 ? '' : 's'} so far, none of them from this light.)
-            </>
-          ),
-        },
-        {
-          icon: '🔥',
-          text: 'Their energy does not vanish: it only warms the plate. Turn the brightness all the way up — the plate warms faster, the bell stays silent.',
-        },
+        para('🔕', <>One {colorWord} packet is too weak,</>, ' and packets never team up.'),
+        para('🔥', 'The energy only warms the plate', ' — even at full brightness.'),
       ]
-
   // which lamps are meaningfully on, and what their overlap makes
   const lampsOn = (['r', 'g', 'b'] as const).filter((id) => lamps[id] > 0.15)
   const LAMP_NAMES = { r: 'red', g: 'green', b: 'blue' } as const
-  const MIX2: Record<string, string> = { rg: 'YELLOW', rb: 'MAGENTA', gb: 'CYAN (turquoise)' }
+  const MIX2: Record<string, string> = { rg: 'yellow', rb: 'magenta', gb: 'cyan (turquoise)' }
   const mixKey = lampsOn.join('')
   const rightNowLamps: Para[] =
     lampsOn.length === 0
-      ? [
-          {
-            icon: '⚫',
-            text: 'All three lamps are off. The wall is black — black is simply NO light arriving at all.',
-          },
-        ]
+      ? [para('⚫', 'Black is no light arriving', ' at all — not a color of its own.')]
       : lampsOn.length === 1
-        ? [
-            {
-              icon: '🔦',
-              text: `Only the ${LAMP_NAMES[lampsOn[0]]} lamp shines, so the wall can only be ${LAMP_NAMES[lampsOn[0]]} — a wall never adds colors of its own.`,
-            },
-          ]
+        ? []
         : lampsOn.length === 2
           ? [
-              {
-                icon: '✨',
-                text: `${LAMP_NAMES[lampsOn[0]]} and ${LAMP_NAMES[lampsOn[1]]} light overlap — and the overlap is ${MIX2[mixKey]}! There is no ${MIX2[mixKey].toLowerCase().split(' ')[0]} lamp anywhere: your eye ADDS the two.`,
-              },
-              ...(mixKey === 'rb'
-                ? [
-                    {
-                      icon: '💗',
-                      text: 'Magenta is special: it is not in the rainbow at all. No single wavelength makes it — it exists ONLY as a mixture.',
-                    },
-                  ]
-                : []),
+              para('✨', `No ${MIX2[mixKey]} lamp exists:`, ` your eye adds ${LAMP_NAMES[lampsOn[0]]} and ${LAMP_NAMES[lampsOn[1]]}.`),
+              ...(mixKey === 'rb' ? [para('💗', 'Magenta is not in the rainbow:', ' no single wavelength makes it, only a mix.')] : []),
             ]
-          : [
-              {
-                icon: '⚪',
-                text: 'All three overlap in the middle: WHITE. White is not a color of its own — it is every lamp arriving together.',
-              },
-              {
-                icon: '🌈',
-                text: 'Around the white middle you can see every pair: red+green = yellow, green+blue = cyan, red+blue = magenta.',
-              },
-            ]
-
+          : [para('⚪', 'White is every lamp arriving together,', ' not a color of its own.')]
   // the eye scene's live outcome
   const eyeObj = EYE_OBJECTS[eyeObject]
   const eyeBundle = eyeLamp === 'white' ? WHITE_BUNDLE : [eyeLamp]
   const eyeReflected = reflectedBundle(eyeObj, eyeBundle)
   const seen = eyeSees(eyeReflected)
   const lampWord =
-    eyeLamp === 'white'
-      ? 'White light — the whole bundle of waves —'
-      : `Pure ${EYE_LAMPS.find((l) => l.nm === eyeLamp)?.name ?? colorName(eyeLamp)} light`
+    eyeLamp === 'white' ? 'White light' : `Pure ${EYE_LAMPS.find((l) => l.nm === eyeLamp)?.name ?? colorName(eyeLamp)} light`
   const rightNowEye: Para[] =
     seen.name === 'black'
       ? [
-          {
-            icon: '⚫',
-            text: (
-              <>
-                {lampWord} pours onto the {eyeObj.name} — and it swallows ALL of it. Nothing
-                bounces, nothing reaches the eye: the {eyeObj.name} looks{' '}
-                <strong>BLACK</strong>. Black is no light at all.
-              </>
-            ),
-          },
-          {
-            icon: '🔥',
-            text: 'The swallowed light does not vanish — it warms the object (watch the shimmer). That is why dark things get hot in the sun.',
-          },
+          para('⚫', 'Nothing bounces back:', <> it swallows all the {lampWord.toLowerCase()}.</>),
+          para('🔥', 'Swallowed light warms it', ' (the shimmer) — why dark things get hot in the sun.'),
         ]
       : [
-          {
-            icon: '👁️',
-            text: (
-              <>
-                {lampWord} pours onto the {eyeObj.name}. It swallows{' '}
-                {eyeReflected.length === eyeBundle.length ? 'nothing' : 'most of the bundle'} and
-                bounces {eyeReflected.length === eyeBundle.length ? 'everything' : 'only its band'}{' '}
-                — and that bounce flies into the pupil: the eye sees{' '}
-                <strong style={{ color: seen.css }}>{seen.name}</strong>.
-              </>
-            ),
-          },
-          {
-            icon: '🪞',
-            text: 'The object adds NO light of its own. Its color is simply what it refuses to swallow.',
-          },
+          para(
+            '🪞',
+            eyeReflected.length === eyeBundle.length ? 'It bounces everything back:' : 'It bounces only its own band:',
+            ' its color is what it refuses to swallow.',
+          ),
         ]
-
   const rightNowPrism: Para[] =
     prismLamp === 'white'
       ? [
-          {
-            icon: '🌈',
-            text: 'WHITE goes in — and the whole rainbow comes out onto the screen. The prism added nothing: all those colors were already travelling together inside the white beam. The prism only SORTS them.',
-          },
-          {
-            icon: '🔽',
-            text: 'Look at the order on the screen: red bends least, violet bends most. The glass slows shorter waves a little more, so they turn a little harder.',
-          },
+          para('🌈', 'The colors were already inside the beam:', ' the prism only sorts them.'),
+          para('🔽', 'Red bends least, violet most:', ' glass slows shorter waves a little more.'),
         ]
       : [
-          {
-            icon: '🔦',
-            text: (
-              <>
-                Pure{' '}
-                <strong style={{ color: wavelengthToCss(prismLamp) }}>
-                  {EYE_LAMPS.find((l) => l.nm === prismLamp)?.name ?? colorName(prismLamp)}
-                </strong>{' '}
-                goes in — and only {EYE_LAMPS.find((l) => l.nm === prismLamp)?.name ?? 'that color'}{' '}
-                comes out, just BENT. Nothing fans out: a pure color has no other colors hiding
-                inside it.
-              </>
-            ),
-          },
-          {
-            icon: '🏆',
-            text: 'This is exactly how Newton proved the colors come from the LIGHT, not from the glass: if the prism were painting the light, it would paint a pure color too.',
-          },
+          para('🔦', 'Only bent, not split:', ' a pure color has nothing hidden inside.'),
+          para('🏆', 'Newton’s proof:', ' if glass painted the colors, it would paint a pure color too.'),
         ]
-
-  // the bone-photo scene's live narration
-  const xrayObj = XRAY_OBJECTS[xrayObject]
-  const XRAY_FINDS: Record<XrayObjectId, string> = {
-    hand: 'the bones stay pale — and the ring stays PURE white: metal swallows every single packet',
-    dog: 'the dog\'s whole skeleton appears — skull, spine, ribs, legs and the tail\'s little chain — and the metal tag on its collar glows white',
-    case: 'the keys and scissors glow white, the teddy is a faint ghost — the bag never had to be opened',
-  }
   const rightNowXray: Para[] =
     xrayLamp === 'ordinary'
-      ? [
-          {
-            icon: '🔦',
-            text: (
-              <>
-                Ordinary light pours onto {xrayObj.name} — and EVERY packet stops dead at the first
-                surface it meets. Nothing gets inside; the film only learns the outline.
-              </>
-            ),
-          },
-          {
-            icon: '⬜',
-            text: 'Watch the photo: a plain white silhouette on black. No bones, no secrets — ordinary packets are far too weak to punch through anything.',
-          },
-        ]
-      : [
-          {
-            icon: '🩻',
-            text: (
-              <>
-                X-ray packets (drawn ghost-pale — eyes catch nothing of them) rain straight THROUGH
-                the soft parts of {xrayObj.name} as if they were fog — but watch the little flashes:
-                something hidden inside keeps swallowing them, always in the same places.
-              </>
-            ),
-          },
-          {
-            icon: '📸',
-            text: (
-              <>
-                The film darkens wherever packets land — and on the developing photo{' '}
-                {XRAY_FINDS[xrayObject]}.
-              </>
-            ),
-          },
-        ]
-
+      ? [para('🔦', 'Ordinary light stops at the surface:', ' its packets are far too weak to get inside.')]
+      : [para('🩻', 'X-rays pass soft parts like fog;', ' bones and metal swallow them — white on the photo.')]
   const rightNow =
     scene === 'doorbell'
       ? rightNowDoorbell
@@ -639,291 +446,144 @@ function LightLabView({
                 ? rightNowPhotons
                 : rightNowWave
 
-  const seeingDoorbell: Para[] = [
-    {
-      icon: '🔔',
-      text: 'Every metal asks a fixed price to set one electron free. ONE packet must pay it alone — green light and everything shorter can pay OUR plate\'s price; yellow and everything longer cannot, ever.',
-    },
-    {
-      icon: '🥈',
-      text: 'Our plate behaves like POTASSIUM, a soft silvery metal with a low price (its real limit is ≈ 540 nm — green). Everyday metals like zinc, iron or copper ask much more: only ultraviolet can free THEIR electrons.',
-    },
-    {
-      icon: '💡',
-      text: 'Brightness only changes how OFTEN packets arrive — never what one packet can pay. That is why no amount of red light ever rings the bell.',
-    },
-    {
-      icon: '🏆',
-      text: 'If light were ONLY a wave, enough red would slowly add up and ring it. It never does. This little doorbell is how we know light really comes in packets.',
-    },
-  ]
-
-  const seeingLamps: Para[] = [
-    {
-      icon: '➕',
-      text: 'Mixing LIGHT adds up: red + green = yellow, all three = white. Mixing paint does the opposite — paint EATS colors, so paint mixtures get darker, never white.',
-    },
-    {
-      icon: '📺',
-      text: 'Your screen does exactly this. Every pixel is three tiny lamps — see the magnified pixel in the corner, and the real photo in the 📷 panel.',
-    },
-    {
-      icon: '🤫',
-      text: 'Honest note: screen yellow is a trick — really red + green arriving together. TRUE yellow light (like sodium\'s 589 nm) is one single wave. Your eye just cannot tell the two apart.',
-    },
-  ]
-
-  const seeingEye: Para[] = [
-    {
-      icon: '🍎',
-      text: 'Objects have no light of their own. Light pours on them as a bundle of waves; each object SWALLOWS some and bounces the rest — your eye sees whatever bounced.',
-    },
-    {
-      icon: '💡',
-      text: 'An object can only bounce colors it is GIVEN. Under pure blue light a red apple has nothing to bounce — so it is black, honestly black, not "dark red".',
-    },
-    {
-      icon: '🌈',
-      text: 'Honest notes: real surfaces bounce BANDS (we draw a few waves as the band\'s symbol, not single lines — those belong to lone atoms and their barcodes); the eye is drawn huge and cartoon-simple; and real surfaces scatter light in ALL directions — we draw the one bundle that happens to reach the eye.',
-    },
-  ]
-
-  const seeingPrism: Para[] = [
-    {
-      icon: '⚪',
-      text: 'White light is not a color — it is ALL the wavelengths travelling together. They only look white because they arrive at once.',
-    },
-    {
-      icon: '🔼',
-      text: 'Glass slows light down a little, and it slows shorter waves a little MORE — so every wavelength turns by its own amount, and the bundle fans apart. Sorting, not painting.',
-    },
-    {
-      icon: '🌦️',
-      text: 'A rainbow in the sky is millions of raindrops doing the prism\'s job to sunlight. Switch to 💧 Raindrop: the light goes in, bounces once off the back of the drop and comes back out, fanned into colors — about 42° from where the sunlight was heading. That is why a rainbow always stands opposite the Sun.',
-    },
-    {
-      icon: '💎',
-      text: 'Diamond bends light much more than glass or water. Turn a diamond prism and the light often cannot get out: it bounces around inside (the little sparkles). That trapped, bouncing light is what makes a cut diamond glitter.',
-    },
-    {
-      icon: '🧾',
-      text: 'Honest notes: the colors here fan out about six times wider than in a real prism, so you can see them (real glass spreads white light by only about one degree — the ORDER of the colors and which material spreads more are true). Every surface also bounces back a little light; we leave that out. The raindrop is drawn hugely enlarged.',
-    },
-  ]
-
-  const seeingXray: Para[] = [
-    {
-      icon: '🌑',
-      text: 'An X-ray photo is a SHADOW picture. The film goes dark wherever packets get THROUGH — the bones look white because they swallowed their packets and their patch of film was never hit.',
-    },
-    {
-      icon: '⚪',
-      text: 'Why draw packets and not one long wave? Because the swallowing happens one packet at a time: each packet meets an atom and is either caught WHOLE or flies on untouched — all or nothing, never half. That game of chance is what the little flashes are playing. It is the wave machine\'s ⚪ photons picture — and each dash still carries its little wave inside.',
-    },
-    {
-      icon: '🦴',
-      text: 'Why bones? They are full of calcium — atoms with 20 electrons each (count them in the atom builder!). Big atoms with many electrons are great catchers; the little hydrogen, carbon and oxygen atoms flesh is made of barely slow a packet down.',
-    },
-    {
-      icon: '👁️',
-      text: 'It is the eye scene\'s exact opposite: your eye makes its picture from the light an object BOUNCES back — the doctor\'s photo is made from the light that got THROUGH.',
-    },
-    {
-      icon: '↩️',
-      text: 'A small share of the packets really does bounce away — in all directions (the sideways sparks). That stray light is why the radiographer steps behind a shielded wall and drapes you in the heavy lead apron.',
-    },
-    {
-      icon: '⚠️',
-      text: 'Honest note: packets strong enough to fly through you (thousands of times a red packet\'s punch — the doorbell\'s heavyweights) can also break molecules on the way. That is why real X-ray photos are quick and rare.',
-    },
-  ]
-
+  // 👀 what the scene shows (most important first)
   const seeing: Para[] =
     scene === 'doorbell'
-      ? seeingDoorbell
-      : scene === 'lamps'
-      ? seeingLamps
-      : scene === 'eye'
-      ? seeingEye
-      : scene === 'prism'
-      ? seeingPrism
-      : scene === 'xray'
-      ? seeingXray
-      : view === 'photons'
       ? [
-          {
-            icon: '⚪',
-            text: 'Same light — two true pictures. Looked at closely enough, light arrives in packets called photons. The wave picture and the packet picture are BOTH right; each answers different questions.',
-          },
-          {
-            icon: '🥊',
-            text: 'One photon\'s punch depends ONLY on its color (its wavelength) — never on brightness. Shorter wave → harder punch: that is why the meters fill toward violet and max out past it.',
-          },
-          {
-            icon: '🚫',
-            text: 'Photons are not little balls — the packet drawing is our symbol, just like the wavy line. Real photons have no edges you could draw.',
-          },
+          para('🔔', 'One packet must pay alone:', ' green and shorter can free our plate’s electrons; yellow and longer never can.'),
+          para('💡', 'Brightness only means more packets,', ' never a stronger one — so red never rings it.'),
+          para('🏆', 'Proof light comes in packets:', ' a pure wave would slowly add up and ring.'),
+          para('🥈', 'Our plate is like potassium', ' (limit ≈ 540 nm, green); zinc, iron or copper need ultraviolet.'),
         ]
-      : [
-          {
-            icon: '🌊',
-            text: 'Light is a travelling wave. The distance from one crest to the next — one wavelength — IS its color. Stretch it and the color changes; nothing else about it does.',
-          },
-          {
-            icon: '📊',
-            text: 'The bar on top is the whole light family on one line, from γ rays to radio. It is a LOG scale: every step to the right makes the waves ten times longer. The rainbow — everything eyes can see — is the thin sliver under the 👁.',
-          },
-          {
-            icon: '💡',
-            text: 'The brightness slider changes the wave\'s HEIGHT, never its color. Dim red is still red; blinding red is still red.',
-          },
-        ]
-
-  const tipsDoorbell: Para[] = [
-    {
-      icon: '🔴',
-      text: 'Try deep red at FULL brightness: a storm of packets, zero rings. Then one notch of dim violet: RING.',
-    },
-    {
-      icon: '⚖️',
-      text: 'Find the edge: slide slowly through green (around 540 nm) and catch the exact color where the bell starts ringing.',
-    },
-    {
-      icon: '🏃',
-      text: 'Compare how fast the electrons fly for violet vs X-rays — the leftover energy is theirs to keep.',
-    },
-  ]
-
-  const tipsWave: Para[] = [
-    { icon: '🖱️', text: 'Drag the wave itself left or right to squeeze or stretch it.' },
-    {
-      icon: '⚪',
-      text: 'Flip between 🌊 wave and ⚪ photons and watch the wave pinch into packets — then blur back into one wave.',
-    },
-    {
-      icon: '🌓',
-      text: 'In the ⚪ picture, turn the brightness down: FEWER packets, same punch each. A million red photons still can\'t do what one violet photon can — the doorbell scene will prove it.',
-    },
-    {
-      icon: '🟡',
-      text: 'Find 589 nm — that exact yellow is sodium\'s famous line from the ✨ Light & color demo (and old street lamps).',
-    },
-    {
-      icon: '🥷',
-      text: 'Slide past either end of the rainbow: the wave is still there, your eyes just stop catching it. Warmth from a fire and sunburn are both light you cannot see.',
-    },
-    {
-      icon: '📏',
-      text: 'Honest note: the wave is drawn about a MILLION times too big. About a hundred real red-light waves fit across one of your hairs.',
-    },
-  ]
-
-  const tipsLamps: Para[] = [
-    { icon: '🟡', text: 'Make yellow — without touching a single yellow thing: red up, green up, blue off.' },
-    { icon: '💗', text: 'Make magenta (red + blue): a color the rainbow does not have.' },
-    { icon: '⚪', text: 'All three to the top: white. Then pull one away and watch what white is made of.' },
-    {
-      icon: '🎨',
-      text: 'Try the same with real paints some day — you get brown, not white. Paint eats light; lamps add it.',
-    },
-  ]
-
-  const tipsEye: Para[] = [
-    { icon: '🔵', text: 'The trick: put the red apple under the blue lamp. Then snap back to white.' },
-    {
-      icon: '🟠',
-      text: 'Try the sodium-orange lamp (589 nm — the Light & color demo\'s line) on the blue cup: that is why cars lose their colors under old street lamps at night.',
-    },
-    { icon: '📄', text: 'The white paper is a mirror for colors: it always shows exactly what the lamp gives.' },
-    { icon: '🪨', text: 'The black stone eats every lamp — and warms up the most. Feel a dark car in summer.' },
-  ]
-
-  const tipsPrism: Para[] = [
-    { icon: '🔴', text: 'Send pure red through, then pure violet: same prism, different bend — and neither one splits.' },
-    { icon: '🌈', text: 'Back to white: count the stripes on the screen and check the order, red at the top to violet at the bottom.' },
-    { icon: '↻', text: 'Drag around the prism to turn it. Watch the rainbow slide up and down the screen — and find the angle where the light stops coming out of the far side.' },
-    { icon: '💎', text: 'Try diamond: the colors spread wider, and the light bounces inside far more often.' },
-    { icon: '💧', text: 'In the raindrop, drag the beam up and down. Only near one spot do the colors come back out together — that spot paints the rainbow.' },
-    { icon: '💿', text: 'At home: the rainbow flashes on a CD, or in the fine spray of a garden hose with the sun behind you — same unpacking.' },
-  ]
-
-  const tipsXray: Para[] = [
-    {
-      icon: '✨',
-      text: 'Watch the flashes before the photo develops: they keep landing in the same hidden places — the stopping spots ARE the picture.',
-    },
-    {
-      icon: '🔦',
-      text: 'Switch the tube to ordinary light: even blindingly bright, nothing gets past the skin — the photo is only a silhouette. Only X-ray packets punch through.',
-    },
-    {
-      icon: '🐕',
-      text: 'Photograph the dog, then compare with the REAL vet X-ray in the 📷 panel — pets get their bone photos exactly like we do.',
-    },
-    {
-      icon: '💍',
-      text: 'Find the ring on the hand\'s photo. The first X-ray picture ever made (📷 panel) was a hand with a ring too.',
-    },
-  ]
-
-  const tips =
-    scene === 'doorbell'
-      ? tipsDoorbell
       : scene === 'lamps'
-        ? tipsLamps
+        ? [
+            para('➕', 'Light adds up,', ' paint eats colors: lamp mixes get brighter, toward white; paint mixes darker.'),
+            para('📺', 'Your screen does exactly this:', ' every pixel is three tiny lamps (see the corner zoom).'),
+          ]
         : scene === 'eye'
-          ? tipsEye
+          ? [
+              para('🍎', 'Objects shine no light of their own:', ' they swallow some colors and bounce the rest to your eye.'),
+              para('💡', 'Only colors it is given:', ' under pure blue light a red apple is truly black.'),
+            ]
           : scene === 'prism'
-            ? tipsPrism
+            ? [
+                para('⚪', 'White is all wavelengths together,', ' looking white because they arrive at once.'),
+                para('🔼', 'Glass slows shorter waves more:', ' each color turns by its own amount — sorting, not painting.'),
+                para('🌦️', 'A rainbow = raindrops as prisms:', ' one bounce inside, out at about 42° — always opposite the Sun.'),
+                para('💎', 'Diamond bends much more:', ' light bounces around inside — that trapped light is its glitter.'),
+              ]
             : scene === 'xray'
-              ? tipsXray
-              : tipsWave
+              ? [
+                  para('🌑', 'An X-ray photo is a shadow:', ' film darkens where packets pass — bones stay white.'),
+                  para('🦴', 'Bones are full of calcium,', ' a big atom (20 electrons) that catches packets; flesh’s small atoms barely do.'),
+                  para('⚪', 'Packets, not one long wave:', ' each one is caught whole or flies on — all or nothing.'),
+                  para('👁️', 'The eye scene’s opposite:', ' eyes see bounced light, the photo shows light that got through.'),
+                  para('↩️', 'A few packets scatter sideways', ' (the sparks) — why staff step behind a shielded wall.'),
+                ]
+              : view === 'photons'
+                ? [
+                    para('⚪', 'Two true pictures of one light:', ' wave and photons are both right, for different questions.'),
+                    para('🥊', 'A photon’s punch depends only on its color:', ' shorter wave, harder punch — never brightness.'),
+                  ]
+                : [
+                    para('🌊', 'Wavelength IS color:', ' the distance from crest to crest; stretch it and the color changes.'),
+                    para('📊', 'The bar is the whole light family,', ' γ rays to radio on a log scale; the rainbow is the sliver under 👁.'),
+                    para('💡', 'Brightness = wave height,', ' never color: dim red is still red.'),
+                  ]
 
+  // ⚖️ what the picture simplifies (never dropped, only shortened)
+  const honest: Para[] =
+    scene === 'lamps'
+      ? [para('🤫', 'Screen yellow is a trick:', ' red + green together; true yellow (sodium’s 589 nm) is one wave — eyes can’t tell.')]
+      : scene === 'eye'
+        ? [
+            para('🌈', 'Surfaces bounce whole bands:', ' a few waves stand for each band (single lines belong to lone atoms).'),
+            para('↔️', 'Real surfaces scatter everywhere;', ' we draw only the bundle that reaches the eye.'),
+            para('👁️', 'The eye is drawn huge', ' and cartoon-simple.'),
+          ]
+        : scene === 'prism'
+          ? [
+              para('↕️', 'Colors fan out about six times wider', ' than real glass (≈ 1°); their order and which material spreads more are true.'),
+              para('🪞', 'Every surface also reflects a little;', ' we leave that out.'),
+              para('💧', 'The raindrop is hugely enlarged.'),
+            ]
+          : scene === 'xray'
+            ? [para('⚠️', 'Packets that pass through you can break molecules', ' — why real X-ray photos are quick and rare.')]
+            : scene === 'doorbell'
+              ? []
+              : [
+                  ...(view === 'photons'
+                    ? [para('🚫', 'Photons are not little balls:', ' the packet drawing is a symbol, like the wavy line.')]
+                    : []),
+                  para('📏', 'The wave is drawn a million times too big:', ' about a hundred red waves fit across a hair.'),
+                ]
+
+  // 💡 how to play with the scene — the only home for coaching
+  const tips: Para[] =
+    scene === 'doorbell'
+      ? [
+          para('🔴', 'Deep red at full brightness:', ' a storm of packets, no ring — then dim violet: RING.'),
+          para('⚖️', 'Find the edge:', ' slide slowly through green (≈ 540 nm) until the bell starts.'),
+          para('🏃', 'Compare electron speeds', ' for violet and X-rays.'),
+        ]
+      : scene === 'lamps'
+        ? [
+            para('🟡', 'Make yellow without yellow:', ' red up, green up, blue off.'),
+            para('💗', 'Make magenta', ' (red + blue) — a color the rainbow lacks.'),
+            para('⚪', 'All three up for white,', ' then pull one away.'),
+            para('🎨', 'Try real paints some day:', ' brown, not white.'),
+          ]
+        : scene === 'eye'
+          ? [
+              para('🔵', 'Red apple under the blue lamp,', ' then back to white.'),
+              para('🟠', 'Sodium-orange lamp on the blue cup:', ' why cars lose their colors under old street lamps.'),
+              para('📄', 'White paper shows exactly', ' what the lamp gives.'),
+              para('🪨', 'The black stone eats every lamp', ' and warms the most.'),
+            ]
+          : scene === 'prism'
+            ? [
+                para('🔴', 'Pure red, then pure violet:', ' different bends, neither splits.'),
+                para('↻', 'Drag to turn the prism', ' — find where light stops coming out.'),
+                para('💎', 'Try diamond:', ' wider colors, more bouncing inside.'),
+                para('💧', 'In the raindrop, drag the beam:', ' near one spot the colors exit together.'),
+                para('💿', 'At home:', ' a CD, or garden-hose spray with the sun behind you.'),
+              ]
+            : scene === 'xray'
+              ? [
+                  para('✨', 'Watch the flashes', ' — their hidden spots become the picture.'),
+                  para('🔦', 'Switch to ordinary light:', ' even blinding, it shows only a silhouette.'),
+                  para('🐕', 'Photograph the dog,', ' then compare the real vet X-ray (📷).'),
+                  para('💍', 'Find the ring on the hand', ' — like the first X-ray ever (📷).'),
+                ]
+              : [
+                  para('🖱️', 'Drag the wave', ' to squeeze or stretch it.'),
+                  para('⚪', 'Flip 🌊 wave ⇄ ⚪ photons', ' and watch the wave pinch into packets.'),
+                  para('🌓', 'Photons, brightness down:', ' fewer packets, same punch each.'),
+                  para('🟡', 'Find 589 nm:', ' sodium’s yellow, as in old street lamps.'),
+                  para('🥷', 'Slide past the rainbow’s ends:', ' the wave goes on; eyes just stop seeing it.'),
+                ]
+
+  // 📜 history: the scene's own story first
   const trueStory: Para[] = [
     ...(scene === 'xray'
-      ? ([
-          {
-            icon: '🩻',
-            text: 'Wilhelm Röntgen found X-rays by ACCIDENT in 1895: a screen across his dark lab glowed although his tube was wrapped in black cardboard — something invisible was flying right through it. Weeks later he photographed his wife\'s hand, bones and ring through the skin. He refused to patent the discovery so every hospital could use it — and won the first Nobel Prize in physics ever given (1901).',
-          },
-          {
-            icon: '👟',
-            text: 'For a while X-rays were treated as a toy: shoe shops had machines where kids wiggled their toes and watched their own foot bones while shoes were fitted. They were banned once we understood the hard-punching packets\' price — today\'s quick, rare photos behind shielded walls are the lesson learned.',
-          },
-        ] as Para[])
+      ? [
+          para('🩻', 'Röntgen, 1895:', ' a screen glowed through black cardboard — then he photographed his wife’s ringed hand.'),
+          para('🏅', 'No patent, first physics Nobel (1901):', ' Röntgen let every hospital use X-rays.'),
+          para('👟', 'Shoe shops once X-rayed kids’ feet', ' — banned once the risk was understood.'),
+        ]
       : []),
     ...(scene === 'prism'
-      ? ([
-          {
-            icon: '🪟',
-            text: 'In 1666 young Isaac Newton bought a glass prism at a market fair, darkened his room, and let one sunbeam through a hole in the shutter. The wall showed a rainbow — and with a SECOND prism he proved each pure color refuses to split further. The colors were in the sunlight all along.',
-          },
-        ] as Para[])
+      ? [para('🪟', 'Newton, 1666:', ' one sunbeam through a prism made a rainbow; a second prism could not split a pure color.')]
       : []),
     ...(scene === 'doorbell'
-      ? ([
-          {
-            icon: '🧪',
-            text: 'This is a real experiment you can watch in a school physics lab: a freshly sanded ZINC plate on an electroscope, charged so its foil leaves spread apart. Blinding visible light — nothing. A UV lamp — the leaves sink in seconds: light is kicking electrons out. Slide a sheet of glass into the beam (glass eats UV) and it stops at once.',
-          },
-          {
-            icon: '⚠️',
-            text: 'Not quite a kitchen experiment: zinc needs strong UV light that hurts eyes and skin, and metals that would ring with visible light — like potassium — catch fire in air. The closest thing at home is a solar-powered calculator or garden light: sunlight\'s packets knocking electrons loose to make electricity.',
-          },
-        ] as Para[])
+      ? [
+          para('🧪', 'A school-lab classic:', ' UV light on a charged zinc plate makes the electroscope leaves sink; glass blocks it.'),
+          para('⚠️', 'Not a kitchen experiment:', ' zinc needs harmful UV, potassium burns in air — solar calculators use the same effect.'),
+        ]
       : []),
-    {
-      icon: '💡',
-      text: 'For 200 years scientists argued: is light a wave, or a stream of particles? Newton said particles; experiment after experiment said wave — until the doorbell experiment said BOTH.',
-    },
-    {
-      icon: '🏅',
-      text: 'Albert Einstein explained the doorbell (why red can never ring it) in 1905. That — not relativity — is what his Nobel Prize names.',
-    },
-    {
-      icon: '🌡️',
-      text: 'William Herschel found invisible light in 1800 with a thermometer: he measured just PAST the red end of a rainbow — and it got warmer. Infrared, discovered where nothing visible existed.',
-    },
+    para('🏅', 'Einstein, 1905:', ' explained why red can never ring the bell — what his Nobel Prize names.'),
+    para('💡', 'Wave or particles?', ' 200 years of argument — the doorbell said both.'),
+    para('🌡️', 'Herschel, 1800:', ' a thermometer past the rainbow’s red end got warmer — infrared.'),
   ]
 
   return (
@@ -966,14 +626,24 @@ function LightLabView({
               leftTab === 'info' ? '' : 'hidden'
             }`}
           >
-            <SectionHeader first>Right now</SectionHeader>
-            <Paras items={rightNow} className="text-slate-200" />
-            <SectionHeader>What am I seeing?</SectionHeader>
-            <Paras items={seeing} />
-            <SectionHeader>Tips</SectionHeader>
-            <Paras items={tips} className="text-slate-400" />
-            <SectionHeader>A true story</SectionHeader>
-            <Paras items={trueStory} />
+            {rightNow.length > 0 && (
+              <>
+                <SectionHeader first type="now" />
+                <Paras items={rightNow} className="text-slate-200" />
+              </>
+            )}
+            <SectionHeader type="seeing" first={rightNow.length === 0} />
+            <Paras items={seeing} max={SECTION_MAX} />
+            {honest.length > 0 && (
+              <>
+                <SectionHeader type="honest" />
+                <Paras items={honest} max={SECTION_MAX} className="text-slate-400" />
+              </>
+            )}
+            <SectionHeader type="tips" />
+            <Paras items={tips} max={SECTION_MAX} className="text-slate-400" />
+            <SectionHeader type="true" />
+            <Paras items={trueStory} max={SECTION_MAX} />
           </div>
         </div>
       </div>
@@ -1038,7 +708,6 @@ function LightLabView({
           xraySpeed={xraySpeed}
           active={active}
           height={canvasHeight}
-          onBell={setRings}
         />
       </div>
 

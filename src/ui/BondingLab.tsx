@@ -8,16 +8,10 @@ import { BOND_SCENARIOS, matchBondScenario, type BondScenario } from '../core/bo
 import { motion } from 'motion/react'
 import { MOLECULE_PHOTOS } from '../core/moleculePhotos'
 import { PageNav } from './PageNav'
+import { Paras, SECTION_MAX, SectionHeader, para, type Para } from './Paras'
+import { sayWord } from './wordAudio'
+import { bondWord, elementWord } from '../core/spokenWords'
 import { FLAT, KEY } from './surfaces'
-
-// what the 🔊 button reads aloud: the formula letter by letter (subscripts
-// as plain digits), then the name — "H 2 O — water"
-const SUBSCRIPTS: Record<string, string> = { '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4' }
-const speakText = (s: BondScenario) =>
-  `${s.formula
-    .split('')
-    .map((ch) => SUBSCRIPTS[ch] ?? ch)
-    .join(' ')} — ${s.name}`
 
 /** Canvas twin of the SpeakButton look: amber circle + a bright amber
  *  vector speaker. (The 🔊 emoji is natively dark gray — it looked dull on
@@ -60,15 +54,6 @@ function drawSpeakerBadge(
   }
 }
 
-function speakAloud(text: string) {
-  if (!('speechSynthesis' in window)) return
-  window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance(text)
-  u.lang = 'en-US'
-  u.rate = 0.85
-  window.speechSynthesis.speak(u)
-}
-
 // B01/B02 — the bonding lab. Drag whole atoms (drawn in the builder's
 // shell-view language, valence electrons emphasized) onto the table. The
 // table's contents are matched against the curated recipes in
@@ -89,6 +74,33 @@ const W = Math.max(
 const H = Math.max(480, window.innerHeight - 22)
 const FIELD_BOTTOM = H - 88
 const TRAY_TOKEN_Y = H - 48
+
+/** the info panel's one-line take on each molecule (the full kid-friendly
+ *  account stays in core/bonding.ts `explanation`) */
+const SHORT: Record<string, string> = {
+  h2: 'one shared electron pair: a covalent bond.',
+  o2: 'two shared pairs, a double bond: the oxygen you breathe.',
+  cl2: 'one shared pair; a yellow-green gas that keeps pools clean.',
+  hcl: 'one shared pair, pulled toward chlorine (polar); in water it is stomach acid.',
+  nacl: "sodium's electron moves to chlorine (that costs a little energy); Na⁺ and Cl⁻ snap together: ionic.",
+  h2o: 'oxygen shares one pair with each hydrogen: two covalent bonds.',
+  h2o2: 'H–O–O–H; the weak O–O bond breaks easily: the fizz on a cleaned scrape.',
+  co: 'three shared pairs, a triple bond; a dangerous gas, hence CO alarms.',
+  co2: 'two double bonds, O=C=O; you breathe it out, and it fizzes soda.',
+  ch4: 'carbon shares one pair with each of four hydrogens; camping-stove gas.',
+}
+
+const SEEING: Para[] = [
+  para('🔍', 'Big outer electrons', ' are the valence electrons: they do all the bonding.'),
+  para('🤝', '🤝 recipes share electrons', ' (covalent); the 🧲 recipe hands one over and the ions snap together (ionic).'),
+  para('✨', 'Atoms close together huddle into a molecule;', ' atoms elsewhere stay free, so several molecules can form.'),
+]
+
+const TIPS: Para[] = [
+  para('👆', 'Drag atoms up from the trays;', ' drop one back to remove it, drag a molecule by its amber glow.'),
+  para('🧲', 'Let go nearby:', ' atoms of the same molecule pull together; atoms that never bond ignore each other.'),
+  para('🔢', 'Count the big outer electrons:', ' sodium 1, chlorine 7, carbon 4 — why do they pair up so?'),
+]
 
 const SPECIES = [
   { symbol: 'H', name: 'Hydrogen', protons: 1 },
@@ -591,7 +603,7 @@ function BondingField({
     for (const rect of labelRects.current) {
       if (pos.x >= rect.x0 && pos.x <= rect.x1 && pos.y >= rect.y0 && pos.y <= rect.y1) {
         const s = BOND_SCENARIOS.find((sc) => sc.id === rect.id)
-        if (pos.x <= rect.speakX && s) speakAloud(speakText(s))
+        if (pos.x <= rect.speakX && s) sayWord(bondWord(s.id)) // the formula, then the name: "H two O … water"
         else onMoleculeClick(rect.id)
         return
       }
@@ -635,7 +647,7 @@ function BondingField({
         pos.y >= TRAY_TOKEN_Y - 20 &&
         pos.y <= TRAY_TOKEN_Y + 2
       ) {
-        speakAloud(SPECIES[i].name)
+        sayWord(elementWord(SPECIES[i].protons))
         return
       }
     }
@@ -970,17 +982,11 @@ export function BondingLab() {
 
   const freeTotal = Object.values(lab.free).reduce((a, b) => a + b, 0)
 
-  const rightNow: Array<{
-    icon: string
-    text: string
-    photoId?: string
-  }> = []
-  if (lab.molecules.length === 0 && freeTotal === 0) {
-    rightNow.push({
-      icon: '👆',
-      text: 'The table is empty — drag atoms up from the trays and see which molecules you can make!',
-    })
-  } else {
+  // 📍 live: what is on the table now — never sticky
+  const rightNow: Array<Para & { photoId?: string }> = []
+  // 📍 only what the table MEANS: what each molecule is about and what the
+  // loose atoms could still make — never the atoms already on screen
+  {
     // one line per distinct molecule formed (with a count when repeated)
     const moleculeCounts = new Map<string, number>()
     for (const id of lab.molecules) {
@@ -990,37 +996,20 @@ export function BondingLab() {
       const s = BOND_SCENARIOS.find((sc) => sc.id === id)
       if (!s) continue
       rightNow.push({
-        icon: '✨',
-        text: `${n > 1 ? `${n} × ` : ''}${s.formula} — that's ${s.name}! ${s.explanation}`,
+        ...para(s.bondType === 'ionic' ? '🧲' : '🤝', `${n > 1 ? `${n} × ` : ''}${s.formula}, ${s.name}:`, ` ${SHORT[id] ?? s.explanation}`),
         photoId: MOLECULE_PHOTOS[id] ? id : undefined,
       })
     }
     if (freeTotal > 0) {
-      rightNow.push({
-        icon: '⚛️',
-        text: `Free atoms: ${Object.entries(lab.free)
-          .filter(([, n]) => n > 0)
-          .map(([sym, n]) => `${n} × ${nameOf(sym)}`)
-          .join(', ')}.`,
-      })
       const freeMatch = matchBondScenario(lab.free)
-      if (freeMatch.exact) {
-        rightNow.push({
-          icon: '🧲',
-          text: `Drag them close together to make ${freeMatch.exact.formula} — ${freeMatch.exact.name}!`,
-        })
-      } else if (freeMatch.partials.length > 0) {
-        const p = freeMatch.partials[0]
-        rightNow.push({
-          icon: '🧩',
-          text: `Add ${missingText(p.missing)} and bring them together to make ${p.scenario.formula} — ${p.scenario.name}.`,
-        })
-      } else {
-        rightNow.push({
-          icon: '🤔',
-          text: "By themselves the free atoms don't make one of our molecules — check the recipes below!",
-        })
-      }
+      const p = freeMatch.partials[0]
+      rightNow.push(
+        freeMatch.exact
+          ? para('⚛️', `Together, the free atoms make ${freeMatch.exact.formula}, ${freeMatch.exact.name}.`)
+          : p
+            ? para('⚛️', `${p.scenario.formula} still needs ${missingText(p.missing)}.`)
+            : para('⚛️', 'No recipe fits the free atoms', ' on their own.'),
+      )
     }
   }
 
@@ -1082,10 +1071,8 @@ export function BondingLab() {
                 photo ? 'basis-2/5' : 'flex-1'
               }`}
             >
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Right now
-              </h3>
-              <div className="space-y-2 text-slate-200">
+              {rightNow.length > 0 && <SectionHeader first type="now" />}
+              <div className="space-y-2 text-slate-200 [&_b]:font-semibold [&_b]:text-slate-100">
                 {rightNow.map((p, i) =>
                   p.photoId ? (
                     <button
@@ -1110,59 +1097,10 @@ export function BondingLab() {
                   ),
                 )}
               </div>
-              <h3 className="mb-2 mt-4 border-t border-slate-700 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                What am I seeing?
-              </h3>
-              <div className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <span aria-hidden>🔍</span>
-                  <p>
-                    Each atom is drawn with its electron shells. The OUTER
-                    electrons are drawn bigger — those are the valence
-                    electrons, and they do all the bonding.
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span aria-hidden>✨</span>
-                  <p>
-                    Drag the right atoms CLOSE TOGETHER and they huddle into a
-                    molecule — atoms left elsewhere on the table stay free, so
-                    you can build several molecules at once. 🤝 recipes SHARE
-                    electrons (covalent bonds); the 🧲 recipe HANDS ONE OVER
-                    and the ions snap together (an ionic bond).
-                  </p>
-                </div>
-              </div>
-              <h3 className="mb-2 mt-4 border-t border-slate-700 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Tips
-              </h3>
-              <div className="space-y-2 text-slate-400">
-                <div className="flex items-start gap-2">
-                  <span aria-hidden>👆</span>
-                  <p>
-                    Drag atoms up from the trays; drop one back down there to
-                    remove it. Drag a molecule's amber glow to move the whole
-                    molecule at once.
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span aria-hidden>🧲</span>
-                  <p>
-                    Atoms that belong in the same molecule pull on each other
-                    from a distance — let go nearby and they finish the trip
-                    themselves. Atoms that never bond (like sodium and
-                    hydrogen here) ignore each other.
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span aria-hidden>🔢</span>
-                  <p>
-                    Count the big outer electrons: sodium has 1, chlorine has
-                    7, carbon has 4. Can you see why they pair up the way they
-                    do?
-                  </p>
-                </div>
-              </div>
+              <SectionHeader type="seeing" first={rightNow.length === 0} />
+              <Paras items={SEEING} max={SECTION_MAX} />
+              <SectionHeader type="tips" />
+              <Paras items={TIPS} max={SECTION_MAX} className="text-slate-400" />
             </div>
             {photo && photoScenario && (
               <div className={`relative min-h-0 basis-3/5 overflow-y-auto px-3 py-3 ${FLAT}`}>

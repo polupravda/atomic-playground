@@ -29,6 +29,7 @@ import { STARDUST_SCRIPTS } from '../../src/stage/stardustNarration'
 // the line format (pieces ' | ', show-first '| ') — the app's own parser
 import { parseNarrationLine } from '../../src/stage/narrationScript'
 import { syllables } from './tempo'
+import { writeTimings } from './timings'
 import { SUN_SCRIPTS } from '../../src/stage/sunNarration'
 import { DETECTIVE_SCRIPTS } from '../../src/stage/detectiveNarration'
 import { GOLD_SCRIPTS } from '../../src/stage/goldNarration'
@@ -36,6 +37,7 @@ import { PLANT_SCRIPTS } from '../../src/stage/plantNarration'
 import { CRYSTAL_INTRO_KEY, CRYSTAL_INTRO_SCRIPTS } from '../../src/stage/crystalIntros'
 import { FIREWORK_SCRIPTS } from '../../src/stage/fireworkNarration'
 import { BOMB_MODES, bombScripts, bombStoryKey } from '../../src/stage/bombNarration'
+import { SPOKEN_WORDS, WORDS_KEY } from '../../src/core/spokenWords'
 
 const SR = 24000
 const EN_VOICE = 'af_heart'
@@ -280,6 +282,23 @@ function secondCopy(a: Float32Array): Float32Array | null {
   return null
 }
 
+// Words Kokoro (its espeak dictionary) says wrong, given as Kokoro
+// phonemes instead — VOICE ONLY: the app's text keeps the real spelling.
+// Checked with the phonemizer, not yet by ear (Elena's listen pass):
+// "Lead" came out as the verb (leed), the newest elements' names were
+// guessed letter by letter.
+const EN_PHONEMES: Record<string, string> = {
+  'Lead.': 'lˈɛd.',
+  'Ytterbium.': 'ɪtˈɜːbiəm.',
+  'Nobelium.': 'noʊbˈɛliəm.',
+  'Seaborgium.': 'siːbˈoːɹɡiəm.',
+  'Meitnerium.': 'maɪtnˈɪɹiəm.',
+  'Darmstadtium.': 'dɑːɹmʃtˈɑːtiəm.',
+  'Roentgenium.': 'ɹɛntɡˈɛniəm.',
+  'Tennessine.': 'tˈɛnəsiːn.',
+  'Oganesson.': 'ˌoʊɡənˈɛsɑːn.',
+}
+
 async function makeKokoro(): Promise<Render> {
   console.log('Loading Kokoro-82M (first run downloads the model)…')
   const tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
@@ -290,7 +309,22 @@ async function makeKokoro(): Promise<Render> {
     if (audio.sampling_rate !== SR) throw new Error(`unexpected rate ${audio.sampling_rate}`)
     return audio.audio as Float32Array
   }
+  /** straight from phonemes (EN_PHONEMES), skipping the dictionary */
+  const sayPhonemes = async (ph: string) => {
+    const { input_ids } = tts.tokenizer(ph, { truncation: true })
+    const audio = await tts.generate_from_ids(input_ids, { voice: EN_VOICE, speed: EN_SPEED })
+    if (audio.sampling_rate !== SR) throw new Error(`unexpected rate ${audio.sampling_rate}`)
+    return audio.audio as Float32Array
+  }
   return async (text, opts) => {
+    const ph = EN_PHONEMES[text]
+    if (ph) {
+      // short, so doubled like any short piece (see below)
+      const kept = secondCopy(await sayPhonemes(`${ph} ${ph}`))
+      if (kept) return kept
+      console.log(`  (couldn't split the doubled "${text}" — rendered once)`)
+      return sayPhonemes(ph)
+    }
     // short pieces (the taught-term repeats: "Fission.", "Super. Nova.")
     // are rendered doubled and the clean second copy is kept
     const words = text.split(/\s+/).filter((w) => /\p{L}/u.test(w)).length
@@ -382,6 +416,9 @@ interface Story {
    *  predates the doubled-render fix; Kokoro is deterministic, so this
    *  reproduces the verified files exactly) */
   singleShort?: Lang[]
+  /** single words (the 🔊 buttons), not a story: no lead-in silence before
+   *  the first line, no tempo check (one word has no tempo) */
+  words?: boolean
 }
 
 const STORIES: Story[] = [
@@ -396,6 +433,8 @@ const STORIES: Story[] = [
   { key: 'sun', scripts: SUN_SCRIPTS },
   { key: 'firework', scripts: FIREWORK_SCRIPTS },
   ...BOMB_MODES.map((m) => ({ key: bombStoryKey(m), scripts: bombScripts(m) })),
+  // 🔊 the speak buttons: element names, bonding-lab molecules (EN only)
+  { key: WORDS_KEY, scripts: { en: SPOKEN_WORDS }, words: true },
 ]
 
 async function main() {
@@ -490,7 +529,7 @@ async function main() {
           let samples = joinWithSilence(chunks)
           syl += syllables(piece)
           speech += samples.length / SR - (chunks.length - 1) * PAUSE_S
-          if (id === order[0] && p === 0) {
+          if (id === order[0] && p === 0 && !story.words) {
             const lead = new Float32Array(Math.round(SR * LEAD_IN_S))
             const withLead = new Float32Array(lead.length + samples.length)
             withLead.set(samples, lead.length)
@@ -506,7 +545,9 @@ async function main() {
           console.log(`${name.padEnd(13)} ${(samples.length / SR).toFixed(1).padStart(5)}s`)
         }
       }
-      if (lang === 'en') {
+      // where each sentence starts, for the 📖 transcript (timings.ts)
+      if (!story.words) writeTimings(story.key, lang, lines)
+      if (lang === 'en' && !story.words) {
         const sps = syl / speech
         const note = Math.abs(sps / REF_SYLLABLES_PER_S - 1) > 0.03
           ? `  ⚠️ off the reference ${REF_SYLLABLES_PER_S} — check the text (long pauses, odd words), never the speed`

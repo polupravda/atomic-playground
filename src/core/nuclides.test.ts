@@ -47,10 +47,11 @@ describe('nuclideStability (A06)', () => {
     expect(typicalNeutrons(6)).toBe(6) // C-12
     expect(typicalNeutrons(8)).toBe(8) // O-16
     expect(typicalNeutrons(17)).toBe(18) // Cl-35
-    expect(typicalNeutrons(79)).toBeGreaterThanOrEqual(115) // Au ≈ 197
-    expect(typicalNeutrons(79)).toBeLessThanOrEqual(121)
-    expect(typicalNeutrons(92)).toBeGreaterThanOrEqual(142) // U ≈ 238
-    expect(typicalNeutrons(92)).toBeLessThanOrEqual(148)
+    expect(typicalNeutrons(26)).toBe(30) // Fe-56
+    expect(typicalNeutrons(79)).toBe(118) // Au-197 (was Au-198 from the formula)
+    expect(typicalNeutrons(92)).toBe(146) // U-238
+    expect(typicalNeutrons(43)).toBe(54) // Tc-97, the longest-lived technetium
+    expect(typicalNeutrons(94)).toBe(150) // Pu-244
     // the default must always be a legal (bound) nuclide
     for (let z = 1; z <= 118; z++) {
       expect(typicalNeutrons(z)).toBeLessThanOrEqual(maxNeutronsFor(z))
@@ -67,6 +68,25 @@ describe('nuclideStability (A06)', () => {
     expect(maxNeutronsFor(118)).toBeLessThanOrEqual(200)
   })
 
+  it('loads every element up to lead as a stable isotope, except the few whose common isotope is radioactive', () => {
+    const radioactiveDefault: number[] = []
+    for (let z = 1; z <= 82; z++) {
+      if (stab(z, typicalNeutrons(z)) !== 'stable') radioactiveDefault.push(z)
+    }
+    // Tc and Pm have no stable isotope; 96% of indium is In-115 and 63% of
+    // rhenium is Re-187, both (very slowly) radioactive
+    expect(radioactiveDefault).toEqual([43, 49, 61, 75])
+  })
+
+  it('fixes what the old formula got wrong (science audit 2026-11-20)', () => {
+    expect(stab(82, 128)).toBe('unstable') // Pb-210
+    expect(stab(26, 34)).toBe('unstable') // Fe-60
+    expect(stab(53, 72)).toBe('unstable') // I-125
+    expect(stab(79, 117)).toBe('unstable') // Au-196
+    expect(stab(20, 28)).toBe('stable') // Ca-48: half-life 10¹⁹ years
+    expect(stab(83, 126)).toBe('unstable') // Bi-209 decays, measurably
+  })
+
   it('assigns decay modes (A07, simplified)', () => {
     expect(decayMode(6, 6)).toBeNull() // stable C-12 doesn't decay
     expect(decayMode(92, 146)).toBe('alpha') // U-238
@@ -76,6 +96,12 @@ describe('nuclideStability (A06)', () => {
     expect(decayMode(1, 2)).toBe('beta-minus') // tritium
     expect(decayMode(0, 1)).toBe('beta-minus') // free neutron
     expect(decayMode(53, 78)).toBe('beta-minus') // I-131
+    expect(decayMode(4, 3)).toBe('electron-capture') // Be-7: too little energy for β⁺
+    expect(decayMode(26, 29)).toBe('electron-capture') // Fe-55
+    expect(decayMode(19, 21)).toBe('beta-minus') // K-40 (mostly)
+    expect(decayMode(83, 127)).toBe('beta-minus') // Bi-210: heavy, yet β⁻
+    expect(decayMode(83, 126)).toBe('alpha') // Bi-209
+    expect(decayMode(98, 156)).toBe('fission') // Cf-254
   })
 
   it('grades instability: further from the valley trembles harder', () => {
