@@ -40,6 +40,7 @@ import {
   DOORBELL_PHOTOS,
   EYE_PHOTOS,
   LAMPS_PHOTOS,
+  MICROSCOPE_PHOTOS,
   PRISM_PHOTOS,
   WAVE_PHOTOS,
   XRAY_SCENE_PHOTOS,
@@ -55,6 +56,12 @@ import { Paras, SECTION_MAX, SectionHeader, para, type Para } from './Paras'
 import { SideDrawer } from './SideDrawer'
 import { SegmentedSwitch } from './SegmentedSwitch'
 import { CHIP_KEY, FLAT, KEY, TRAY } from './surfaces'
+import { NarrationLangSwitch, VoiceSwitch } from './VoiceSwitch'
+import { interruptNarration, useDemoNarration } from './useNarration'
+import { microscopeInfo } from './microscopeInfo'
+import { MicroscopeStage } from '../stage/MicroscopeStage'
+import { LIGHT_INTRO_KEY, LIGHT_INTRO_SCRIPTS } from '../stage/lightIntros'
+import { SPECIMENS, SPECIMEN_ORDER, type MicroscopeBeam, type SpecimenId } from '../core/microscope'
 
 // 💡 Light lab (proposal 09, Milestone 10) — a BUILDER like the atom
 // builder, not a demo: the kid drives every knob. Step 37+37b scene: the
@@ -64,14 +71,19 @@ import { CHIP_KEY, FLAT, KEY, TRAY } from './surfaces'
 // drawer over it — the atom builder's 🌡️ States of matter pattern (Elena,
 // 2026-11-19).
 
-const SCENES = [
-  { id: 'wave', label: '🌊 Wave machine', ready: true },
-  { id: 'doorbell', label: '🔔 The doorbell', ready: true },
-  { id: 'lamps', label: '🔦 Mixing lamps', ready: true },
-  { id: 'eye', label: '👁️ The eye', ready: true },
-  { id: 'prism', label: '🔼 Prism', ready: true },
-  { id: 'xray', label: '🩻 Bone photo', ready: true },
-] as const
+/** a Light lab scene: the WaveStage's scenes, plus 🔬 microscopes (its own
+ *  stage, MicroscopeStage) */
+type LabScene = WaveScene | 'microscope'
+
+const SCENES: ReadonlyArray<{ id: LabScene; label: string }> = [
+  { id: 'wave', label: '🌊 Wave machine' },
+  { id: 'doorbell', label: '🔔 The doorbell' },
+  { id: 'lamps', label: '🔦 Mixing lamps' },
+  { id: 'eye', label: '👁️ The eye' },
+  { id: 'prism', label: '🔼 Prism' },
+  { id: 'xray', label: '🩻 Bone photo' },
+  { id: 'microscope', label: '🔬 Microscopes' },
+]
 
 /** quick-jump chips: one stop per band + the rainbow's classics */
 const PRESETS: Array<{ label: string; m: number }> = [
@@ -151,12 +163,10 @@ function LabSlider({
   )
 }
 
-/** Light lab DRAWER scenes designed in proposal 11 (L14–L16), not built
+/** Light lab DRAWER scenes designed in proposal 11 (L15–L16), not built
  *  yet: listed with the other scene buttons, switched off, "🔜 soon" */
 const PLANNED_SCENES: Array<{ label: string; about: string }> = [
-  { label: '🔬 Microscopes', about: 'why light can only see so small' },
   { label: '🌅 Blue sky, red sunset', about: 'air bounces blue light around' },
-  { label: '🔦 Lasers', about: 'light that marches in step' },
 ]
 
 /** the scenes that open in a drawer over the wave machine (the main view),
@@ -180,8 +190,26 @@ function drawerFit() {
 
 export function LightLab() {
   const page = usePageStore((s) => s.page)
-  const [open, setOpen] = useState<WaveScene | null>(null)
+  const [open, setOpen] = useState<LabScene | null>(null)
   const openScene = DRAWER_SCENES.find((s) => s.id === open)
+
+  // 🔊 a scene's short intro, then each RESULT explained as it shows (the
+  // 🧊 Crystal lab's pattern; only 🔬 microscopes has lines so far — the
+  // other scenes stay silent until step 40c)
+  const [result, setResult] = useState<string | null>(null)
+  useDemoNarration({
+    storyKey: LIGHT_INTRO_KEY,
+    beatId: result ?? open ?? 'wave',
+    scripts: LIGHT_INTRO_SCRIPTS,
+    active: page === 'light',
+    paused: false,
+  })
+  const show = (scene: LabScene | null) => {
+    interruptNarration() // the next scene's intro starts at once
+    setResult(null)
+    setOpen(scene)
+  }
+
   return (
     <>
       <LightLabView
@@ -194,7 +222,7 @@ export function LightLab() {
               <button
                 key={s.id}
                 type="button"
-                onClick={() => setOpen(s.id)}
+                onClick={() => show(s.id)}
                 className={`w-64 px-4 py-2.5 text-left text-sm text-slate-200 ${KEY}`}
               >
                 {s.label}
@@ -218,7 +246,7 @@ export function LightLab() {
       />
       <SideDrawer
         open={open !== null}
-        onClose={() => setOpen(null)}
+        onClose={() => show(null)}
         ariaLabel={openScene ? `${openScene.label.slice(openScene.label.indexOf(' ') + 1)} — Light lab scene` : 'Light lab scene'}
         // = DRAWER_GAP_PX / DRAWER_MAX_PX (Tailwind needs the literal class)
         widthClassName="w-[min(calc(100vw_-_96px),1376px)]"
@@ -244,6 +272,7 @@ export function LightLab() {
               scene={openScene.id}
               active={page === 'light'}
               inDrawer
+              onResult={setResult}
               // the drawer has more height than width: the canvas uses it
               canvasHeight={Math.floor(drawerFit().height) - 2}
               top={<h2 className="pr-8 text-lg font-semibold text-slate-100">{openScene.label}</h2>}
@@ -263,12 +292,15 @@ function LightLabView({
   scene,
   active,
   inDrawer = false,
+  onResult,
   canvasHeight,
   top,
   bottom,
 }: {
-  scene: WaveScene
+  scene: LabScene
   active: boolean
+  /** a scene's outcome is on screen: the narrator explains it */
+  onResult?: (key: string) => void
   /** inside a drawer: no main menu in the left column */
   inDrawer?: boolean
   /** the canvas height (default: the page's WAVE_H) */
@@ -295,6 +327,10 @@ function LightLabView({
   const [xrayObject, setXrayObject] = useState<XrayObjectId>('hand')
   const [xrayLamp, setXrayLamp] = useState<XrayLamp>('xray')
   const [xraySpeed, setXraySpeed] = useState(0.5)
+  // 🔬 microscopes: a hair under light is where everyone starts
+  const [specimen, setSpecimen] = useState<SpecimenId>('hair')
+  const [beam, setBeam] = useState<MicroscopeBeam>('light')
+  const micro = scene === 'microscope' ? microscopeInfo(specimen, beam) : null
   const [leftTab, setLeftTab] = useState<'photo' | 'info'>('photo')
 
   // L01: dragging the wave stretches it (right = longer)
@@ -431,8 +467,9 @@ function LightLabView({
     xrayLamp === 'ordinary'
       ? [para('🔦', 'Ordinary light stops at the surface:', ' its packets are far too weak to get inside.')]
       : [para('🩻', 'X-rays pass soft parts like fog;', ' bones and metal swallow them — white on the photo.')]
-  const rightNow =
-    scene === 'doorbell'
+  const rightNow = micro
+    ? micro.rightNow
+    : scene === 'doorbell'
       ? rightNowDoorbell
       : scene === 'lamps'
         ? rightNowLamps
@@ -447,8 +484,9 @@ function LightLabView({
                 : rightNowWave
 
   // 👀 what the scene shows (most important first)
-  const seeing: Para[] =
-    scene === 'doorbell'
+  const seeing: Para[] = micro
+    ? micro.seeing
+    : scene === 'doorbell'
       ? [
           para('🔔', 'One packet must pay alone:', ' green and shorter can free our plate’s electrons; yellow and longer never can.'),
           para('💡', 'Brightness only means more packets,', ' never a stronger one — so red never rings it.'),
@@ -492,8 +530,9 @@ function LightLabView({
                   ]
 
   // ⚖️ what the picture simplifies (never dropped, only shortened)
-  const honest: Para[] =
-    scene === 'lamps'
+  const honest: Para[] = micro
+    ? micro.honest
+    : scene === 'lamps'
       ? [para('🤫', 'Screen yellow is a trick:', ' red + green together; true yellow (sodium’s 589 nm) is one wave — eyes can’t tell.')]
       : scene === 'eye'
         ? [
@@ -519,8 +558,9 @@ function LightLabView({
                 ]
 
   // 💡 how to play with the scene — the only home for coaching
-  const tips: Para[] =
-    scene === 'doorbell'
+  const tips: Para[] = micro
+    ? micro.tips
+    : scene === 'doorbell'
       ? [
           para('🔴', 'Deep red at full brightness:', ' a storm of packets, no ring — then dim violet: RING.'),
           para('⚖️', 'Find the edge:', ' slide slowly through green (≈ 540 nm) until the bell starts.'),
@@ -564,7 +604,7 @@ function LightLabView({
                 ]
 
   // 📜 history: the scene's own story first
-  const trueStory: Para[] = [
+  const trueStory: Para[] = micro ? micro.story : [
     ...(scene === 'xray'
       ? [
           para('🩻', 'Röntgen, 1895:', ' a screen glowed through black cardboard — then he photographed his wife’s ringed hand.'),
@@ -592,7 +632,16 @@ function LightLabView({
     <div className="flex h-full min-h-0 items-start gap-6">
       {/* left: nav + 📷 photos / ℹ️ info (photos default; both stay mounted) */}
       <div className="flex h-full w-64 shrink-0 flex-col gap-3">
-        {!inDrawer && <PageNav />}
+        {!inDrawer && (
+          <>
+            <PageNav />
+            {/* the scenes' spoken intros follow the global voice switch */}
+            <div className={`flex w-64 shrink-0 flex-col gap-1.5 p-1.5 ${FLAT}`}>
+              <VoiceSwitch />
+              <NarrationLangSwitch />
+            </div>
+          </>
+        )}
         <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
           {(
             [
@@ -693,6 +742,44 @@ function LightLabView({
             ))}
           </div>
         )}
+        {scene === 'microscope' && (
+          // 💡 / ⚡ — what the microscope looks with, ON the canvas (the
+          // 🩻 scene's lamp switch)
+          <div
+            className="absolute z-10 flex -translate-x-1/2 gap-1 rounded-full border border-slate-600 bg-slate-900/90 p-0.5 text-xs"
+            style={{ left: '50%', top: 8 }}
+          >
+            {(
+              [
+                ['light', '💡 light'],
+                ['electrons', '⚡ electrons'],
+              ] as const
+            ).map(([id, text]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setBeam(id)}
+                aria-pressed={beam === id}
+                className={`whitespace-nowrap rounded-full px-2.5 py-1 transition ${
+                  beam === id ? 'bg-sky-600 font-medium text-white' : 'text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+        )}
+        {scene === 'microscope' ? (
+          <MicroscopeStage
+            width={WAVE_W}
+            height={canvasH}
+            active={active}
+            specimen={specimen}
+            beam={beam}
+            onPick={setSpecimen}
+            onResult={onResult}
+          />
+        ) : (
         <WaveStage
           u={u}
           brightness={brightness}
@@ -709,6 +796,7 @@ function LightLabView({
           active={active}
           height={canvasHeight}
         />
+        )}
       </div>
 
       {/* right: control cards (scrolls inside the block) */}
@@ -727,7 +815,15 @@ function LightLabView({
           />
         )}
 
-        {scene === 'xray' ? (
+        {scene === 'microscope' ? (
+          <SegmentedSwitch
+            ariaLabel="What lies under the microscope"
+            columns={2}
+            options={SPECIMEN_ORDER.map((id) => ({ id, label: `${SPECIMENS[id].emoji} ${SPECIMENS[id].name}` }))}
+            value={specimen}
+            onChange={setSpecimen}
+          />
+        ) : scene === 'xray' ? (
           <>
             <SegmentedSwitch
               ariaLabel="What lies on the film"
@@ -885,7 +981,7 @@ function WifiSymbol() {
  *  band's usage photos (wave machine / doorbell wavelength), the real
  *  experiment's hardware (doorbell), or the screen pixels (lamps). Images at
  *  natural height — never cropped. */
-function PhotoColumn({ current, scene }: { current: EmBandId; scene: WaveScene }) {
+function PhotoColumn({ current, scene }: { current: EmBandId; scene: LabScene }) {
   const band = EM_BANDS.find((b) => b.id === current)!
   const photos: Array<{ title: string; ph: WavePhoto }> =
     scene === 'doorbell'
@@ -898,6 +994,8 @@ function PhotoColumn({ current, scene }: { current: EmBandId; scene: WaveScene }
             ? PRISM_PHOTOS.map((ph) => ({ title: 'the real thing', ph }))
             : scene === 'xray'
               ? XRAY_SCENE_PHOTOS.map((ph) => ({ title: 'real X-ray photos', ph }))
+              : scene === 'microscope'
+                ? MICROSCOPE_PHOTOS.map((ph) => ({ title: 'through real microscopes', ph }))
               : WAVE_PHOTOS[current].map((ph) => ({ title: `${band.label}, in real life`, ph }))
   return (
     <div className="space-y-3">

@@ -99,7 +99,8 @@ an example is a whole process that spans many atoms.
 | R05     | *Proposed 2026-11-19* ([proposal](11-proposal-new-demos.md)) — **🕯️ Where does the candle go?** | ▶ Watch it — a plot: the birthday-candle mystery, a hero carbon atom | An atom ledger (C · H · O, before/after) that never changes while molecules break and re-form; soot's yellow glow; the sealed-jar weighing | Wax shown as a short chain; carbon monoxide a panel note |
 | R06     | *Proposed 2026-11-19* ([proposal](11-proposal-new-demos.md)) — **💎 Crystals** | Chooser: 💎 From pencil to diamond · ❄️ How a snowflake is born | The same carbon atoms as sheets (graphite) or a 3D grid (diamond); a bent water molecule building hexagons, six arms growing alike | 2D views of 3D crystals; growth hugely sped up; independent of the 🧊 Crystal lab playground (K01–K08) |
 | R07     | *Proposed 2026-11-19* ([proposal](11-proposal-new-demos.md)) — **🌳 A tree is made of air** | ▶ Watch it — a plot: the mystery of the heavy tree, a hero carbon atom from the air | van Helmont's willow; CO₂ + water + light → sugar → wood; the same atom ledger | The leaf's oxygen comes from water, not CO₂; "made of air" = the tree's dry mass |
-| R08+    | *Candidates* | — | Smoke detector (Am-241 alpha), carbon dating (C-14 decay) | — |
+| R08     | *Approved 2026-11-20* ([proposal](16-proposal-laser-stories.md)) — **🔦 Lasers** | Chooser: 🔦 How a laser makes its light · ✂️ Light that cuts · 🌕 Lasers to the Moon | Stimulated emission (twins), two mirrors, the beam; laser types, cutting power, why eyes are at risk; the Moon reflectors, timing light, the drifting Moon | Billions of photons shown as a few; chromium's inner electrons drawn as one outer electron; real output mirrors pass a few % |
+| R09+    | *Candidates* | — | Smoke detector (Am-241 alpha), carbon dating (C-14 decay) | — |
 
 ## 💡 Light lab — light, waves & photons (L01–L13, added 2026-11-09)
 
@@ -117,7 +118,11 @@ L09 how your eye sees a color (lamp → object → eye), L11 the trick lamp,
 L12 three color catchers (stretch), L13 the bone photo (added 2026-11-16:
 X-ray packets rain through a hand/dog/suitcase — flesh lets most pass,
 bone swallows, a few scatter — and the shadow photo develops on the film;
-ordinary light proves only X-rays get through). Scenes share the lab's
+ordinary light proves only X-rays get through), L14 🔬 microscopes (built
+2026-11-20, [proposal 11](11-proposal-new-demos.md): a zoom ladder hair →
+atoms; light's waves cast a shadow or flow round the thing; the eyepiece
+picture blurs below ~200 nm; electrons, far shorter waves, see down to
+atoms). L16 lasers moved to the stories (R08, below). Scenes share the lab's
 wavelength /
 brightness / view controls wherever they make sense. Status per step in
 [04-roadmap.md](04-roadmap.md) Milestone 10.

@@ -10,6 +10,7 @@ import { BombsTable, ChainStats, CompareTable, DamageLegend, ParticleLegend } fr
 import { StoryTimeline } from './StoryTimeline'
 import { BombsIcon } from './BombsIcon'
 import { ComingSoonExample } from './ComingSoonExample'
+import { LaserExample } from './LaserExample'
 import { PlantExample } from './PlantExample'
 import { LightExample } from './LightExample'
 import { CosmosExample } from './CosmosExample'
@@ -258,6 +259,9 @@ export function ExamplesPage() {
       </div>
       <div className={example === 'plant' ? 'h-full' : 'hidden'}>
         <PlantExample active={page === 'examples' && example === 'plant'} />
+      </div>
+      <div className={example === 'lasers' ? 'h-full' : 'hidden'}>
+        <LaserExample active={page === 'examples' && example === 'lasers'} />
       </div>
       {(['atoms', 'crystals'] as const).map((id) => (
         <div key={id} className={example === id ? 'h-full' : 'hidden'}>

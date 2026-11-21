@@ -409,12 +409,8 @@ function drawJumpAtom(
   }
   rung(base)
   rung(base - stepH)
-  ctx.fillStyle = 'rgba(148, 163, 184, 0.9)'
-  ctx.font = `${Math.round(11 * k)}px ui-sans-serif, system-ui, sans-serif`
-  ctx.textAlign = spec.ladderSide > 0 ? 'left' : 'right'
-  ctx.textBaseline = 'middle'
-  ctx.fillText('home step', lx + spec.ladderSide * 32 * k, base)
-  ctx.fillText('higher step', lx + spec.ladderSide * 32 * k, base - stepH)
+  // no "home step" / "higher step" labels (Elena, 2026-11-21): the rungs
+  // and the climbing dot say it; kids don't read canvas words
   // the mirrored dot
   const lift = clock ? clock.lift : 0
   drawGlossyParticle(ctx, 'electrons', lx, base - stepH * lift, 4 * k)

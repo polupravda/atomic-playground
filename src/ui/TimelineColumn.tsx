@@ -136,8 +136,12 @@ export const TimelineColumn = memo(function TimelineColumn({
     setReached({ beat: id, at: k * 1000 + j - 1 })
     onSeek(id, k, j)
   }
+  // Enter jumps to the focused sentence. Space does NOT: it stays the
+  // story's ⏸ Pause / ▶ Resume (useSpaceToPause) — a sentence clicked a
+  // moment ago keeps the focus, and Space used to jump back to it instead
+  // of just pausing (Elena, 2026-11-21)
   const onKey = (e: KeyboardEvent, id: string, k: number, j: number) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return
+    if (e.key !== 'Enter') return
     e.preventDefault()
     seek(id, k, j)
   }

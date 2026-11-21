@@ -51,6 +51,11 @@ const CHAPTER_TEXT = {
   'A very big kettle': { de: 'Ein riesiger Wasserkocher', ru: 'Очень большой чайник' },
   Safety: { de: 'Sicherheit', ru: 'Безопасность' },
   'The honest part': { de: 'Ehrlich gesagt', ru: 'Честно говоря' },
+  // 🔦 lasers
+  'Inside a laser': { de: 'Im Inneren eines Lasers', ru: 'Внутри лазера' },
+  'Close-up: one atom': { de: 'Ganz nah: ein Atom', ru: 'Крупным планом: один атом' },
+  Twins: { de: 'Zwillinge', ru: 'Близнецы' },
+  'The mirrors': { de: 'Die Spiegel', ru: 'Зеркала' },
   // every story's ending
   'The payoff': { de: 'Die Auflösung', ru: 'Разгадка' },
 } as const satisfies Record<string, Record<Exclude<NarrationLang, 'en'>, string>>

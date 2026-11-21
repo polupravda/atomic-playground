@@ -13,7 +13,7 @@ import type { ExampleId } from '../state/pageStore'
 
 export type PlannedExampleId = Extract<ExampleId, 'atoms' | 'crystals'>
 
-export type ThumbId = 'plant' | 'operator' | 'candle' | 'tree' | 'diamond' | 'snowflake'
+export type ThumbId = 'plant' | 'operator' | 'candle' | 'tree' | 'diamond' | 'snowflake' | 'laser-how' | 'laser-cut' | 'laser-moon'
 
 interface PlannedStory {
   thumb: ThumbId
@@ -85,6 +85,10 @@ function drawThumb(ctx: CanvasRenderingContext2D, id: ThumbId, w: number, h: num
   const s = Math.min(w, h) / 150 // drawing unit
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
+  if (id === 'laser-how' || id === 'laser-cut' || id === 'laser-moon') {
+    drawLaserThumb(ctx, id, w, h)
+    return
+  }
   if (id === 'plant') {
     // a cooling tower with steam, a house with a lit window
     ctx.fillStyle = '#94a3b8'
@@ -246,6 +250,104 @@ function drawThumb(ctx: CanvasRenderingContext2D, id: ThumbId, w: number, h: num
           ctx.stroke()
         }
       }
+    }
+  }
+}
+
+/** 🔦 the planned laser stories' pictures */
+function drawLaserThumb(ctx: CanvasRenderingContext2D, id: 'laser-how' | 'laser-cut' | 'laser-moon', w: number, h: number) {
+  const cx = w / 2
+  const cy = h / 2
+  const s = Math.min(w, h) / 150
+  const red = (a: number) => `rgba(239, 68, 68, ${a})`
+  if (id === 'laser-moon') {
+    // a telescope on a hill, a thin red line up to the Moon and back
+    ctx.fillStyle = '#e2e8f0'
+    ctx.beginPath()
+    ctx.arc(cx + 42 * s, cy - 34 * s, 20 * s, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.6)'
+    for (const [dx, dy, r] of [[-6, -4, 4], [7, 6, 3], [4, -10, 2.5]]) {
+      ctx.beginPath()
+      ctx.arc(cx + (42 + dx) * s, cy + (-34 + dy) * s, r * s, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.fillStyle = '#1e293b'
+    ctx.beginPath()
+    ctx.ellipse(cx - 30 * s, cy + 52 * s, 60 * s, 18 * s, 0, Math.PI, 0)
+    ctx.fill()
+    ctx.save()
+    ctx.translate(cx - 34 * s, cy + 30 * s)
+    ctx.rotate(-0.75)
+    ctx.fillStyle = '#94a3b8'
+    ctx.fillRect(-4 * s, -7 * s, 26 * s, 14 * s)
+    ctx.restore()
+    ctx.strokeStyle = red(0.9)
+    ctx.lineWidth = 1.6 * s
+    ctx.beginPath()
+    ctx.moveTo(cx - 22 * s, cy + 18 * s)
+    ctx.lineTo(cx + 34 * s, cy - 28 * s)
+    ctx.stroke()
+    ctx.fillStyle = '#fbbf24'
+    ctx.fillRect(cx + 32 * s, cy - 31 * s, 4 * s, 4 * s)
+  } else if (id === 'laser-how') {
+    // a ruby rod between two mirrors, the thin beam leaving on the right
+    ctx.fillStyle = 'rgba(244, 63, 94, 0.55)'
+    ctx.beginPath()
+    ctx.roundRect(cx - 44 * s, cy - 9 * s, 70 * s, 18 * s, 4 * s)
+    ctx.fill()
+    ctx.fillStyle = '#e2e8f0'
+    ctx.fillRect(cx - 54 * s, cy - 22 * s, 5 * s, 44 * s)
+    ctx.fillStyle = 'rgba(226, 232, 240, 0.55)'
+    ctx.fillRect(cx + 31 * s, cy - 22 * s, 5 * s, 44 * s)
+    ctx.strokeStyle = red(0.95)
+    ctx.lineWidth = 2 * s
+    ctx.beginPath()
+    ctx.moveTo(cx + 36 * s, cy)
+    ctx.lineTo(w - 6 * s, cy)
+    ctx.stroke()
+    // the coiled flash lamp around the rod
+    ctx.strokeStyle = 'rgba(220, 252, 231, 0.6)'
+    ctx.lineWidth = 1.4 * s
+    for (let k = 0; k < 5; k++) {
+      const x = cx - 38 * s + k * 14 * s
+      ctx.beginPath()
+      ctx.ellipse(x, cy, 5 * s, 16 * s, 0, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+  } else {
+    // a beam from above cuts a star out of a steel plate; sparks fly
+    ctx.fillStyle = '#64748b'
+    ctx.beginPath()
+    ctx.moveTo(cx - 60 * s, cy + 14 * s)
+    ctx.lineTo(cx + 50 * s, cy + 14 * s)
+    ctx.lineTo(cx + 64 * s, cy + 34 * s)
+    ctx.lineTo(cx - 46 * s, cy + 34 * s)
+    ctx.closePath()
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.95)'
+    ctx.lineWidth = 1.8 * s
+    ctx.beginPath()
+    for (let k = 0; k <= 10; k++) {
+      const a = -Math.PI / 2 + (k * Math.PI) / 5
+      const r = (k % 2 ? 6 : 14) * s
+      const x = cx + 2 * s + Math.cos(a) * r * 1.4
+      const y = cy + 24 * s + Math.sin(a) * r * 0.55
+      if (k) ctx.lineTo(x, y)
+      else ctx.moveTo(x, y)
+    }
+    ctx.stroke()
+    ctx.strokeStyle = 'rgba(203, 213, 225, 0.55)'
+    ctx.lineWidth = 3 * s
+    ctx.beginPath()
+    ctx.moveTo(cx + 2 * s, 6 * s)
+    ctx.lineTo(cx + 2 * s, cy + 16 * s)
+    ctx.stroke()
+    ctx.fillStyle = '#fde68a'
+    for (const [dx, dy] of [[-10, -6], [12, -10], [-18, 2], [20, -2], [6, -16]]) {
+      ctx.beginPath()
+      ctx.arc(cx + 2 * s + dx * s, cy + 14 * s + dy * s, 1.6 * s, 0, Math.PI * 2)
+      ctx.fill()
     }
   }
 }

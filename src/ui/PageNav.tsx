@@ -23,6 +23,7 @@ export const EXAMPLE_ITEMS: Array<{ id: ExampleId; label: string; planned?: bool
   { id: 'plant', label: '⚡ Power plant' },
   { id: 'atoms', label: '♻️ Atoms never vanish', planned: true },
   { id: 'crystals', label: '💎 Crystals', planned: true },
+  { id: 'lasers', label: '🔦 Lasers' },
 ]
 
 export function PageNav() {

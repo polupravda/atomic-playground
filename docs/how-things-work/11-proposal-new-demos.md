@@ -104,6 +104,18 @@ applies. Drafted per scene with the scene's design.
 
 ### L14 🔬 Light vs. electron microscope
 
+> **Built 2026-11-20** (Elena: "start with microscope demo"), designed with
+> the kid-friendly playbook [15-kid-friendly-animation.md](15-kid-friendly-animation.md).
+> As built: a ruler of seven things (💇 hair 80 µm · 🌼 pollen 30 µm · 🩸
+> blood cell 8 µm · 🧫 bacterium 2 µm · 🦠 virus 120 nm · 🧬 DNA 2 nm ·
+> ⚛️ carbon atoms 0.14 nm apart) instead of a free slider — picking one
+> flies the zoom there; the "wave tries to see it" idea is the window
+> (waves at true scale, shadow or no shadow) plus an eyepiece picture
+> blurred by the real limit, side by side; 💡 light / ⚡ electrons is a
+> switch on the canvas. Question 6 answered by default: pollen, cells, a
+> bacterium and a virus drawn without faces — no insects (playbook rule
+> 23); Elena to confirm.
+
 - **The zoom ladder**: a slider zooms down a ladder of real objects — a
   hair, a skin cell, a bacterium, a virus, a big molecule, atoms — each to
   scale on the slider's axis.
@@ -148,6 +160,13 @@ True story: Lord Rayleigh explained it in 1871. Fun fact: on Mars sunsets
 are blue (its fine dust scatters the other way round).
 
 ### L16 🔦 Lasers — light that marches in step
+
+> **Superseded 2026-11-20.** Built as a Light lab scene, then removed the
+> same day (Elena: "It's a complex topic, let's do a story instead of the
+> demo" — it missed the mirrors, a close look at the electrons and the
+> big picture). Now two narrated stories:
+> [16-proposal-laser-stories.md](16-proposal-laser-stories.md). The
+> design below is kept for history.
 
 Two modes on one scene (mode switch on the control card):
 
@@ -235,3 +254,7 @@ Narration: a short narrated intro, like every Light lab scene (above).
    the drawers are built).
 6. **Microscope photos**: real electron-microscope images of insects can
    look scary to small kids — prefer pollen, snowflakes and salt crystals?
+   built with (2026-11-20, to confirm): pollen through a light microscope
+   and through an electron microscope (grey, and the same picture
+   colorized — the colors are painted on), and Ruska's 1930s electron
+   microscope. No insects.

@@ -26,7 +26,9 @@ it was verified with (`singleShort`, see "Short pieces" below).
 | 🌟 Star stuff | ☀️ Why the Sun shines | `stage/sunNarration.ts` | science | EN · DE · RU |
 | 🌟 Star stuff | 🧒 You are star stuff | `stage/stardustNarration.ts` | story (the reference) | EN · DE · RU |
 | 🌟 Star stuff | 💍 Where gold comes from | `stage/goldNarration.ts` | science; show first for the ring, the two dead stars and the teaspoon scale; flow for the rewind, the crash, the neutron stuffing and the way forward | EN · DE · RU |
+| 🔦 Lasers | 🔦 How a laser makes its light | `stage/laserNarration.ts` | show first for the wall, the opened laser and the flash; flow for the zoom and the mirrors | EN · DE · RU |
 | ⚡ Power plant | 📖 How a power plant works | `stage/plantNarration.ts` | science; show first for the dot tree and the side-by-side charts; flow for the kettle | EN · DE · RU |
+| 💡 Light lab | 🔬 Microscopes: a short intro + spoken **results** (`microscope-blur` light meets a thing smaller than its wave · `microscope-electrons` electrons show it · `microscope-atoms`), each said once; the other scenes' intros are step 40c | `stage/lightIntros.ts` (`LIGHT_INTROS`, key `light-lab`) | playground: nothing is held | EN · DE · RU |
 | 🧊 Crystal lab | a short intro per scene + a spoken **result** when a scene's outcome shows (`<scene>-<material>`, said once each) | `stage/crystalIntros.ts` (`CRYSTAL_INTROS`, `CRYSTAL_RESULTS`) | playground: nothing is held | EN · DE · RU |
 
 Stories not built yet (neon, aurora) get their script when they
@@ -113,7 +115,11 @@ storyteller's voice, under these rules:
    big flashes, a growing 🔥), like the 🧊 Crystal lab's squeeze & heat.
 4. **Dramatic pauses are written, not hoped for.** A ` ... ` inside a line
    becomes 0.5 s of real silence (the generator renders the chunks
-   separately and joins them — Kokoro itself ignores ellipses).
+   separately and joins them — Kokoro itself ignores ellipses). **A
+   spoken list or count gets a pause between its items** — "Two, ...
+   four, ... eight, ... many." — commas alone run the words together
+   (Elena, 2026-11-21, laser mirrors). Keep the commas before the
+   pause marks so the transcript still reads "Two, four, eight, many."
 5. **Length follows the thought, not the beat.** The animation waits for
    the voice (below), so a line may be longer than its beat — but every
    extra sentence stretches the whole story; say only what the beat needs.
@@ -152,9 +158,27 @@ Science-intense parts (close-ups, reactions, measurements) carry far more
 information per beat than a story beat, and their animations are short —
 the ×0.15 slow motion still lets them play out under the voice, so the
 child hears AND watches new things at once. Kids cannot digest that. The
-rule: **science is narrated one piece of information at a time, with a
-break after every piece in which the animation shows what was just
-said.**
+rule: **science is narrated one piece of information at a time, and each
+piece and the animation event it describes come one after the other:
+statement 1 → event 1 → statement 2 → event 2.**
+
+**The animation never stops for the voice** (Elena, 2026-11-21 — this
+replaces "the key animation holds still while a piece is spoken"). What
+must not overlap is a statement and *its* event, not the voice and the
+picture. While a piece is spoken the scene is in a **living rest**: it
+keeps moving (a stream keeps flowing, electrons circle, a photon still on
+its way lands, a marker pulses on the next hero), but the next key event
+waits until the piece has been said. When two events explain each other
+best as one continuous animation, they play together between two
+statements, and the second statement opens by looking back at what just
+happened ("Have you seen the atom just split? It is…"). **Say it → show
+it → explain it**: when a piece both states an action and explains it,
+split it — the action sentence is a piece of its own, the action plays
+right after it, and the explanation is the next piece, said over a
+living rest ("The push lifts the electron to a bigger ring, farther
+from the middle." | lift | "Up there it holds more energy. Like a ball
+lifted onto a high shelf."). Full rule and examples: [15-kid-friendly-animation.md](15-kid-friendly-animation.md),
+rules 19a–19d.
 
 How it is written: a science line is split into information pieces with
 ` | ` — each piece one idea (2–3 short sentences at most):
@@ -165,9 +189,13 @@ How it is written: a science line is split into information pieces with
 
 How it plays (`ui/useNarration.ts`, the stages' `holdBeat`):
 
-1. while a piece is spoken, the **key animation** holds still
-   (`SCIENCE_HOLD = 0` on story time) — but the picture never freezes:
-   **idle motion** keeps running (see "Key motion vs idle motion" below);
+1. while a piece is spoken, story time stops (`SCIENCE_HOLD = 0`) and
+   **idle motion** keeps running (see "Key motion vs idle motion" below).
+   **This is the old mechanism, not the rule any more**: until it is
+   replaced by living rests (roadmap step 49c), a stage keeps the picture
+   moving itself — idle motion, and flights launched on story time but
+   flown on the idle clock (`sinceLaunch`, laser story) — and puts each
+   key event right after the pause where its piece is said;
 2. after each piece, a **watch break** of 2.5 s (`WATCH_BREAK_S`, no
    voice): the animation runs at full speed and shows it;
 3. the beat **cannot end** — nor the story finish — until its last piece
@@ -183,14 +211,16 @@ story beat ("Look at the night sky…") does not need it.
 
 ## Key motion vs idle motion
 
-"Don't show while talking" means the KEY animation, never the whole
-picture — a frozen frame looks broken. Every stage therefore runs two
-clocks:
+"Don't show while talking" means the KEY EVENT the sentence is about,
+never the picture — a frozen frame looks broken, and since 2026-11-21 the
+rule is that the animation keeps going while the voice speaks (science
+pacing above). Every stage runs two clocks:
 
 - **story time** drives **key motion** — what the narration is about and
   the child must watch: a neutron flying in, a nucleus splitting, an
   electron jumping and falling, a photon leaving, the bar growing, the
-  balls rolling. The narrator's holds stop it.
+  balls rolling. Each key event comes after (or, show first, before) the
+  sentence about it — never under it.
 - **idle time** drives **idle motion** — life that carries no story:
   atoms wiggling, a stretched nucleus trembling, electrons circling their rings, the jostling crowd of
   protons, the Sun's shimmering surface, the γ ray's wave, the cloud's
@@ -214,8 +244,8 @@ When a sentence names parts of the picture ("Inside the bomb, two pieces
 of uranium wait apart"), those parts are emphasised **while it is
 spoken**: an amber ring and glow pulse around each one, numbered when
 the sentence counts them (1, 2), staggered so "two pieces" reads as one,
-then two. It is idle motion (wall clock), so it plays while the story is
-held for the voice; it fades out when the piece ends.
+then two. It is idle motion (wall clock), so it plays while the voice
+speaks; it fades out when the piece ends.
 
 How it works: the narrator reports which piece is being said
 (`speakingPiece` from `useDemoNarration`), and the stage keeps a table
@@ -291,6 +321,36 @@ Where: ☢️ bombs `explosion0`–`explosion3` (fireball, shock wave, dust
 stem, mushroom cloud: 8.5 s of animation, then ~35 s of narration over
 the billowing cloud). The size comparison (`explosion4`) stays show-first
 and starts only after that.
+
+## Drill-in beats: say it again, differently
+
+After a science-heavy key event, a story repeats the idea once in a new
+shape — the 🔁 drill-in (Elena, 2026-11-21; animation side:
+[15-kid-friendly-animation.md](15-kid-friendly-animation.md) rule 25).
+The drill-in is its own beat (`<beat>Drill`) right after the event, with
+its own line. Writing rules:
+
+1. **Announce the repeat** — one short opener, so the child knows this is
+   the same thing again, not something new. Vary it between chapters:
+
+   | EN | DE | RU |
+   | --- | --- | --- |
+   | Let's make sure we understood what just happened. | Schauen wir noch einmal genau hin, was gerade passiert ist. | Давай ещё раз посмотрим, что сейчас произошло. |
+   | Let's watch that once more, closer. | Schauen wir uns das noch einmal ganz nah an. | Посмотрим на это ещё раз, поближе. |
+   | Did you catch it? Let's see it again. | Hast du es gesehen? Schauen wir es noch einmal an. | Ты заметил? Давай посмотрим ещё раз. |
+
+   (DE/RU drafts for the native-speaker review; RU: no homographs, ё
+   written out.)
+2. **New words, fewer of them.** Never reread the first narration. Retell
+   it as a chain of causes ("first… then… so…") in the plainest words the
+   story has taught — the taught term once, no new terms.
+3. **A question is welcome**: ask, give a ` ... ` pause to think, then
+   answer ("What made the electron go up? ... The green photon!").
+4. **Chunked like science pacing** — 2–3 pieces with ` | `, each piece
+   followed by its part of the replay (statement → event); show first
+   (`| `) only when the replay opens on a diagram.
+5. **No new information.** If the line needs a fact the event didn't
+   show, it belongs in the next beat.
 
 ## Show first: data, numbers and complex visuals
 
@@ -398,7 +458,14 @@ is clean. So every piece of 3 words or fewer (the taught-term repeats:
 only the second copy is kept — mid-utterance, after a sentence pause, it
 is clean (checked by voiced/hiss profile against the in-sentence word).
 The cut is checked (both copies about equally long) and falls back to a
-single render if it can't be found. The verified 🧒 reference predates
+single render if it can't be found. **A hissy end → the middle of
+three** (2026-11-21): Kokoro also ends an *utterance-final* short word
+with a breathy "s" — the second copy of "Ruby. Ruby." was heard as
+"roobi-es" (high-frequency share at its end 1.26, a clean vowel end
+≈ 0.3). The generator measures that (`tailHiss`); above 0.8 it renders
+"X. X. X." and keeps the MIDDLE copy (`middleCopy`: the first absorbs
+the leading blip, the last the trailing hiss). Only re-rendered pieces
+are affected; the log names every word it fixed. The verified 🧒 reference predates
 this fix and keeps its original single renders.
 
 ## The switch

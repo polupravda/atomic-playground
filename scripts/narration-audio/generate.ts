@@ -34,7 +34,9 @@ import { SUN_SCRIPTS } from '../../src/stage/sunNarration'
 import { DETECTIVE_SCRIPTS } from '../../src/stage/detectiveNarration'
 import { GOLD_SCRIPTS } from '../../src/stage/goldNarration'
 import { PLANT_SCRIPTS } from '../../src/stage/plantNarration'
+import { LASER_SCRIPTS, LASER_STORY_KEY } from '../../src/stage/laserNarration'
 import { CRYSTAL_INTRO_KEY, CRYSTAL_INTRO_SCRIPTS } from '../../src/stage/crystalIntros'
+import { LIGHT_INTRO_KEY, LIGHT_INTRO_SCRIPTS } from '../../src/stage/lightIntros'
 import { FIREWORK_SCRIPTS } from '../../src/stage/fireworkNarration'
 import { BOMB_MODES, bombScripts, bombStoryKey } from '../../src/stage/bombNarration'
 import { SPOKEN_WORDS, WORDS_KEY } from '../../src/core/spokenWords'
@@ -282,6 +284,66 @@ function secondCopy(a: Float32Array): Float32Array | null {
   return null
 }
 
+/**
+ * How hissy the END of a render is: the high-frequency share (first
+ * difference ÷ level) over the last 40 ms of sound and its fade-out.
+ * Kokoro ends an UTTERANCE-FINAL short word with a breathy "s" (measured
+ * on "Ruby. Ruby.": 1.26 at the second copy's end, 0.29 at the first's —
+ * heard as "roobi-es", Elena 2026-11-21); a clean vowel end is ≈ 0.3.
+ */
+function tailHiss(a: Float32Array): number {
+  const f = SR / 100
+  const fr: Array<[number, number]> = []
+  for (let i = 0; i + f <= a.length; i += f) {
+    let s = 0
+    let h = 0
+    for (let j = i + 1; j < i + f; j++) {
+      s += a[j] * a[j]
+      const d = a[j] - a[j - 1]
+      h += d * d
+    }
+    fr.push([Math.sqrt(s / f), Math.sqrt(h / f)])
+  }
+  const peak = Math.max(...fr.map((x) => x[0]))
+  let end = fr.length - 1
+  while (end > 0 && fr[end][0] <= peak * 0.02) end--
+  let last = end
+  while (last > 0 && fr[last][0] <= peak * 0.08) last--
+  const tail = fr.slice(Math.max(0, last - 3), end + 1)
+  return tail.reduce((n, x) => n + x[1] / Math.max(1e-6, x[0]), 0) / Math.max(1, tail.length)
+}
+const HISSY_TAIL = 0.8
+
+/**
+ * From a render of "X. X. X.", keep only the MIDDLE X: the first copy
+ * absorbs the leading blip (see secondCopy), the last the trailing hiss
+ * (see tailHiss), the middle one is clean at both ends. Two boundaries =
+ * the pair of pauses (≥ 80 ms) that cut the sound into three copies of
+ * about the same length. Null if no such pair is found.
+ */
+function middleCopy(a: Float32Array): Float32Array | null {
+  const segs = soundSegments(a)
+  if (segs.length < 3) return null
+  const gaps = segs.map((s, i) => i).filter((i) => i > 0 && segs[i][0] - segs[i - 1][1] >= 8)
+  let best: { i: number; j: number; score: number } | null = null
+  for (const i of gaps) {
+    for (const j of gaps) {
+      if (j <= i) continue
+      const l1 = segs[i - 1][1] - segs[0][0]
+      const l2 = segs[j - 1][1] - segs[i][0]
+      const l3 = segs[segs.length - 1][1] - segs[j][0]
+      const mean = (l1 + l2 + l3) / 3
+      if ([l1, l2, l3].some((l) => l < mean * 0.6 || l > mean * 1.5)) continue
+      const score = segs[i][0] - segs[i - 1][1] + segs[j][0] - segs[j - 1][1]
+      if (!best || score > best.score) best = { i, j, score }
+    }
+  }
+  if (!best) return null
+  const from = Math.max(segs[best.i - 1][1] + 1, segs[best.i][0] - 6) // ≤ 60 ms lead
+  const to = Math.min(segs[best.j][0] - 1, segs[best.j - 1][1] + 8) // ≤ 80 ms tail
+  return a.subarray(from * (SR / 100), to * (SR / 100))
+}
+
 // Words Kokoro (its espeak dictionary) says wrong, given as Kokoro
 // phonemes instead — VOICE ONLY: the app's text keeps the real spelling.
 // Checked with the phonemizer, not yet by ear (Elena's listen pass):
@@ -332,6 +394,15 @@ async function makeKokoro(): Promise<Render> {
     // a full stop between the copies guarantees a pause to cut at
     const stop = /[.!?]$/.test(text) ? '' : '.'
     const kept = secondCopy(await say(`${text}${stop} ${text}`))
+    // the last copy ended in a hiss ("roobi-es"): take the middle of three
+    if (kept && tailHiss(kept) > HISSY_TAIL) {
+      const mid = middleCopy(await say(`${text}${stop} ${text}${stop} ${text}`))
+      if (mid) {
+        console.log(`  ("${text}": hissy end ${tailHiss(kept).toFixed(2)} → middle of three, ${tailHiss(mid).toFixed(2)})`)
+        return mid
+      }
+      console.log(`  (couldn't split the tripled "${text}" — kept the hissy copy)`)
+    }
     if (kept) return kept
     console.log(`  (couldn't split the doubled "${text}" — rendered once)`)
     return say(text)
@@ -428,8 +499,11 @@ const STORIES: Story[] = [
   { key: 'detective', scripts: DETECTIVE_SCRIPTS },
   { key: 'gold', scripts: GOLD_SCRIPTS },
   { key: 'plant', scripts: PLANT_SCRIPTS },
+  { key: LASER_STORY_KEY, scripts: LASER_SCRIPTS },
   // 🧊 Crystal lab: one short intro per scene (not a story)
   { key: CRYSTAL_INTRO_KEY, scripts: CRYSTAL_INTRO_SCRIPTS },
+  // 💡 Light lab: a scene's intro + its spoken results (🔬 microscopes)
+  { key: LIGHT_INTRO_KEY, scripts: LIGHT_INTRO_SCRIPTS },
   { key: 'sun', scripts: SUN_SCRIPTS },
   { key: 'firework', scripts: FIREWORK_SCRIPTS },
   ...BOMB_MODES.map((m) => ({ key: bombStoryKey(m), scripts: bombScripts(m) })),

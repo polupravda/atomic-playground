@@ -6,6 +6,9 @@ import { DETECTIVE_NARRATION, DETECTIVE_SCRIPTS } from './detectiveNarration'
 import { GOLD_NARRATION, GOLD_SCRIPTS } from './goldNarration'
 import { PLANT_NARRATION, PLANT_SCRIPTS } from './plantNarration'
 import { CRYSTAL_INTRO_SCRIPTS } from './crystalIntros'
+import { LIGHT_INTRO_SCRIPTS } from './lightIntros'
+import { LASER_SCRIPTS, LASER_STORY_KEY } from './laserNarration'
+import { LASER_ORDER } from './laserScenes'
 import { STARDUST_SCRIPTS } from './stardustNarration'
 import { WATCH_BREAK_S, lineMarks, parseNarrationLine } from './narrationScript'
 
@@ -31,6 +34,9 @@ const ORDERS: Record<string, string[]> = {
     ...['write-graphite', 'write-diamond', 'push-graphite', 'push-diamond', 'light-graphite', 'light-diamond'],
     ...['power-graphite', 'power-diamond', 'squeeze-diamond'],
   ],
+  // 💡 Light lab: 🔬 Microscopes' intro, then its spoken results
+  'light-lab': ['microscope', 'microscope-blur', 'microscope-electrons', 'microscope-atoms'],
+  [LASER_STORY_KEY]: [...LASER_ORDER],
 }
 
 const SCRIPTS: Record<string, Record<string, string>> = {
@@ -41,6 +47,8 @@ const SCRIPTS: Record<string, Record<string, string>> = {
   gold: GOLD_NARRATION,
   plant: PLANT_NARRATION,
   'crystal-lab': CRYSTAL_INTRO_SCRIPTS.en,
+  'light-lab': LIGHT_INTRO_SCRIPTS.en,
+  [LASER_STORY_KEY]: LASER_SCRIPTS.en,
 }
 
 /** every story's scripts in every language (EN is SCRIPTS above) */
@@ -52,6 +60,8 @@ const ALL_LANGS: Record<string, Partial<Record<'en' | 'de' | 'ru', Record<string
   gold: GOLD_SCRIPTS,
   plant: PLANT_SCRIPTS,
   'crystal-lab': CRYSTAL_INTRO_SCRIPTS,
+  'light-lab': LIGHT_INTRO_SCRIPTS,
+  [LASER_STORY_KEY]: LASER_SCRIPTS,
 }
 
 describe('the DE and RU translations (bombs, firework, Sun)', () => {

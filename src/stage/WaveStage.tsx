@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef } from 'react'
 import { Layer, Shape, Stage } from 'react-konva'
 import Konva from 'konva'
+import { drawLightBulb, drawWavePacket, ordinaryCss } from './lightPacket'
 import {
   refractiveIndex,
   traceDrop,
@@ -456,28 +457,18 @@ function drawPacketGlyph(
   css?: (a: number) => string,
 ) {
   const lambda = screenWavelength(m)
-  const len = Math.min(lambda * 1.5, maxLen)
-  const sigma = len / 2.4
-  const amp = Math.min(19, maxLen * 0.3)
-  const phase0 = CREST_SPEED * t
-  for (const [lw, alpha] of [
-    [8, 0.2],
-    [3, 0.95],
-  ] as const) {
-    ctx.strokeStyle = css ? css(alpha) : waveColor(m, alpha)
-    ctx.lineWidth = lw
-    ctx.lineCap = 'round'
-    ctx.beginPath()
-    const step = Math.max(1.5, Math.min(4, lambda / 24))
-    for (let dx = -len * 0.9; dx <= len * 0.9; dx += step) {
-      const env = Math.exp(-((dx / sigma) ** 2))
-      const y = cy - amp * env * Math.sin((2 * Math.PI * (cx + dx - phase0)) / lambda)
-      if (dx === -len * 0.9) ctx.moveTo(cx + dx, y)
-      else ctx.lineTo(cx + dx, y)
-    }
-    ctx.stroke()
-  }
+  drawWavePacket(
+    ctx,
+    cx,
+    cy,
+    lambda,
+    Math.min(lambda * 1.5, maxLen),
+    Math.min(19, maxLen * 0.3),
+    CREST_SPEED * t,
+    css ?? ((a) => waveColor(m, a)),
+  )
 }
+
 
 function drawDoorbell(
   ctx: CanvasRenderingContext2D,
@@ -1354,6 +1345,7 @@ function stepXray(st: XrayState, dt: number, obj: XrayObject, lamp: XrayLamp, sp
   st.blips = st.blips.filter((b) => b.age < 0.35)
 }
 
+
 const XRAY_M = 1e-10
 const ORDINARY_M = 560e-9
 // packet glyphs are a single bright core with NO outline/halo (feedback
@@ -1361,8 +1353,6 @@ const ORDINARY_M = 560e-9
 // over the object comes from the darkened object fills instead
 const xrayPacketCss = (a: number) =>
   a < 0.5 ? 'rgba(0, 0, 0, 0)' : 'rgba(232, 238, 245, 0.95)'
-const ordinaryCss = (a: number) =>
-  a < 0.5 ? 'rgba(0, 0, 0, 0)' : 'rgba(255, 246, 214, 0.95)'
 
 /** the object as the scene sees it: skin, fur, suitcase — contents hidden */
 function drawXrayObject(ctx: CanvasRenderingContext2D, obj: XrayObject, left: number, top: number) {
@@ -1540,45 +1530,7 @@ function drawXrayScene(
     label(ctx, 'X-ray tube', cx - 80, 56)
   } else {
     // an everyday light bulb on its cord
-    ctx.strokeStyle = '#475569'
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.moveTo(cx, 30)
-    ctx.lineTo(cx, 38)
-    ctx.stroke()
-    ctx.fillStyle = '#64748b'
-    ctx.beginPath()
-    ctx.roundRect(cx - 8, 38, 16, 14, 3)
-    ctx.fill()
-    const bg = ctx.createRadialGradient(cx - 6, 66, 2, cx, 72, 24)
-    bg.addColorStop(0, 'rgba(255, 251, 235, 0.95)')
-    bg.addColorStop(0.6, 'rgba(253, 230, 138, 0.55)')
-    bg.addColorStop(1, 'rgba(217, 180, 80, 0.35)')
-    ctx.fillStyle = bg
-    ctx.strokeStyle = 'rgba(253, 230, 138, 0.8)'
-    ctx.lineWidth = 1.5
-    ctx.beginPath()
-    ctx.arc(cx, 72, 24, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.stroke()
-    // the filament
-    ctx.strokeStyle = '#fbbf24'
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.moveTo(cx - 8, 76)
-    ctx.lineTo(cx - 4, 68)
-    ctx.lineTo(cx, 76)
-    ctx.lineTo(cx + 4, 68)
-    ctx.lineTo(cx + 8, 76)
-    ctx.stroke()
-    // its warm pool of light, wide enough to feed the whole rain
-    const wg = ctx.createRadialGradient(cx, 72, 0, cx, 72, 150)
-    wg.addColorStop(0, 'rgba(253, 240, 200, 0.4)')
-    wg.addColorStop(1, 'rgba(253, 240, 200, 0)')
-    ctx.fillStyle = wg
-    ctx.beginPath()
-    ctx.arc(cx, 72, 150, 0, Math.PI * 2)
-    ctx.fill()
+    drawLightBulb(ctx, cx, 72)
     label(ctx, 'light bulb', cx - 80, 56)
   }
 

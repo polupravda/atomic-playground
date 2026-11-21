@@ -196,3 +196,32 @@ export const LAMPS_PHOTOS: WavePhoto[] = [
     source: 'https://commons.wikimedia.org/wiki/File:LCD_subpixels.jpg',
   },
 ]
+
+/** 🔬 microscopes scene: the same thing (pollen) through light and through
+ *  electrons, and one of the first electron microscopes */
+export const MICROSCOPE_PHOTOS: WavePhoto[] = [
+  {
+    file: 'micro-pollen-light.jpg',
+    caption:
+      'Lily pollen under a light microscope: round grains and their outlines — the finer patterns stay soft.',
+    creator: 'Elatadi, Wikimedia Commons',
+    license: 'CC BY-SA 4.0',
+    source: 'https://commons.wikimedia.org/wiki/File:Flower_pollen_01.jpg',
+  },
+  {
+    file: 'micro-pollen-electron.jpg',
+    caption:
+      'Pollen under an electron microscope: every spike and pit is sharp. The left half is the real picture — grey. The colors on the right were painted on afterwards.',
+    creator: 'Dartmouth College Electron Microscope Facility',
+    license: 'Public domain',
+    source: 'https://commons.wikimedia.org/wiki/File:Misc_pollen_bw-and-colorized.jpg',
+  },
+  {
+    file: 'micro-ruska.jpg',
+    caption:
+      'An electron microscope built by Ernst Ruska in the 1930s (Deutsches Museum, Munich): the tall column holds the electron gun and the magnet lenses.',
+    creator: 'J Brew, Wikimedia Commons',
+    license: 'CC BY-SA 3.0',
+    source: 'https://commons.wikimedia.org/wiki/File:Ernst_Ruska_Electron_Microscope_-_Deutsches_Museum_-_Munich-edit.jpg',
+  },
+]

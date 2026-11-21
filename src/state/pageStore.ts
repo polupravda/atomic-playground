@@ -7,7 +7,7 @@ export type AppPage = 'builder' | 'charges' | 'bonding' | 'crystal' | 'light' | 
 /** the demos inside 🌍 Atoms in action — sub-items of the main menu */
 /** the demos inside 🎬 Stories; atoms (candle + tree) · crystals are planned
  *  (ComingSoonExample: inactive thumbnails only) */
-export type ExampleId = 'bomb' | 'light' | 'cosmos' | 'plant' | 'atoms' | 'crystals'
+export type ExampleId = 'bomb' | 'light' | 'cosmos' | 'plant' | 'atoms' | 'crystals' | 'lasers'
 
 interface PageState {
   page: AppPage
