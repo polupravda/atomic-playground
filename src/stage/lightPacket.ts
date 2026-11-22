@@ -95,3 +95,78 @@ export function drawLightBulb(ctx: CanvasRenderingContext2D, cx: number, cy: num
 /** ordinary light: the bone photo's warm white (core only, no halo) */
 export const ordinaryCss = (a: number) =>
   a < 0.5 ? 'rgba(0, 0, 0, 0)' : 'rgba(255, 246, 214, 0.95)'
+
+/** invisible light (X-rays, infrared, ultraviolet): the bone photo's ghost
+ *  grey-white, core only — "light we draw so you can follow it" */
+export const ghostCss = (a: number) => (a < 0.5 ? 'rgba(0, 0, 0, 0)' : 'rgba(232, 238, 245, 0.95)')
+
+/**
+ * THE eye (the Light lab's 👁️ eye scene; rule 3b): a friendly side-view
+ * cross-section, pupil on the left, retina at the back on the right —
+ * schematic inside, the things a young kid recognizes an eye by outside
+ * (eyelids hugging the eyeball, lashes, a brow). `r` = the eyeball's
+ * radius (the eye scene's is 74); `inside` draws between the retina and
+ * the eyelids (what lands on the retina). Returns where things are.
+ */
+export function drawEye(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, inside?: () => void) {
+  const s = r / 74
+  ctx.save()
+  ctx.fillStyle = 'rgba(148, 163, 184, 0.07)'
+  ctx.strokeStyle = '#94a3b8'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.stroke()
+  // cornea bulge at the left
+  ctx.beginPath()
+  ctx.arc(x - r + 4 * s, y, 22 * s, Math.PI * 0.6, Math.PI * 1.4)
+  ctx.stroke()
+  // the pupil: the hole the light flies into
+  ctx.fillStyle = '#05070f'
+  ctx.beginPath()
+  ctx.ellipse(x - r + 14 * s, y, 7 * s, 20 * s, 0, 0, Math.PI * 2)
+  ctx.fill()
+  // the retina: the catching wall at the back
+  ctx.strokeStyle = '#64748b'
+  ctx.lineWidth = 5 * s
+  ctx.beginPath()
+  ctx.arc(x, y, r - 7 * s, -Math.PI * 0.32, Math.PI * 0.32)
+  ctx.stroke()
+  inside?.()
+  // upper eyelid: a warm band over the top of the eyeball. It starts ABOVE
+  // the pupil — a real open eye's lid never hangs in front of it (Elena,
+  // 2026-11-21: it used to start at 1.04π and cover the pupil's top)
+  const SKIN = '#e0a97f'
+  const SKIN_DARK = '#c08552'
+  ctx.strokeStyle = SKIN
+  ctx.lineCap = 'round'
+  ctx.lineWidth = 11 * s
+  ctx.beginPath()
+  ctx.arc(x, y, r + 7 * s, Math.PI * 1.13, Math.PI * 1.62)
+  ctx.stroke()
+  // lower eyelid, shorter — the eye reads as OPEN toward the front
+  ctx.lineWidth = 8 * s
+  ctx.beginPath()
+  ctx.arc(x, y, r + 6 * s, Math.PI * 0.52, Math.PI * 0.72)
+  ctx.stroke()
+  // lashes: three curved strokes off the upper lid's front edge
+  ctx.strokeStyle = SKIN_DARK
+  ctx.lineWidth = 3 * s
+  for (const [i, a] of [Math.PI * 1.15, Math.PI * 1.21, Math.PI * 1.27].entries()) {
+    const bx = x + Math.cos(a) * (r + 12 * s)
+    const by = y + Math.sin(a) * (r + 12 * s)
+    ctx.beginPath()
+    ctx.moveTo(bx, by)
+    ctx.quadraticCurveTo(bx - 14 * s, by - (8 + i * 2) * s, bx + (-20 + i * 3) * s, by - (18 + i * 2) * s)
+    ctx.stroke()
+  }
+  // a calm eyebrow
+  ctx.lineWidth = 7 * s
+  ctx.beginPath()
+  ctx.arc(x + 6 * s, y + 8 * s, r + 32 * s, Math.PI * 1.14, Math.PI * 1.42)
+  ctx.stroke()
+  ctx.restore()
+  return { pupilX: x - r + 14 * s, lensX: x - r + 22 * s, retinaX: x + r - 7 * s }
+}
+

@@ -13,6 +13,8 @@ import { Eq, TimelineColumn, type StoryBeat } from './TimelineColumn'
 const EXPLOSION_ICONS = ['🔥', '💨', '🌪️', '🍄', '📏']
 
 function storyBeat(mode: BombDesignId, id: string): StoryBeat {
+  // 🔁 the close-up once more (a look back: no equation of its own)
+  if (id === 'closeupDrill') return { id, group: '🔁 Once more, closer', icon: '🔁' }
   if (id.startsWith('closeup')) {
     const st = closeupStory(BOMB_DESIGNS[mode].fuel)[Number(id.slice(7))]
     return { id, group: '🔍 Close-up: atoms being hit', icon: st.icon, extra: <Eq>{st.equation}</Eq> }

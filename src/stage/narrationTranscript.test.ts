@@ -6,6 +6,10 @@ import { DETECTIVE_SCRIPTS } from './detectiveNarration'
 import { GOLD_SCRIPTS } from './goldNarration'
 import { PLANT_SCRIPTS } from './plantNarration'
 import { LASER_SCRIPTS, LASER_STORY_KEY } from './laserNarration'
+import { CUT_SCRIPTS, CUT_STORY_KEY } from './laserCutNarration'
+import { MOON_SCRIPTS, MOON_STORY_KEY } from './laserMoonNarration'
+import { DIGITAL_SCRIPTS, DIGITAL_STORY_KEY } from './digitalNarration'
+import { WIFI_SCRIPTS, WIFI_STORY_KEY } from './wifiNarration'
 import { STARDUST_SCRIPTS } from './stardustNarration'
 import { BOMB_MODES as MODES, bombStoryKey } from './bombNarration'
 import { LINE_GAP_S, WATCH_BREAK_S, displayPiece, parseNarrationLine, pieceLanding, splitSentences } from './narrationScript'
@@ -112,6 +116,10 @@ const STORIES: Array<[string, Partial<Record<'en' | 'de' | 'ru', Record<string, 
   ['gold', GOLD_SCRIPTS],
   ['plant', PLANT_SCRIPTS],
   [LASER_STORY_KEY, LASER_SCRIPTS],
+  [CUT_STORY_KEY, CUT_SCRIPTS],
+  [MOON_STORY_KEY, MOON_SCRIPTS],
+  [DIGITAL_STORY_KEY, DIGITAL_SCRIPTS],
+  [WIFI_STORY_KEY, WIFI_SCRIPTS],
   ['stardust', STARDUST_SCRIPTS],
 ]
 

@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef } from 'react'
 import { Layer, Shape, Stage } from 'react-konva'
 import Konva from 'konva'
-import { drawLightBulb, drawWavePacket, ordinaryCss } from './lightPacket'
+import { drawEye, drawLightBulb, drawWavePacket, ghostCss, ordinaryCss } from './lightPacket'
 import {
   refractiveIndex,
   traceDrop,
@@ -927,33 +927,10 @@ function drawEyeScene(
     drawStrand(ctx, outX0, outY0, outX1, outY1, nm, t, off)
   })
 
-  // the eye: a friendly side-view cross-section (pupil left, retina right).
-  // The INSIDE stays schematic; the OUTSIDE gets the things a young kid
-  // recognizes an eye by — eyelids hugging the eyeball, lashes, a brow.
-  ctx.fillStyle = 'rgba(148, 163, 184, 0.07)'
-  ctx.strokeStyle = '#94a3b8'
-  ctx.lineWidth = 2
-  ctx.beginPath()
-  ctx.arc(EYE_X, EYE_Y, EYE_R, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.stroke()
-  // cornea bulge at the left
-  ctx.beginPath()
-  ctx.arc(EYE_X - EYE_R + 4, EYE_Y, 22, Math.PI * 0.6, Math.PI * 1.4)
-  ctx.stroke()
-  // the pupil: the hole the waves fly into
-  ctx.fillStyle = '#05070f'
-  ctx.beginPath()
-  ctx.ellipse(EYE_X - EYE_R + 14, EYE_Y, 7, 20, 0, 0, Math.PI * 2)
-  ctx.fill()
-  // the retina: the catching wall at the back
-  ctx.strokeStyle = '#64748b'
-  ctx.lineWidth = 5
-  ctx.beginPath()
-  ctx.arc(EYE_X, EYE_Y, EYE_R - 7, -Math.PI * 0.32, Math.PI * 0.32)
-  ctx.stroke()
-  // the landing glow — only if something the eye can catch arrived
-  if (seen.name !== 'black') {
+  // the eye: the shared drawing (lightPacket.drawEye), the landing glow
+  // drawn on the retina — only if something the eye can catch arrived
+  drawEye(ctx, EYE_X, EYE_Y, EYE_R, () => {
+    if (seen.name === 'black') return
     const g = ctx.createRadialGradient(EYE_X + EYE_R - 20, EYE_Y, 0, EYE_X + EYE_R - 20, EYE_Y, 30)
     g.addColorStop(0, seen.css)
     g.addColorStop(1, 'rgba(0,0,0,0)')
@@ -964,40 +941,7 @@ function drawEyeScene(
     ctx.arc(EYE_X + EYE_R - 20, EYE_Y, 30, 0, Math.PI * 2)
     ctx.fill()
     ctx.restore()
-  }
-  // upper eyelid: a warm band from the front (where the light enters) over
-  // the top of the eyeball
-  const SKIN = '#e0a97f'
-  const SKIN_DARK = '#c08552'
-  ctx.strokeStyle = SKIN
-  ctx.lineCap = 'round'
-  ctx.lineWidth = 11
-  ctx.beginPath()
-  ctx.arc(EYE_X, EYE_Y, EYE_R + 7, Math.PI * 1.04, Math.PI * 1.62)
-  ctx.stroke()
-  // lower eyelid, shorter — kept clear of the lower-left corridor where the
-  // bounced light flies in, so the eye reads as OPEN toward the object
-  ctx.lineWidth = 8
-  ctx.beginPath()
-  ctx.arc(EYE_X, EYE_Y, EYE_R + 6, Math.PI * 0.52, Math.PI * 0.72)
-  ctx.stroke()
-  // lashes: three curved strokes off the upper lid's front edge
-  ctx.strokeStyle = SKIN_DARK
-  ctx.lineWidth = 3
-  for (const [i, a] of [Math.PI * 1.06, Math.PI * 1.13, Math.PI * 1.2].entries()) {
-    const bx = EYE_X + Math.cos(a) * (EYE_R + 12)
-    const by = EYE_Y + Math.sin(a) * (EYE_R + 12)
-    ctx.beginPath()
-    ctx.moveTo(bx, by)
-    ctx.quadraticCurveTo(bx - 14, by - 8 - i * 2, bx - 20 + i * 3, by - 18 - i * 2)
-    ctx.stroke()
-  }
-  // a calm eyebrow
-  ctx.strokeStyle = SKIN_DARK
-  ctx.lineWidth = 7
-  ctx.beginPath()
-  ctx.arc(EYE_X + 6, EYE_Y + 8, EYE_R + 32, Math.PI * 1.14, Math.PI * 1.42)
-  ctx.stroke()
+  })
   label(ctx, 'pupil', EYE_X - EYE_R - 26, EYE_Y - 18)
   label(ctx, 'retina', EYE_X + 24, EYE_Y - EYE_R + 20)
   // what the eye reports
@@ -1351,8 +1295,8 @@ const ORDINARY_M = 560e-9
 // packet glyphs are a single bright core with NO outline/halo (feedback
 // 2026-11-16 round 2): the glyph's wide pass is suppressed, and contrast
 // over the object comes from the darkened object fills instead
-const xrayPacketCss = (a: number) =>
-  a < 0.5 ? 'rgba(0, 0, 0, 0)' : 'rgba(232, 238, 245, 0.95)'
+/** X-rays: the shared ghost look (lightPacket.ghostCss) */
+const xrayPacketCss = ghostCss
 
 /** the object as the scene sees it: skin, fur, suitcase — contents hidden */
 function drawXrayObject(ctx: CanvasRenderingContext2D, obj: XrayObject, left: number, top: number) {

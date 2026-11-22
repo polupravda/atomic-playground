@@ -11,7 +11,7 @@ import { PageNav } from './PageNav'
 import { Paras, SECTION_MAX, SectionHeader, para, type Para } from './Paras'
 import { sayWord } from './wordAudio'
 import { bondWord, elementWord } from '../core/spokenWords'
-import { FLAT, KEY } from './surfaces'
+import { FLAT, KEY, TRAY } from './surfaces'
 
 /** Canvas twin of the SpeakButton look: amber circle + a bright amber
  *  vector speaker. (The 🔊 emoji is natively dark gray — it looked dull on
@@ -970,15 +970,95 @@ const missingText = (missing: Record<string, number>) =>
     .map(([sym, n]) => `${n} × ${nameOf(sym)}`)
     .join(' and ')
 
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+/** 📷 Photos tab: the real-life photos of every molecule built so far, in
+ *  recipe order — the same cards as every other photo column (flat card,
+ *  uncropped image, caption + credit); the current molecule's two are lit
+ *  amber ("look here") and scrolled into view. */
+function MoleculePhotos({
+  discovered,
+  current,
+  visible,
+}: {
+  discovered: Set<string>
+  current: string | null
+  visible: boolean
+}) {
+  const refs = useRef(new Map<string, HTMLElement>())
+  useEffect(() => {
+    if (visible && current) refs.current.get(current)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [visible, current])
+  const groups = BOND_SCENARIOS.filter((s) => discovered.has(s.id) && MOLECULE_PHOTOS[s.id])
+  return (
+    <>
+      {groups.map((s, gi) => {
+        const photo = MOLECULE_PHOTOS[s.id]
+        const lit = s.id === current
+        return (
+          <section
+            key={s.id}
+            ref={(el) => {
+              if (el) refs.current.set(s.id, el)
+              else refs.current.delete(s.id)
+            }}
+            className={gi === 0 ? '' : 'mt-4'}
+          >
+            <h2
+              className={`mb-2 text-xs font-semibold uppercase tracking-wide ${lit ? 'text-amber-200' : 'text-slate-400'}`}
+            >
+              {s.formula} · {s.name}
+            </h2>
+            <div className="space-y-3">
+              {(['pure', 'use'] as const).map((kind) => {
+                const shot = photo[kind]
+                return (
+                  <figure
+                    key={kind}
+                    className={`rounded-xl p-2 transition ${
+                      lit ? 'border border-amber-500/60 bg-amber-500/10' : 'bg-slate-800/40'
+                    }`}
+                  >
+                    <img
+                      src={`${import.meta.env.BASE_URL}molecules/${s.id}-${kind}.jpg`}
+                      alt={shot.caption}
+                      loading="lazy"
+                      className="w-full rounded-lg border border-slate-700 bg-black"
+                    />
+                    <figcaption className="mt-1">
+                      <div className="text-sm leading-snug text-slate-200">{capitalize(shot.caption)}</div>
+                      <div className="text-[9px] text-slate-500">
+                        <a href={shot.source} target="_blank" rel="noreferrer" className="underline hover:text-slate-300">
+                          {shot.creator}
+                        </a>{' '}
+                        (CC {shot.license})
+                      </div>
+                    </figcaption>
+                  </figure>
+                )
+              })}
+            </div>
+          </section>
+        )
+      })}
+    </>
+  )
+}
+
 export function BondingLab() {
   const [lab, setLab] = useState<LabState>({ molecules: [], free: {} })
   const [clearSignal, setClearSignal] = useState(0)
   // recipes turn into DISCOVERIES: dimmed until first built, then they pop
   const [discovered, setDiscovered] = useState<Set<string>>(new Set())
-  // molecule whose real-life photo is showing (click a molecule name)
+  // molecule whose real-life photos are lit (a fresh molecule, or a click)
   const [photoId, setPhotoId] = useState<string | null>(null)
-  const photo = photoId ? MOLECULE_PHOTOS[photoId] : null
-  const photoScenario = photoId ? BOND_SCENARIOS.find((s) => s.id === photoId) : null
+  // left column: 📝 notes or 📷 photos — the Light lab's tray, same rules
+  const [leftTab, setLeftTab] = useState<'info' | 'photo'>('info')
+  const showPhotos = (id: string) => {
+    if (!MOLECULE_PHOTOS[id]) return
+    setPhotoId(id)
+    setLeftTab('photo')
+  }
 
   const freeTotal = Object.values(lab.free).reduce((a, b) => a + b, 0)
 
@@ -1066,9 +1146,40 @@ export function BondingLab() {
           </div>
           <div className="col-start-1 row-start-1 flex min-h-0 flex-col gap-3">
             <PageNav />
+            <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
+              {(
+                [
+                  ['photo', '📷 Photos'],
+                  ['info', '📝 Notes'],
+                ] as const
+              ).map(([id, text]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setLeftTab(id)}
+                  aria-pressed={leftTab === id}
+                  // no molecule built yet = no photos to show
+                  disabled={id === 'photo' && photoId === null}
+                  className={`flex-1 rounded-lg px-3 py-1 transition disabled:opacity-40 ${
+                    leftTab === id
+                      ? 'bg-sky-600 font-medium text-white'
+                      : 'text-slate-300 enabled:hover:bg-slate-700'
+                  }`}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+            {/* both stay mounted (scroll positions survive tab switches) */}
+            <div className="relative min-h-0 flex-1">
             <div
-              className={`min-h-0 overflow-y-auto p-3 text-sm leading-relaxed text-slate-300 ${FLAT} ${
-                photo ? 'basis-2/5' : 'flex-1'
+              className={`absolute inset-0 overflow-y-auto pr-1 ${leftTab === 'photo' ? '' : 'hidden'}`}
+            >
+              <MoleculePhotos discovered={discovered} current={photoId} visible={leftTab === 'photo'} />
+            </div>
+            <div
+              className={`absolute inset-0 overflow-y-auto p-3 text-sm leading-relaxed text-slate-300 ${FLAT} ${
+                leftTab === 'info' ? '' : 'hidden'
               }`}
             >
               {rightNow.length > 0 && <SectionHeader first type="now" />}
@@ -1078,7 +1189,7 @@ export function BondingLab() {
                     <button
                       key={i}
                       type="button"
-                      onClick={() => setPhotoId(p.photoId!)}
+                      onClick={() => showPhotos(p.photoId!)}
                       className="flex items-start gap-2 text-left transition hover:text-amber-200"
                       title="Show a real-life photo"
                     >
@@ -1102,68 +1213,7 @@ export function BondingLab() {
               <SectionHeader type="tips" />
               <Paras items={TIPS} max={SECTION_MAX} className="text-slate-400" />
             </div>
-            {photo && photoScenario && (
-              <div className={`relative min-h-0 basis-3/5 overflow-y-auto px-3 py-3 ${FLAT}`}>
-                <button
-                  type="button"
-                  onClick={() => setPhotoId(null)}
-                  aria-label="Close photos"
-                  className="absolute right-2 top-1 z-10 text-slate-400 transition hover:text-slate-200"
-                >
-                  ✕
-                </button>
-                <div className="space-y-3">
-                  <figure>
-                    <img
-                      src={`${import.meta.env.BASE_URL}molecules/${photoId}-pure.jpg`}
-                      alt={`${photoScenario.name}: what it looks like`}
-                      loading="lazy"
-                      className="h-36 w-full rounded-lg border border-slate-700 object-cover"
-                    />
-                    <figcaption className="mt-0.5">
-                      <div className="text-sm text-slate-200">
-                        👀 {photoScenario.formula}: {photo.pure.caption}
-                      </div>
-                      <div className="text-[9px] text-slate-500">
-                        <a
-                          href={photo.pure.source}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline hover:text-slate-300"
-                        >
-                          {photo.pure.creator}
-                        </a>{' '}
-                        (CC {photo.pure.license})
-                      </div>
-                    </figcaption>
-                  </figure>
-                  <figure>
-                    <img
-                      src={`${import.meta.env.BASE_URL}molecules/${photoId}-use.jpg`}
-                      alt={`${photoScenario.name}: where you meet it`}
-                      loading="lazy"
-                      className="h-36 w-full rounded-lg border border-slate-700 object-cover"
-                    />
-                    <figcaption className="mt-0.5">
-                      <div className="text-sm text-slate-200">
-                        🔧 {photo.use.caption}
-                      </div>
-                      <div className="text-[9px] text-slate-500">
-                        <a
-                          href={photo.use.source}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline hover:text-slate-300"
-                        >
-                          {photo.use.creator}
-                        </a>{' '}
-                        (CC {photo.use.license})
-                      </div>
-                    </figcaption>
-                  </figure>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
           <div className="col-start-2 row-start-1 flex min-h-0 items-center justify-center">
             <div className="overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
@@ -1183,7 +1233,7 @@ export function BondingLab() {
                     return changed ? next : prev
                   })
                 }}
-                onMoleculeClick={(id) => setPhotoId(id)}
+                onMoleculeClick={showPhotos}
               />
             </div>
           </div>

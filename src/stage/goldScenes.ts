@@ -3,6 +3,7 @@ import { drawGlossyParticle } from './particleStyle'
 import { shellConfiguration } from '../core/atom'
 import { elementForProtons } from '../core/elements'
 import { GOLD_SEEDS, goldYearsAgo, nucleusAt, type GoldSeed } from '../core/gold'
+import { bounce, callout, replayFrame, rewindSweep, stepRing } from './laserCutScenes'
 
 // R04 — 💍 Where gold comes from (story design: docs/how-things-work/
 // 12-story-designs-for-kids.md — told BACKWARDS from the ring). Nine beats,
@@ -24,6 +25,12 @@ import { GOLD_SEEDS, goldYearsAgo, nucleusAt, type GoldSeed } from '../core/gold
 //             neutrons turn into protons (an electron flies off); they
 //             climb to platinum and uranium — and with 79 protons our
 //             hero is born: gold
+//   stuffDrill 🔁 the drill-in (playbook 25): a rewind sweep, then the
+//             replay frame on the same spray, the other atoms faded back:
+//             ① our hero swallows neutron after neutron, ② a callout
+//             circle zooms in on its nucleus — one neutron turns into a
+//             proton, an electron flies off — while the element tag
+//             climbs, ③ the 79th proton: gold, the hero's amber ring
 //   forward   ⏩ the hero drifts, joins the cloud that becomes the Sun and
 //             the Earth, sinks into rock, washes into a river, ends on
 //             the hand
@@ -32,7 +39,7 @@ import { GOLD_SEEDS, goldYearsAgo, nucleusAt, type GoldSeed } from '../core/gold
 // Key motion runs on story time `t`; life (gleams, ripples, orbits,
 // electrons, the marker's pulse) on the idle clock.
 
-export const GOLD_ORDER = ['ring', 'zoom', 'rewind', 'stars', 'teaspoon', 'crash', 'stuff', 'forward', 'older'] as const
+export const GOLD_ORDER = ['ring', 'zoom', 'rewind', 'stars', 'teaspoon', 'crash', 'stuff', 'stuffDrill', 'forward', 'older'] as const
 export type GoldPhase = (typeof GOLD_ORDER)[number]
 
 /** story seconds per beat */
@@ -44,6 +51,8 @@ export const GOLD_T: Record<GoldPhase, number> = {
   teaspoon: 7.5,
   crash: 11,
   stuff: 13,
+  // science pacing: four pieces, held at 0, 2.5, 5, 7.5
+  stuffDrill: 10,
   forward: 15,
   older: 8,
 }
@@ -1099,7 +1108,9 @@ function places(b: Box): Placed[] {
 
 const nucR = (n: number, pr: number) => pr * 1.08 * Math.sqrt(n) + pr
 
-function drawStuff(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number) {
+/** inside the spray: the hot orange haze, a drizzle of free neutrons and
+ *  free electrons (idle motion — it never stops) */
+function sprayBackdrop(ctx: CanvasRenderingContext2D, b: Box, idle: number) {
   // inside the spray: hot, orange haze, a drizzle of free neutrons
   const g = ctx.createRadialGradient(b.W / 2, b.UH / 2, 0, b.W / 2, b.UH / 2, Math.max(b.W, b.H) * 0.75)
   g.addColorStop(0, '#2a1206')
@@ -1128,6 +1139,11 @@ function drawStuff(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: numbe
     const y = frac(rnd(i, 144) + idle * sp * 0.6 * (rnd(i, 145) > 0.5 ? 1 : -1)) * b.UH + Math.sin(idle * 9 + i) * 3
     blit(ctx, e, x, y)
   }
+}
+
+function drawStuff(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number) {
+  sprayBackdrop(ctx, b, idle)
+  const n = neutron()
   tag(ctx, 'the blue dots: free electrons, too hot to hold on', b.W / 2, 108, 'rgba(125, 211, 252, 0.95)', 12, fadeIn(t, 1.2))
   for (const p of places(b)) {
     const s = p.seed
@@ -1177,6 +1193,158 @@ function drawStuff(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: numbe
   tag(ctx, 'in the spray: bare atom cores swallow neutrons, very fast', b.W / 2, 76, GREY, 13, fadeIn(t, 0.4))
   tag(ctx, 'a neutron turns into a proton — an electron flies off', b.W / 2, b.UH - 36, GREY, 13, fadeIn(t, 2.2))
   counter(ctx, b.W, null)
+}
+
+// ---------- 🔁 the drill-in: our hero made once more ----------
+
+/** where nucleon number `rank` (the `rank`-th to turn into a proton) sits
+ *  in nucleusSprite(n, …, pr), from the nucleus' centre */
+function nucleonAt(n: number, rank: number, pr: number) {
+  const golden = Math.PI * (3 - Math.sqrt(5))
+  const ranks = Array.from({ length: n }, (_, j) => ({ j, r: rnd(j, 61) })).sort((a, b) => a.r - b.r)
+  const j = ranks[rank].j
+  const r = pr * 1.08 * Math.sqrt(j)
+  return { x: r * Math.cos(j * golden), y: r * Math.sin(j * golden) }
+}
+
+const HERO = GOLD_SEEDS[0]
+const HERO_PR = 2.9
+// the replay's own clock (holds at 0, 2.5, 5, 7.5 while a piece is said):
+// ① the neutrons fly in, ② one neutron turns (in the callout) and the
+// rest follow up to platinum's 78, ③ the 79th: gold
+const DR_CAPTURE = { from: 2.6, to: 4.85 }
+const DR_FIRST_TURN = 5.3
+const DR_TURNS = { from: 5.6, to: 6.7 }
+const DR_GOLD = 7.7
+const DR_ZOOM = 4
+
+const DR_TURN_COUNT = HERO.protonsEnd - HERO.protonsStart // 53
+/** when the k-th new proton (1-based) is born in the replay: the first
+ *  alone (the callout), the 2nd … 52nd together (to platinum's 78), the
+ *  53rd alone (gold) */
+function drillTurnAt(k: number): number {
+  if (k === 1) return DR_FIRST_TURN
+  if (k === DR_TURN_COUNT) return DR_GOLD
+  return DR_TURNS.from + ((DR_TURNS.to - DR_TURNS.from) * (k - 2)) / (DR_TURN_COUNT - 3)
+}
+/** the hero's protons at replay time t */
+function drillProtons(t: number): number {
+  let p = HERO.protonsStart
+  for (let k = 1; k <= DR_TURN_COUNT; k++) if (t >= drillTurnAt(k)) p++
+  return p
+}
+
+// holds at 0, 2.5, 5, 7.5. The opener is said over the spray as the stuff
+// beat left it (alive on the idle clock); a rewind sweep wipes it to the
+// start: our hero a small iron atom again, the other two faded back.
+// "First, the small atom swallows neutron after neutron…" → ① they fly in
+// and stick, the nucleus grows; "Then some of its neutrons turn into
+// protons…" → ② a callout circle opens on the nucleus: one neutron flashes
+// and turns red, an electron flies off — then the rest follow, the tag
+// climbing through the elements to platinum; "How many protons make
+// gold? … Seventy nine!" → ③ the 79th turns: gold, and the hero's amber
+// ring. The neutrons and electrons fly on story time, never across a hold.
+function drawStuffDrill(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number) {
+  const sweep = clamp01((t - 0.1) / 0.9)
+  const open = fadeIn(t, 0.9, 0.5)
+  const pre = 1 - fadeIn(t, 0.45, 0.5)
+  if (pre > 0) {
+    ctx.save()
+    ctx.globalAlpha *= pre
+    drawStuff(ctx, b, GOLD_T.stuff, idle)
+    ctx.restore()
+  }
+  ctx.save()
+  ctx.globalAlpha *= open
+  sprayBackdrop(ctx, b, idle)
+  const [left, heroPlace, right] = places(b)
+  // the other two seeds: back at their start, faded back
+  for (const p of [left, right]) {
+    ctx.save()
+    ctx.globalAlpha *= 0.22
+    blit(ctx, nucleusSprite(p.seed.nucleonsStart, p.seed.protonsStart, p.pr), p.x, p.y)
+    ctx.restore()
+  }
+  const { x, y } = heroPlace
+  const count = HERO.capture.count
+  const landAt = (j: number) => DR_CAPTURE.from + 0.6 + ((DR_CAPTURE.to - DR_CAPTURE.from - 0.6) * (j + 1)) / count
+  let nucleons = HERO.nucleonsStart
+  for (let j = 0; j < count; j++) if (t >= landAt(j)) nucleons++
+  const protons = drillProtons(t)
+  const R = nucR(nucleons, HERO_PR)
+  // ① the neutrons flying in (0.6 s each, then they stick)
+  const n = neutron()
+  for (let j = 0; j < count; j++) {
+    const q = (t - (landAt(j) - 0.6)) / 0.6
+    if (q < 0 || q >= 1) continue
+    const a = rnd(j + 79 * 7, 134) * Math.PI * 2
+    const d = R + 8 + (1 - easeIn(q)) * 160
+    blit(ctx, n, x + Math.cos(a) * d, y + Math.sin(a) * d)
+  }
+  blit(ctx, nucleusSprite(nucleons, protons, HERO_PR), x, y)
+  // ② ③ each new proton: a red flash, an electron flies off
+  for (let k = 1; k <= DR_TURN_COUNT; k++) {
+    const q = (t - drillTurnAt(k)) / 0.7
+    if (q < 0 || q >= 1) continue
+    const a = rnd(k + 79 * 3, 135) * Math.PI * 2
+    if (q < 0.35) {
+      ctx.strokeStyle = `rgba(248, 113, 113, ${0.8 * (1 - q / 0.35)})`
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(x, y, R + 4, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+    const d = R + q * 90
+    ctx.save()
+    ctx.globalAlpha *= 1 - q
+    blit(ctx, electrons().outer, x + Math.cos(a) * d, y + Math.sin(a) * d)
+    ctx.restore()
+  }
+  const el = elementForProtons(protons)
+  const gold = protons === HERO.protonsEnd
+  tag(ctx, `${el?.name ?? ''} · ${protons} protons`, x, y + R + 40, gold ? AMBER : GREY, 14)
+  stepRing(ctx, x, y, R + 18, 1, idle, fadeIn(t, 2.6, 0.4) * (1 - fadeIn(t, 5, 0.4)))
+  // ② the callout: the nucleus seen close, centred on the neutron that
+  // turns first (it sits where nucleusSprite puts that rank)
+  const pop = bounce(t - 5.1, 0.4, 999, 0.1)
+  const shut = 1 - fadeIn(t, 7.55, 0.4)
+  const cr = Math.min(b.W, b.UH) * 0.17
+  const cc = { x: b.W * 0.76, y: b.UH * 0.34 }
+  const first = nucleonAt(HERO.nucleonsEnd, HERO.protonsStart, HERO_PR)
+  const from = { x: x + first.x, y: y + first.y }
+  const inset = pop > 0 ? 0.6 + 0.4 * Math.min(1.1, pop) : 0
+  callout(ctx, from, cc, cr * inset, clamp01(pop * 2) * shut, () => {
+    const zr = HERO_PR * DR_ZOOM
+    const big = nucleusSprite(nucleons, protons, zr)
+    const f = nucleonAt(HERO.nucleonsEnd, HERO.protonsStart, zr)
+    blit(ctx, big, cc.x - f.x, cc.y - f.y)
+    // the turning neutron: a red flash around it, an electron flies off
+    const q = (t - DR_FIRST_TURN) / 1.2
+    if (q >= 0 && q < 1) {
+      if (q < 0.4) {
+        ctx.strokeStyle = `rgba(248, 113, 113, ${0.9 * (1 - q / 0.4)})`
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(cc.x, cc.y, zr * (1.4 + q), 0, Math.PI * 2)
+        ctx.stroke()
+      }
+      const a = -0.6
+      const d = zr * 1.2 + easeOut(q) * cr * 1.1
+      ctx.save()
+      ctx.globalAlpha *= 1 - q * q
+      drawGlossyParticle(ctx, 'electrons', cc.x + Math.cos(a) * d, cc.y + Math.sin(a) * d, 2.8 * DR_ZOOM * 0.6)
+      ctx.restore()
+    }
+  })
+  if (pop > 0) stepRing(ctx, cc.x, cc.y, cr + 8, 2, idle, fadeIn(t, 5.3, 0.4) * shut)
+  // ③ gold: the step ring, then the hero's amber ring
+  stepRing(ctx, x, y, R + 24, 3, idle, fadeIn(t, 7.6, 0.4))
+  const born = fadeIn(t, DR_GOLD + 0.3, 0.6)
+  marker(ctx, x, y, R + 11, idle, born)
+  tag(ctx, 'Gold! 79 protons: our hero is born', x, y - R - 50, AMBER, 15, born)
+  ctx.restore()
+  rewindSweep(ctx, b, sweep)
+  replayFrame(ctx, b, open)
 }
 
 // ---------- beat 8: forward again ----------
@@ -1259,6 +1427,7 @@ export function drawGold(
   else if (phase === 'teaspoon') drawTeaspoon(ctx, b, t, idle)
   else if (phase === 'crash') drawCrash(ctx, b, t, idle)
   else if (phase === 'stuff') drawStuff(ctx, b, t, idle)
+  else if (phase === 'stuffDrill') drawStuffDrill(ctx, b, t, idle)
   else if (phase === 'forward') drawForward(ctx, b, t, idle)
   else drawOlder(ctx, b, t, idle)
 }

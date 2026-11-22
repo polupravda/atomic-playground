@@ -17,6 +17,8 @@ import { ENERGY_VALLEY, SUN_RECIPE } from '../core/cosmos'
 import { wavelengthToCss } from '../core/spectra'
 import { DETECTIVE_ORDER, DETECTIVE_T, drawDetective, type DetectivePhase } from './detectiveScenes'
 import { GOLD_ORDER, GOLD_T, drawGold, type GoldPhase } from './goldScenes'
+import { replayFrame, rewindSweep, scaledAbout, stepRing } from './laserCutScenes'
+import { marker } from './storyDraw'
 
 // R04 — 🌟 Cosmic origins demo canvas (🔭 star detective, 🧒 star stuff and
 // 💍 gold draw from their own modules). ☀️ "Why the Sun
@@ -27,6 +29,8 @@ import { GOLD_ORDER, GOLD_T, drawGold, type GoldPhase } from './goldScenes'
 //      of every 100 kg — and the evidence, the Sun's dark-line barcode
 //   3. dive into the core: the real pp-chain in three scripted beats
 //      (positron + neutrino, γ, helium-4 born)
+//   3b. 🔁 the drill-in (fusionDrill, playbook 25): the chain counted once
+//      more over a look-back replay of the same close-up, ① ② ③
 //   4. the ⚖️ scale: 4 hydrogens outweigh 1 helium — the missing 0.7%
 //      flashes away as light
 //   5. the photon's way out: a ~100,000-year random walk, then 8 minutes
@@ -67,6 +71,7 @@ export type CosmosPhase =
   | 'sun'
   | 'recipe'
   | 'closeup'
+  | 'fusionDrill'
   | 'scale'
   | 'walk'
   | 'valley'
@@ -88,6 +93,8 @@ export interface CosmosReport {
 // ---------- timings ----------
 const SUN_T = 5
 const RECIPE_T = 10
+// the 🔁 drill-in: science pacing, four pieces held at 0, 2.5, 5, 7.5
+const FUSION_DRILL_T = 10
 const SCALE_T = 8.5
 const WALK_T = 9.5
 const VALLEY_T = 14
@@ -149,7 +156,8 @@ function step(sim: Sim, dt: number) {
   }
   if (sim.phase === 'sun' && sim.phaseT >= SUN_T) advance('recipe')
   else if (sim.phase === 'recipe' && sim.phaseT >= RECIPE_T) advance('closeup')
-  else if (sim.phase === 'closeup' && sim.phaseT >= SUN_CLOSEUP_TOTAL) advance('scale')
+  else if (sim.phase === 'closeup' && sim.phaseT >= SUN_CLOSEUP_TOTAL) advance('fusionDrill')
+  else if (sim.phase === 'fusionDrill' && sim.phaseT >= FUSION_DRILL_T) advance('scale')
   else if (sim.phase === 'scale' && sim.phaseT >= SCALE_T) advance('walk')
   else if (sim.phase === 'walk' && sim.phaseT >= WALK_T) advance('valley')
 }
@@ -161,7 +169,7 @@ export function cosmosStoryOrder(journey: CosmosJourneyId): string[] {
     return ['giant', 'zoom', 'forge0', 'forge1', 'boom', 'drift', 'earth', 'alive', 'you']
   }
   const close = Array.from({ length: 4 }, (_, i) => `closeup${i}`)
-  return ['sun', 'recipe', 'zoom', ...close, 'scale', 'walk', 'valley']
+  return ['sun', 'recipe', 'zoom', ...close, 'fusionDrill', 'scale', 'walk', 'valley']
 }
 
 /** story seconds until the sim leaves its current beat (flow pacing):
@@ -419,11 +427,8 @@ function drawCluster(
   })
 }
 
-function drawCoreCloseup(ctx: CanvasRenderingContext2D, t: number, alpha: number) {
-  if (alpha <= 0) return
-  const s = t - SUN_SCENE_START
-  ctx.save()
-  ctx.globalAlpha = alpha
+/** the hot core and its jostling crowd of bare protons (idle motion) */
+function coreBackdrop(ctx: CanvasRenderingContext2D, crowd = 0.8) {
   // the hot core
   const g = ctx.createRadialGradient(W / 2, UH / 2, 0, W / 2, UH / 2, Math.max(W, UH) * 0.7)
   g.addColorStop(0, '#2b0f05')
@@ -438,8 +443,29 @@ function drawCoreCloseup(ctx: CanvasRenderingContext2D, t: number, alpha: number
     if (Math.hypot(bx - CU_CX, by - CU_CY) < 150) continue // keep the stage clear
     const jx = Math.sin(IDLE * (2 + rnd(i, 13)) + i) * 7
     const jy = Math.cos(IDLE * (2 + rnd(i, 14)) + i * 2) * 7
-    drawGlossyParticle(ctx, 'protons', bx + jx, by + jy, PR * 0.85, 0.8)
+    drawGlossyParticle(ctx, 'protons', bx + jx, by + jy, PR * 0.85, crowd)
   }
+}
+
+/** a bright flash where nuclei join (q 0 → 1) */
+function joinFlash(ctx: CanvasRenderingContext2D, q: number, grow: number, peak: number) {
+  if (q < 0 || q >= 1) return
+  const r = 20 + grow * easeOut(q)
+  const fg = ctx.createRadialGradient(CU_CX, CU_CY, 0, CU_CX, CU_CY, r)
+  fg.addColorStop(0, `rgba(255, 250, 220, ${peak * (1 - q)})`)
+  fg.addColorStop(1, 'rgba(253, 186, 116, 0)')
+  ctx.fillStyle = fg
+  ctx.beginPath()
+  ctx.arc(CU_CX, CU_CY, r, 0, Math.PI * 2)
+  ctx.fill()
+}
+
+function drawCoreCloseup(ctx: CanvasRenderingContext2D, t: number, alpha: number) {
+  if (alpha <= 0) return
+  const s = t - SUN_SCENE_START
+  ctx.save()
+  ctx.globalAlpha = alpha
+  coreBackdrop(ctx)
 
   // ---- the scripted actors ----
   // c0 (0–3): two protons close in; c1 (3–7.5): stick → deuterium + β⁺ + ν;
@@ -545,6 +571,93 @@ function drawCoreCloseup(ctx: CanvasRenderingContext2D, t: number, alpha: number
     if (s > 13 && s < 15.4) tag(ctx, '2 protons go back to try again', CU_CX + 150, CU_CY - 90, 'rgba(203, 213, 225, 0.95)', 12)
   }
   ctx.restore()
+}
+
+// ---------- phase 3b: 🔁 the drill-in — the chain, counted once more ----------
+
+// holds at 0, 2.5, 5, 7.5. The opener ("Let's count it once more…") is
+// said over the close-up as the chain left it (the new helium, the crowd
+// jostling); a rewind sweep wipes it back to the start, and the replay
+// frame opens on the same core, a little closer, the crowd faded back.
+// "First, two protons crash and stick…" → ① the two waiting protons fly
+// together, a flash, one turns into a neutron: heavy hydrogen. "Then one
+// more proton joins in…" → ② the proton waiting at the left joins, the
+// flash of energy (γ) flies out: light helium. "Last, two light heliums
+// crash and join… Fusion!" → ③ the light helium waiting at the right
+// drifts in, a flash: helium, and two protons fly free. Between steps the
+// next newcomer waits, jiggling (a living rest); nothing is ever in flight
+// across a hold.
+const DRILL_ZOOM = 1.25
+function drawFusionDrill(ctx: CanvasRenderingContext2D, t: number) {
+  const box = { W, UH, H }
+  const sweep = clamp01((t - 0.1) / 0.9)
+  const open = clamp01((t - 0.9) / 0.5)
+  const pre = 1 - clamp01((t - 0.45) / 0.5)
+  if (pre > 0) drawCoreCloseup(ctx, SUN_CLOSEUP_TOTAL, pre)
+  ctx.save()
+  ctx.globalAlpha = open
+  coreBackdrop(ctx, 0.3)
+  const fade = (from: number, len = 0.5) => clamp01((t - from) / len)
+  const wait = (i: number) => ({ x: Math.sin(IDLE * 3.1 + i) * 3, y: Math.cos(IDLE * 2.7 + i * 2) * 3 })
+  scaledAbout(ctx, CU_CX, CU_CY, DRILL_ZOOM, () => {
+    // ① two protons fly together and stick (2.6 → 4.0), a flash
+    if (t < 4) {
+      const q = easeInOut(fade(2.6, 1.4))
+      const d = 120 * (1 - q)
+      const w = q > 0 ? { x: 0, y: 0 } : wait(1)
+      drawGlossyParticle(ctx, 'protons', CU_CX - PR - d + w.x, CU_CY + w.y, PR)
+      drawGlossyParticle(ctx, 'protons', CU_CX + PR + d - w.x, CU_CY - w.y, PR)
+    }
+    joinFlash(ctx, (t - 4) / 0.8, 110, 0.8)
+    if (t >= 4 && t < 6.2) {
+      drawCluster(ctx, ['protons', 'neutrons'], CU_CX, CU_CY, fade(4.1, 0.8))
+      tag(ctx, 'deuterium — heavy hydrogen', CU_CX, CU_CY + 54, AMBER)
+    }
+    // ② the third proton: waits at the left, joins (5.1 → 6.2), γ flies out
+    if (t >= 4.4 && t < 6.2) {
+      const q = easeInOut(fade(5.1, 1.1))
+      const w = q > 0 ? { x: 0, y: 0 } : wait(3)
+      const x = CU_CX - 170 * (1 - q) - PR * 1.6 + w.x
+      const y = CU_CY - 60 * (1 - q) + w.y
+      ctx.save()
+      ctx.globalAlpha *= fade(4.4)
+      drawGlossyParticle(ctx, 'protons', x, y, PR)
+      ctx.restore()
+      // the next newcomer, waiting: a soft pulsing ring until it sets off
+      marker(ctx, x, y, PR + 9, IDLE, fade(4.4) * (1 - fade(5.1, 0.3)) * 0.7)
+    }
+    if (t >= 6.2 && t < 8.6) {
+      drawCluster(ctx, ['protons', 'neutrons', 'protons'], CU_CX, CU_CY)
+      if (t > 6.5) tag(ctx, 'helium-3 — light helium', CU_CX, CU_CY + 56, AMBER)
+      if (t < 7.3) drawGamma(ctx, CU_CX, CU_CY, -0.7, (t - 6.2) * 170, t < 6.9 ? 1 : 1 - (t - 6.9) / 0.4)
+    }
+    // ③ the second light helium: waits at the right, drifts in (7.6 → 8.6)
+    if (t >= 6.8 && t < 8.6) {
+      const q = easeInOut(fade(7.6, 1))
+      const w = q > 0 ? { x: 0, y: 0 } : wait(5)
+      const x = CU_CX + 200 * (1 - q) + PR * 2.4 + w.x
+      const y = CU_CY + 80 * (1 - q) + w.y
+      ctx.save()
+      ctx.globalAlpha *= fade(6.8)
+      drawCluster(ctx, ['protons', 'neutrons', 'protons'], x, y)
+      ctx.restore()
+      marker(ctx, x, y, PR * 2 + 10, IDLE, fade(6.8) * (1 - fade(7.6, 0.3)) * 0.7)
+    }
+    if (t >= 8.6) {
+      joinFlash(ctx, (t - 8.6) / 0.6, 130, 0.85)
+      drawCluster(ctx, ['protons', 'neutrons', 'neutrons', 'protons'], CU_CX, CU_CY)
+      tag(ctx, 'helium-4 — made of four hydrogens', CU_CX, CU_CY + 58, AMBER)
+      // the two set-free protons fly back into the crowd
+      const q = easeOut(fade(8.7, 1.2))
+      for (const dir of [1, -1]) drawGlossyParticle(ctx, 'protons', CU_CX + dir * (30 + q * 170), CU_CY - dir * (10 + q * 100), PR * 0.9)
+    }
+  })
+  stepRing(ctx, CU_CX, CU_CY, 44, 1, IDLE, fade(2.6, 0.4) * (1 - fade(5, 0.4)))
+  stepRing(ctx, CU_CX, CU_CY, 44, 2, IDLE, fade(5.1, 0.4) * (1 - fade(7.5, 0.3)))
+  stepRing(ctx, CU_CX, CU_CY, 48, 3, IDLE, fade(7.6, 0.4))
+  ctx.restore()
+  rewindSweep(ctx, box, sweep)
+  replayFrame(ctx, box, open)
 }
 
 // ---------- phase 4: the scale (the missing 0.7%) ----------
@@ -1222,6 +1335,75 @@ export function cosmosChooserRows(): CosmosChooserRow[] {
   }))
 }
 
+/** a journey's mini scene around (cx, cy), `rh` = the row height it was
+ *  drawn for (its chooser row; the stories menu card) */
+export function drawCosmosMini(ctx: CanvasRenderingContext2D, id: CosmosJourneyId, cx: number, cy: number, rh: number) {
+  if (id === 'sun') {
+    drawSunBall(ctx, cx, cy, rh * 0.34)
+  } else if (id === 'detective') {
+    // a bright star + its rainbow with dark barcode lines
+    const sx = cx - rh * 0.55
+    const sy = cy - rh * 0.12
+    ctx.strokeStyle = 'rgba(255, 245, 210, 0.8)'
+    ctx.lineWidth = 1
+    for (const [dx, dy] of [[8, 0], [-8, 0], [0, 8], [0, -8]]) {
+      ctx.beginPath()
+      ctx.moveTo(sx, sy)
+      ctx.lineTo(sx + dx, sy + dy)
+      ctx.stroke()
+    }
+    ctx.fillStyle = 'rgba(255, 245, 210, 0.95)'
+    ctx.beginPath()
+    ctx.arc(sx, sy, 3, 0, Math.PI * 2)
+    ctx.fill()
+    const bw = rh * 1.3
+    const bh = rh * 0.22
+    const bx = cx - bw * 0.25
+    const by = cy - bh / 2
+    const g = ctx.createLinearGradient(bx, 0, bx + bw, 0)
+    for (let k = 0; k <= 8; k++) g.addColorStop(k / 8, wavelengthToCss(410 + (k / 8) * 280, 0.85))
+    ctx.fillStyle = g
+    ctx.beginPath()
+    ctx.roundRect(bx, by, bw, bh, 4)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.9)'
+    for (const f of [0.26, 0.47, 0.72]) ctx.fillRect(bx + bw * f, by, 2.5, bh)
+  } else if (id === 'stardust') {
+    // a glowing nebula wisp with one marked atom
+    const ng = ctx.createRadialGradient(cx, cy, 0, cx, cy, rh * 0.42)
+    ng.addColorStop(0, 'rgba(129, 140, 248, 0.35)')
+    ng.addColorStop(1, 'rgba(129, 140, 248, 0)')
+    ctx.fillStyle = ng
+    ctx.beginPath()
+    ctx.arc(cx, cy, rh * 0.42, 0, Math.PI * 2)
+    ctx.fill()
+    drawGlossyParticle(ctx, 'protons', cx + 8, cy - 4, 5)
+    ctx.strokeStyle = AMBER
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.arc(cx + 8, cy - 4, 10, 0, Math.PI * 2)
+    ctx.stroke()
+  } else {
+    // two tiny ultra-dense stars spiralling, a ring below
+    for (const d of [-1, 1]) {
+      ctx.fillStyle = '#e2e8f0'
+      ctx.beginPath()
+      ctx.arc(cx + d * 16, cy - 8 - d * 5, 5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.strokeStyle = 'rgba(226, 232, 240, 0.4)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.arc(cx, cy - 8, 24, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.strokeStyle = '#fbbf24'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.arc(cx, cy + 22, 9, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+}
+
 function drawLineup(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = '#020617'
   ctx.fillRect(0, 0, W, H)
@@ -1250,70 +1432,7 @@ function drawLineup(ctx: CanvasRenderingContext2D) {
       ctx.fillStyle = `rgba(226, 232, 240, ${0.2 + 0.4 * rnd(k + i * 20, 7)})`
       ctx.fillRect(row.left + rw * 0.45 + rnd(k + i * 20, 5) * rw * 0.5, row.top + rnd(k + i * 20, 6) * rh, 1, 1)
     }
-    if (j.id === 'sun') {
-      drawSunBall(ctx, cx, cy, rh * 0.34)
-    } else if (j.id === 'detective') {
-      // a bright star + its rainbow with dark barcode lines
-      const sx = cx - rh * 0.55
-      const sy = cy - rh * 0.12
-      ctx.strokeStyle = 'rgba(255, 245, 210, 0.8)'
-      ctx.lineWidth = 1
-      for (const [dx, dy] of [[8, 0], [-8, 0], [0, 8], [0, -8]]) {
-        ctx.beginPath()
-        ctx.moveTo(sx, sy)
-        ctx.lineTo(sx + dx, sy + dy)
-        ctx.stroke()
-      }
-      ctx.fillStyle = 'rgba(255, 245, 210, 0.95)'
-      ctx.beginPath()
-      ctx.arc(sx, sy, 3, 0, Math.PI * 2)
-      ctx.fill()
-      const bw = rh * 1.3
-      const bh = rh * 0.22
-      const bx = cx - bw * 0.25
-      const by = cy - bh / 2
-      const g = ctx.createLinearGradient(bx, 0, bx + bw, 0)
-      for (let k = 0; k <= 8; k++) g.addColorStop(k / 8, wavelengthToCss(410 + (k / 8) * 280, 0.85))
-      ctx.fillStyle = g
-      ctx.beginPath()
-      ctx.roundRect(bx, by, bw, bh, 4)
-      ctx.fill()
-      ctx.fillStyle = 'rgba(2, 6, 23, 0.9)'
-      for (const f of [0.26, 0.47, 0.72]) ctx.fillRect(bx + bw * f, by, 2.5, bh)
-    } else if (j.id === 'stardust') {
-      // a glowing nebula wisp with one marked atom
-      const ng = ctx.createRadialGradient(cx, cy, 0, cx, cy, rh * 0.42)
-      ng.addColorStop(0, 'rgba(129, 140, 248, 0.35)')
-      ng.addColorStop(1, 'rgba(129, 140, 248, 0)')
-      ctx.fillStyle = ng
-      ctx.beginPath()
-      ctx.arc(cx, cy, rh * 0.42, 0, Math.PI * 2)
-      ctx.fill()
-      drawGlossyParticle(ctx, 'protons', cx + 8, cy - 4, 5)
-      ctx.strokeStyle = AMBER
-      ctx.lineWidth = 1.5
-      ctx.beginPath()
-      ctx.arc(cx + 8, cy - 4, 10, 0, Math.PI * 2)
-      ctx.stroke()
-    } else {
-      // two tiny ultra-dense stars spiralling, a ring below
-      for (const d of [-1, 1]) {
-        ctx.fillStyle = '#e2e8f0'
-        ctx.beginPath()
-        ctx.arc(cx + d * 16, cy - 8 - d * 5, 5, 0, Math.PI * 2)
-        ctx.fill()
-      }
-      ctx.strokeStyle = 'rgba(226, 232, 240, 0.4)'
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.arc(cx, cy - 8, 24, 0, Math.PI * 2)
-      ctx.stroke()
-      ctx.strokeStyle = '#fbbf24'
-      ctx.lineWidth = 3
-      ctx.beginPath()
-      ctx.arc(cx, cy + 22, 9, 0, Math.PI * 2)
-      ctx.stroke()
-    }
+    drawCosmosMini(ctx, j.id, cx, cy, rh)
     ctx.restore()
     ctx.fillStyle = '#e2e8f0'
     ctx.font = '600 17px ui-sans-serif, system-ui, sans-serif'
@@ -1585,7 +1704,8 @@ export const CosmosStage = memo(function CosmosStage({
                 }
               }
               drawCoreCloseup(ctx, s.phaseT, cam.sceneAlpha)
-            } else if (s.phase === 'scale') drawScaleScene(ctx, s.phaseT)
+            } else if (s.phase === 'fusionDrill') drawFusionDrill(ctx, s.phaseT)
+            else if (s.phase === 'scale') drawScaleScene(ctx, s.phaseT)
             else if (s.phase === 'walk') drawWalkScene(ctx, s.phaseT)
             else drawValleyScene(ctx, s.phaseT)
             ctx.restore()

@@ -16,13 +16,15 @@ import {
   text,
 } from './storyDraw'
 import { BOMB_SPLITTABLE_PER_100, FUEL_SPLITTABLE_PER_100 } from '../core/plant'
+import { bounce, callout, replayFrame, rewindSweep, stepRing } from './laserCutScenes'
+import { sinceLaunch } from './laserScenes'
 
 // R03 — ⚡ How a power plant works (story design:
 // docs/how-things-work/12-story-designs-for-kids.md, which wins over
 // proposal 07 for the story). One question — can the bomb's chain light a
 // city instead? — one aha (let every split cause only ONE more: steady
 // heat, a very big kettle), three new words (control rod, turbine,
-// generator), one hero neutron in the amber ring. Seven beats:
+// generator), one hero neutron in the amber ring. Nine beats:
 //   remember  the bomb's chain as a dot tree: 1, 2, 4 … 128 in a blink
 //   rods      fuel rods (uranium atoms inside) standing in water, a grey
 //             control rod hanging between each; our neutron splits an atom
@@ -35,6 +37,10 @@ import { BOMB_SPLITTABLE_PER_100, FUEL_SPLITTABLE_PER_100 } from '../core/plant'
 //             the atoms around them, which shake harder and harder — that
 //             shaking IS heat (the States of matter lab's "vibrate");
 //             a thermometer climbs, the water beside the rod boils
+//   heatDrill 🔁 the drill-in (playbook 25): a rewind sweep, then the same
+//             close-up replayed in a frame — ① the split, slowed down;
+//             ② a callout circle on the crash: the hit atom shakes, the
+//             🔥 climbs; ③ the hot rod shakes the water, it boils
 //   kettle    zoom out: heat → boiling water → steam → a TURBINE spins
 //             (flow: never frozen)
 //   lights    the turbine turns a GENERATOR; electricity runs to a town,
@@ -50,7 +56,7 @@ import { BOMB_SPLITTABLE_PER_100, FUEL_SPLITTABLE_PER_100 } from '../core/plant'
 // Key motion runs on story time `t`; life (electrons, bubbles, the
 // turbine once it runs, flicker, the marker's pulse) on the idle clock.
 
-export const PLANT_ORDER = ['remember', 'rods', 'steady', 'heat', 'kettle', 'lights', 'safe', 'waste'] as const
+export const PLANT_ORDER = ['remember', 'rods', 'steady', 'heat', 'heatDrill', 'kettle', 'lights', 'safe', 'waste'] as const
 export type PlantBeat = (typeof PLANT_ORDER)[number]
 
 /** story seconds per beat (each piece of a science line gets a 2.5 s watch
@@ -60,6 +66,7 @@ export const PLANT_T: Record<PlantBeat, number> = {
   rods: 10.5,
   steady: 10,
   heat: 13.5,
+  heatDrill: 11,
   kettle: 14,
   lights: 8,
   safe: 10.5,
@@ -472,8 +479,34 @@ function shakeMarks(ctx: CanvasRenderingContext2D, x: number, y: number, r: numb
   ctx.restore()
 }
 
+/** how the heat close-up plays: the story beat's own timing, or the 🔁
+ *  replay's (the same picture, other times) */
+interface HeatPlay {
+  /** which atoms split, when (story s) */
+  splits: Array<{ c: number; r: number; at: number }>
+  /** when the heat reaches the water */
+  waterAt: number
+  /** slow motion of a split (flash, the pieces' flight): 1 = as told */
+  slow: number
+  /** when the amber ring lands on the atom that will split first */
+  heroAt: number
+  /** no small names (inside the replay's callout) */
+  bare: boolean
+  /** the "we are here" corner (not in the replay: its frame is there) */
+  corner: boolean
+}
+
+const HEAT_PLAY: HeatPlay = { splits: HEAT_SPLITS, waterAt: WATER_AT, slow: 1, heroAt: 1.2, bare: false, corner: true }
+
 function drawHeat(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number) {
   backdrop(ctx, b.W, b.H)
+  heatScene(ctx, b, t, idle, HEAT_PLAY)
+}
+
+/** the heat close-up (no backdrop); returns where things are, for the
+ *  replay's rings and callout */
+function heatScene(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number, play: HeatPlay) {
+  const { splits, waterAt, slow } = play
   // the scene: a tank of water, a fuel rod standing in the middle of it
   const surf = b.UH * 0.13
   const floor = b.UH * 0.93
@@ -484,7 +517,7 @@ function drawHeat(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number
   const ry0 = b.UH * 0.19
   const ry1 = b.UH * 0.88
   // water everywhere around the rod (its surface ripples on the idle clock)
-  const boil = clamp01((t - (WATER_AT + 1.1)) / 1)
+  const boil = clamp01((t - (waterAt + 1.1)) / 1)
   const wg = ctx.createLinearGradient(0, surf, 0, floor)
   wg.addColorStop(0, 'rgba(56, 189, 248, 0.26)')
   wg.addColorStop(1, 'rgba(14, 116, 144, 0.45)')
@@ -499,10 +532,10 @@ function drawHeat(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number
   ctx.closePath()
   ctx.fill()
   // splits done → how hot the rod is (0…1)
-  const splitsDone = HEAT_SPLITS.filter((s) => t >= s.at).length
-  const heat = clamp01(splitsDone / HEAT_SPLITS.length + (t > WATER_AT ? (t - WATER_AT) * 0.05 : 0))
+  const splitsDone = splits.filter((s) => t >= s.at).length
+  const heat = clamp01(splitsDone / splits.length + (t > waterAt ? (t - waterAt) * 0.05 : 0))
   // cartoon heat waves rolling out of the rod into the water
-  const waves = clamp01((t - (WATER_AT - 0.3)) / 0.8)
+  const waves = clamp01((t - (waterAt - 0.3)) / 0.8)
   if (waves > 0) {
     ctx.save()
     ctx.lineWidth = 3
@@ -551,8 +584,8 @@ function drawHeat(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number
   const home = (c: number, r: number) => ({ x: gx0 + (c + 0.5) * cw, y: ry0 + 12 + (r + 0.5) * rh })
   const kicks = new Map<string, number>()
   const frags: Array<{ x: number; y: number; protons: number; nucleons: number; ph: number }> = []
-  for (const s of HEAT_SPLITS) {
-    const q = t - s.at
+  for (const s of splits) {
+    const q = (t - s.at) / slow
     if (q < 0) continue
     for (const dir of [-1, 1]) {
       const nc = s.c + dir
@@ -577,10 +610,10 @@ function drawHeat(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const p = home(c, r)
-      const sp = HEAT_SPLITS.find((s) => s.c === c && s.r === r)
+      const sp = splits.find((s) => s.c === c && s.r === r)
       if (sp && t >= sp.at) {
         // it split: a big cartoon flash, then it is gone
-        const q = t - sp.at
+        const q = (t - sp.at) / slow
         if (q < 0.7) {
           const fr = 12 + ar * 3.2 * easeOut(q / 0.7)
           const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, fr)
@@ -602,7 +635,7 @@ function drawHeat(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number
       shellAtom(ctx, x, y, K, 92, 235, idle)
       shakeMarks(ctx, x, y, ar, Math.max(k * 1.2, (heat - 0.35) * 1.5))
       // the atom that will split: look here (amber ring) before it does
-      if (c === HEAT_SPLITS[0].c && r === HEAT_SPLITS[0].r && t > 1.2) marker(ctx, x, y, ar + 8, idle)
+      if (c === splits[0].c && r === splits[0].r && t > play.heroAt) marker(ctx, x, y, ar + 8, idle)
     }
   }
   // the split's two new atoms (electrons and all), shaking with the heat
@@ -646,8 +679,8 @@ function drawHeat(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number
         const hy = lerp(ry0 + 20, ry1 - 20, (row + 0.5 * rnd(i, 183)) / 5.6)
         // 0 = touching the rod, 1 = far side
         const dist = side < 0 ? (rx0 - hx) / (rx0 - tx0) : (hx - rx1) / (tx1 - rx1)
-        const warm = clamp01((t - WATER_AT - dist * 1.6) / 0.9)
-        const bump = t > WATER_AT && dist < 0.4 ? Math.exp(-(t - WATER_AT - dist * 1.6) * 2.5) * (t - WATER_AT - dist * 1.6 > 0 ? 1 : 0) : 0
+        const warm = clamp01((t - waterAt - dist * 1.6) / 0.9)
+        const bump = t > waterAt && dist < 0.4 ? Math.exp(-(t - waterAt - dist * 1.6) * 2.5) * (t - waterAt - dist * 1.6 > 0 ? 1 : 0) : 0
         const a = 1 + 11 * warm + 10 * bump
         const x = hx + a * Math.sin(idle * (7 + 12 * warm) + i)
         const y = hy + a * Math.cos(idle * (8 + 12 * warm) + i * 1.7)
@@ -693,13 +726,90 @@ function drawHeat(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number
       ctx.fill()
     }
   }
+  const at = { home, ar, rx0, rx1, ry0, ry1, tx0, tx1, surf }
+  if (play.bare) return at
   // small names for grown-ups (the voice names everything for the kids)
   text(ctx, 'one fuel rod, seen very close', (rx0 + rx1) / 2, ry0 - 14, 'rgba(226, 232, 240, 0.85)', 12, '600')
   text(ctx, 'uranium atoms', (rx0 + rx1) / 2 - 18, ry1 - 12, 'rgba(254, 243, 199, 0.75)', 11)
   text(ctx, 'water', (tx0 + rx0) / 2, floor + 14, 'rgba(186, 230, 253, 0.85)', 12, '600')
   text(ctx, 'water', (rx1 + tx1) / 2, floor + 14, 'rgba(186, 230, 253, 0.85)', 12, '600')
   tag(ctx, 'steam!', b.W / 2, surf - 30, '#f1f5f9', 14, boil)
-  youAreHere(ctx, b, 'one')
+  if (play.corner) youAreHere(ctx, b, 'one')
+  return at
+}
+
+// ---------- 🔁 the drill-in after the heat ----------
+
+/** the replay's times: the same atoms split in the same order — the first
+ *  right after "First, one uranium atom splits…" (in slow motion), the
+ *  other four after "…Heat!" (the 🔥 climbs with them); the water after
+ *  "So the hot rod shakes the water." (holds at 0, 2.5, 5, 7.5) */
+const DRILL_PLAY: HeatPlay = {
+  splits: [
+    { c: 1, r: 2, at: 2.7 },
+    { c: 0, r: 1, at: 5.7 },
+    { c: 2, r: 3, at: 6.1 },
+    { c: 1, r: 4, at: 6.5 },
+    { c: 2, r: 0, at: 6.9 },
+  ],
+  waterAt: 7.9,
+  slow: 2,
+  heroAt: 1,
+  bare: false,
+  corner: false,
+}
+
+// the opener over the heat beat's end (the water still boiling, a living
+// rest) → ⏪ a rewind sweep, the replay frame opens on the cool rod, the
+// hero atom in its amber ring; "First, one uranium atom splits…" → ① the
+// ring gets its number, the atom splits, its two pieces fly apart slowly
+// and crash into their neighbours; "Then those atoms shake… Heat!" → ② a
+// callout circle in the water on the left opens on the crash (the left
+// piece and the atom it hit, twice as big), the other atoms split, the
+// shaking grows, the 🔥 climbs; "So the hot rod shakes the water…" → ③
+// the callout closes, a ring on the water beside the rod: heat waves, the
+// water shakes, it boils, steam
+function drawHeatDrill(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number) {
+  backdrop(ctx, b.W, b.H)
+  const endA = 1 - clamp01((t - 0.1) / 0.5)
+  if (endA > 0) {
+    ctx.save()
+    ctx.globalAlpha *= endA
+    heatScene(ctx, b, PLANT_T.heat, idle, HEAT_PLAY)
+    ctx.restore()
+  }
+  const sweep = clamp01((t - 0.1) / 0.9)
+  const open = fadeIn(t, 0.9, 0.5)
+  ctx.save()
+  ctx.globalAlpha *= open
+  const at = heatScene(ctx, b, t, idle, DRILL_PLAY)
+  // ① the split
+  const first = DRILL_PLAY.splits[0]
+  const hero = at.home(first.c, first.r)
+  stepRing(ctx, hero.x, hero.y, at.ar + 22, 1, idle, fadeIn(t, 2.6, 0.4) * (1 - fadeIn(t, 5, 0.4)))
+  // ② the crash, close: the left piece and the atom it hit
+  const hit = at.home(first.c - 1, first.r)
+  const spot = { x: lerp(hit.x, hero.x, 0.3), y: hit.y }
+  const cr = Math.min((at.rx0 - at.tx0) * 0.44, b.UH * 0.2)
+  const cc = { x: (at.tx0 + at.rx0) / 2 - 2, y: spot.y + cr * 0.35 }
+  const pop = bounce(sinceLaunch('pd:callout', t, 5.1, idle), 0.4, 999, 0.1)
+  const shut = 1 - fadeIn(t, 7.6, 0.4)
+  const inset = pop > 0 ? 0.6 + 0.4 * Math.min(1.1, pop) : 0
+  callout(ctx, spot, cc, cr * inset, clamp01(pop * 2) * shut, () => {
+    ctx.save()
+    ctx.translate(cc.x, cc.y)
+    ctx.scale(2, 2)
+    ctx.translate(-spot.x, -spot.y)
+    heatScene(ctx, b, t, idle, { ...DRILL_PLAY, bare: true })
+    ctx.restore()
+  })
+  if (pop > 0) stepRing(ctx, cc.x, cc.y, cr + 8, 2, idle, fadeIn(t, 5.3, 0.4) * shut)
+  // ③ the water beside the hot rod
+  const wr = Math.min((at.tx1 - at.rx1) * 0.5, (at.ry1 - at.ry0) * 0.3)
+  stepRing(ctx, at.rx1 + wr, (at.ry0 + at.ry1) / 2, wr, 3, idle, fadeIn(t, 7.6, 0.4))
+  ctx.restore()
+  rewindSweep(ctx, b, sweep)
+  replayFrame(ctx, b, open)
 }
 
 // ---------- the plant in cutaway (kettle, lights) ----------
@@ -1401,6 +1511,7 @@ export function drawPlantBeat(ctx: CanvasRenderingContext2D, beat: string, t: nu
   else if (beat === 'rods') drawRods(ctx, b, t, idle)
   else if (beat === 'steady') drawSteady(ctx, b, t)
   else if (beat === 'heat') drawHeat(ctx, b, t, idle)
+  else if (beat === 'heatDrill') drawHeatDrill(ctx, b, t, idle)
   else if (beat === 'kettle') drawKettle(ctx, b, t, idle)
   else if (beat === 'lights') drawLights(ctx, b, t, idle)
   else if (beat === 'safe') drawSafe(ctx, b, t, idle)

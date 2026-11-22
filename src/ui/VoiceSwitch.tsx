@@ -3,8 +3,8 @@ import { cancelNarration } from './useNarration'
 import { SpeakerIcon } from './SpeakButton'
 import { TRAY } from './surfaces'
 
-// 🔊 the global storyteller-voice controls, rendered in every demo's
-// controls block (ui/DemoControls.tsx, left column under the main menu):
+// 🔊 the global storyteller-voice controls, in the card under the main
+// menu on every page (ui/PageNav.tsx):
 // the on/off switch and the narration-language toggle — full-width rows.
 // One setting for all demos, remembered across visits (state in
 // voiceStore). The language toggle is a pilot — it switches the VOICE

@@ -8,10 +8,11 @@ import { FISSION_W, FISSION_H } from './FissionStage'
 import {
   LIGHT_CLOSEUP_MAX_ZOOM,
   LIGHT_CLOSEUP_TOTAL,
+  LIGHT_DRILL_T,
   LIGHT_SCENE_START,
   drawLightCloseup,
+  drawLightCloseupDrill,
   lightCloseupCamera,
-  lightCloseupOutAlpha,
   lightCloseupStep,
 } from './lightCloseup'
 import { drawSpectrumStrip, stripX, type StripRect } from './spectrumStrip'
@@ -24,7 +25,9 @@ import { shellConfiguration } from '../core/atom'
 //   1. the night scene: a shell races up and bursts red & yellow
 //   2. the camera zooms into ONE red spark → shell-view atoms
 //   3. the scripted jump close-up (stage/lightCloseup.ts): lithium's electron
-//      jumps and falls → a red photon; sodium's → a yellow photon
+//      jumps and falls → a red photon; sodium's → a yellow photon; then the
+//      🔁 drill-in (`closeupDrill`, its own phase): the same dance replayed
+//      as a look back, both atoms side by side, steps ①②③
 //   4. the barcode free-run: many atoms flash at random, each photon adds one
 //      tick to its line — the element's fingerprint EMERGES (critical-mass /
 //      flashbulb philosophy), then the sky scene returns, explained.
@@ -52,7 +55,7 @@ export const LIGHT_STORIES: Array<{
   { id: 'aurora', label: '🌌 Aurora', subtitle: 'oxygen green, high above', ready: false },
 ]
 
-export type LightPhase = 'scene' | 'closeup' | 'barcode' | 'payoff'
+export type LightPhase = 'scene' | 'closeup' | 'drill' | 'barcode' | 'payoff'
 
 export interface LightReport {
   phase: LightPhase
@@ -247,6 +250,13 @@ function step(sim: Sim, dt: number) {
     case 'closeup':
       // the spark scene is frozen while the camera is inside it
       if (sim.phaseT >= LIGHT_CLOSEUP_TOTAL) {
+        sim.phase = 'drill'
+        sim.phaseT = 0
+      }
+      break
+    case 'drill':
+      // 🔁 the replay (drawn from the drill's own clock)
+      if (sim.phaseT >= LIGHT_DRILL_T) {
         sim.phase = 'barcode'
         sim.phaseT = 0
         sim.photons = []
@@ -285,7 +295,8 @@ function step(sim: Sim, dt: number) {
 export function lightStoryOrder(story: LightStoryId): string[] {
   void story // one story so far; neon/aurora/star get their own orders later
   const close = Array.from({ length: 5 }, (_, i) => `closeup${i}`)
-  return ['scene', 'zoom', ...close, 'barcode', 'payoff']
+  // 🔁 the drill-in right after the close-up's last step (playbook rule 25)
+  return ['scene', 'zoom', ...close, 'closeupDrill', 'barcode', 'payoff']
 }
 
 /** story seconds until the sim leaves its current beat (the firework's
@@ -294,6 +305,8 @@ function beatTimeLeft(sim: Sim): number {
   switch (sim.phase) {
     case 'scene':
       return Math.max(0, SCENE_T - sim.phaseT)
+    case 'drill':
+      return Math.max(0, LIGHT_DRILL_T - sim.phaseT)
     case 'barcode':
       return Math.max(0, BARCODE_T - sim.phaseT)
     case 'payoff':
@@ -318,6 +331,8 @@ function storyId(sim: Sim): string {
       return 'scene'
     case 'closeup':
       return sim.phaseT < LIGHT_SCENE_START ? 'zoom' : `closeup${lightCloseupStep(sim.phaseT)}`
+    case 'drill':
+      return 'closeupDrill'
     default:
       return sim.phase
   }
@@ -614,7 +629,8 @@ function drawLineup(ctx: CanvasRenderingContext2D, now: number) {
   }
 }
 
-function drawMiniScene(
+/** a light story's mini night scene (its chooser row; the stories menu card) */
+export function drawMiniScene(
   ctx: CanvasRenderingContext2D,
   id: LightStoryId,
   x: number,
@@ -876,7 +892,6 @@ export const LightStage = memo(function LightStage({
             if (!storyRef.current) drawLineup(ctx, now)
             else if (s.phase === 'scene') drawScene(ctx, s, now)
             else if (s.phase === 'closeup' && s.focus) {
-              const outA = lightCloseupOutAlpha(s.phaseT)
               const cam = lightCloseupCamera(s.phaseT)
               const { x: fx, y: fy } = s.focus
               // the frozen sky, camera diving into the chosen spark (the
@@ -901,7 +916,10 @@ export const LightStage = memo(function LightStage({
                   ctx.restore()
                 }
               }
-              drawLightCloseup(ctx, s.phaseT, W, H, cam.sceneAlpha * outA, now)
+              // (no fade at its end: the 🔁 drill-in picks up its last frame)
+              drawLightCloseup(ctx, s.phaseT, W, H, cam.sceneAlpha, now)
+            } else if (s.phase === 'drill') {
+              drawLightCloseupDrill(ctx, s.phaseT, W, UH, H, now)
             } else if (s.phase === 'barcode') {
               drawBarcodeRun(ctx, s, now, clamp01(s.phaseT / BARCODE_FADE))
             } else if (s.phase === 'payoff') drawPayoff(ctx, s, now)

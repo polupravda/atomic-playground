@@ -4,6 +4,9 @@ import { AMBER, AMBER_SOFT, GREY, electronSprite, frac, lerp, marker, nucleusSpr
 import { drawWavePacket, ordinaryCss } from './lightPacket'
 import { wavelengthToCss } from '../core/spectra'
 import { CHROMIUM, PUMP_NM, RUBY_NM, columnSize } from '../core/laser'
+// the 🔁 drill-in's look (shared with the ✂️ cut and 🌙 Moon stories; no
+// cycle at load time: they only use this module's exports inside functions)
+import { bounce, callout, replayFrame, rewindSweep, stepRing } from './laserCutScenes'
 
 // R08 — 🔦 How a laser makes its light (proposal:
 // docs/how-things-work/16-proposal-laser-stories.md, story 1). One
@@ -23,8 +26,15 @@ import { CHROMIUM, PUMP_NM, RUBY_NM, columnSize } from '../core/laser'
 //             shown, then explained); then the neighbours go up
 //   fall      a lifted electron falls by itself: a red photon any way at
 //             all — how an ordinary lamp glows
+//   flashDrill 🔁 the drill-in (playbook rule 25): a rewind sweep, then the
+//             flash replayed in a frame, closer and calmer — ① the green
+//             photon drops in, ② the electron swallows it, ③ the push lifts
+//             it from its home ring to the bigger ring
 //   twin      our photon passes the lifted electron: it falls and a TWIN is
 //             born on the atom — same color, same direction, in step
+//   twinDrill 🔁 the twin replayed, a callout circle zoomed in on the
+//             lifted electron — ① our photon flies past, ② the electron
+//             falls, ③ the twin slides in beside it, in step
 //   mirrors   zoom out to the rod: the column bounces between the mirrors
 //             and grows every trip; sideways photons just leave
 //   beam      a few slip out through the partly-silver mirror: the beam —
@@ -38,7 +48,7 @@ import { CHROMIUM, PUMP_NM, RUBY_NM, columnSize } from '../core/laser'
 // only says WHEN a photon sets off — its flight then runs on the idle clock
 // (`sinceLaunch`), so a hold while the voice speaks never stops it.
 
-export const LASER_ORDER = ['question', 'inside', 'zoom', 'flash', 'fall', 'twin', 'mirrors', 'beam'] as const
+export const LASER_ORDER = ['question', 'inside', 'zoom', 'flash', 'flashDrill', 'fall', 'twin', 'twinDrill', 'mirrors', 'beam'] as const
 export type LaserBeat = (typeof LASER_ORDER)[number]
 
 /** story seconds per beat: a 2.5 s watch break per science piece; flow
@@ -48,8 +58,10 @@ export const LASER_T: Record<LaserBeat, number> = {
   inside: 12.5,
   zoom: 8,
   flash: 16,
+  flashDrill: 7.5,
   fall: 5,
   twin: 7.5,
+  twinDrill: 7.5,
   mirrors: 14,
   beam: 16,
 }
@@ -68,7 +80,7 @@ const GREEN_LAMBDA = (RED_LAMBDA * PUMP_NM) / RUBY_NM
  *  too) flies at this one steady speed — the twin beat's pace — so light
  *  looks like light everywhere (Elena, 2026-11-21: the hero photon was far
  *  too fast; speeds must be consistent). Steady, never eased. */
-const PHOTON_SPEED = 90
+export const PHOTON_SPEED = 90
 const fadeIn = (t: number, at: number, len = 0.6) => clamp01((t - at) / len)
 
 function backdrop(ctx: CanvasRenderingContext2D, b: Box) {
@@ -241,7 +253,7 @@ function deviceGeo(b: Box) {
   return { cx, cy, L, half: 44, x0: cx - L / 2, x1: cx + L / 2, mL: cx - L / 2 - 24, mR: cx + L / 2 + 24, ry: 78, mh: 150 }
 }
 
-function glowBox(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, idle: number) {
+export function glowBox(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, idle: number) {
   ctx.save()
   ctx.strokeStyle = AMBER
   ctx.globalAlpha *= 0.7 + 0.3 * Math.sin(idle * 5)
@@ -585,7 +597,7 @@ function drawZoom(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number
 // starts the clock as if the story had run there; going back before `at`
 // re-arms it; a beat left and come back to starts afresh.
 const launches = new Map<string, { start: number; seen: number }>()
-function sinceLaunch(key: string, t: number, at: number, idle: number): number {
+export function sinceLaunch(key: string, t: number, at: number, idle: number): number {
   if (t < at) {
     launches.delete(key)
     return -1
@@ -820,6 +832,253 @@ function drawTwin(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number
   hereCorner(ctx, b)
 }
 
+// ---------- 🔁 the drill-ins (playbook rule 25) ----------
+// Each is a science line of three pieces (holds at 0, 2.5, 5; its events
+// right after, at 0.1, 2.6, 5.1). While the opener is said, the picture the
+// child just saw lives on (the end of the beat before); the rewind sweep
+// runs over it, then the replay frame opens on the same close-up, drawn the
+// same way — the app's chromium atom, the photon packet at PHOTON_SPEED —
+// and replays the event with numbered amber step rings ①②③. Every flight
+// is launched on story time and flown on the idle clock (sinceLaunch).
+
+/** the drill-in's opening: the ⏪ sweep from 0.1, the replay frame from 0.9 */
+const drillOpen = (t: number) => ({ sweep: clamp01((t - 0.1) / 0.9), open: fadeIn(t, 0.9, 0.5) })
+
+/** one of the atom's rings outlined in amber, dashed (home or bigger) */
+function ringOutline(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, alpha: number) {
+  if (alpha <= 0) return
+  ctx.save()
+  ctx.globalAlpha *= alpha
+  ctx.strokeStyle = AMBER
+  ctx.lineWidth = 2
+  ctx.setLineDash([4, 6])
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.restore()
+}
+
+/** a faint dashed trail: the way a photon just came */
+function trail(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, css: (a: number) => string, alpha: number) {
+  if (alpha <= 0) return
+  ctx.save()
+  ctx.strokeStyle = css(0.45 * alpha)
+  ctx.lineWidth = 2
+  ctx.setLineDash([3, 7])
+  ctx.beginPath()
+  ctx.moveTo(x0, y0)
+  ctx.lineTo(x1, y1)
+  ctx.stroke()
+  ctx.restore()
+}
+
+// flashDrill — "What lifted the electron up?"
+//   0     the opener is said over the flash's end: the electrons wait up
+//         high, circling
+//   0.1   ⏪ the rewind sweep; the replay frame opens (0.9) on the same
+//         atom, a little closer, the neighbours faded back, no rain; our
+//         electron is home again and glides to the top of its ring
+//   2.6   after "The green photon! First, it flies in. Then the electron
+//         swallows it." → ① a green photon drops onto the electron at
+//         PHOTON_SPEED (a faint trail behind it), lands ≈ 1.7 s later →
+//         ② a green flash on the electron, which trembles (the push)
+//   5.1   after "Its energy is a push. So the electron goes up…" → ③ the
+//         home ring and the bigger ring outlined, the amber arrow, the
+//         electron lifted slowly (slow motion: 1.6 s, the flash's 0.8);
+//         then a living rest up there
+const FD_HERO = 2.6
+const FD_PATH = 150
+const FD_LIFT = 5.1
+function drawFlashDrill(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number) {
+  backdrop(ctx, b)
+  const { sweep, open } = drillOpen(t)
+  const c = closeGeo(b)
+  rubyInside(ctx, b)
+  // what the child just saw: the flash's end, alive (fades as the replay opens)
+  if (open < 1) {
+    ctx.save()
+    ctx.globalAlpha *= 1 - open
+    lampBand(ctx, b, 0)
+    for (const [i, n] of c.nbrs.entries()) crAtom(ctx, n.x, n.y, c.nK, 1, idle, i * 1.7)
+    crAtom(ctx, c.x, c.y, c.K, 1, idle, 0, 1, TOP)
+    hereCorner(ctx, b)
+    ctx.restore()
+  }
+  if (open > 0) {
+    ctx.save()
+    ctx.globalAlpha *= open
+    // closer and calmer: our atom a little bigger, the neighbours faded back
+    const K = c.K * 1.15
+    for (const [i, n] of c.nbrs.entries()) crAtom(ctx, n.x, n.y, c.nK, 0, idle, i * 1.7, 0.3)
+    const rOuter = (16 + 7.5 * 3) * K
+    const heroY = c.y - rOuter - 4
+    const FLY = FD_PATH / PHOTON_SPEED
+    const hero = sinceLaunch('fd:hero', t, FD_HERO, idle)
+    const swallowed = hero >= FLY ? hero - FLY : -1
+    const lift = clamp01((t - FD_LIFT) / 1.6)
+    const pushed = swallowed >= 0 && swallowed < 1.5 && lift === 0 ? Math.sin(idle * 40) * 2.5 * (1 - swallowed / 1.5) : 0
+    // ③ the two rings, home and bigger, while the electron moves between them
+    const rings = fadeIn(t, FD_LIFT, 0.4)
+    const e = crAtom(ctx, c.x + pushed, c.y, K, lift, idle, 0, 1, glideToTop(idle, t - 0.9, 1.4))
+    ringOutline(ctx, c.x, c.y, rOuter, rings * 0.8)
+    ringOutline(ctx, c.x, c.y, e.seat, rings)
+    // ① the green photon on its way, the way it came left as a faint trail
+    if (hero >= 0) {
+      const y = hero < FLY ? heroY - FD_PATH + PHOTON_SPEED * hero : heroY
+      trail(ctx, c.x, heroY - FD_PATH, c.x, y, GREEN, 1 - fadeIn(t, FD_LIFT, 0.6))
+      if (hero < FLY) {
+        packet(ctx, c.x, y, GREEN, idle, Math.PI / 2, GREEN_LAMBDA, Math.min(1, (hero / FLY) * 4))
+        stepRing(ctx, c.x, y, 22, 1, idle, Math.min(1, (hero / FLY) * 4))
+      }
+    }
+    // ② swallowed: a green flash where the electron took it
+    if (swallowed >= 0 && swallowed < 0.8) {
+      const q = swallowed / 0.8
+      ctx.strokeStyle = GREEN(0.9 * (1 - q))
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.arc(e.x, e.y, 6 + q * 34, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+    if (swallowed >= 0) stepRing(ctx, e.x, e.y, 18, 2, idle, fadeIn(swallowed, 0, 0.3) * (1 - fadeIn(t, FD_LIFT, 0.3)))
+    // ③ the push lifts it: the amber arrow, the ring follows the electron up
+    upArrow(ctx, c.x - 34, c.y - rOuter + 4, c.y - e.seat - 4, fadeIn(t, FD_LIFT, 0.3))
+    stepRing(ctx, e.x, e.y, 18, 3, idle, fadeIn(t, FD_LIFT + 0.2, 0.4))
+    ctx.restore()
+  }
+  rewindSweep(ctx, b, sweep)
+  replayFrame(ctx, b, open)
+}
+
+// twinDrill — the twin is born, once more, closer
+//   0     the opener is said over the twin beat's end: the atom, its
+//         electron home again
+//   0.1   ⏪ the rewind sweep; the replay frame opens (0.9): the same
+//         close-up, the camera moved left (room for the twins to fly on),
+//         our electron waiting up on its bigger ring; a callout circle
+//         opens below-right, zoomed in on it (1.2)
+//   2.6   after "First, our photon flies past the lifted electron. So the
+//         electron falls, and out comes a twin…" → ① our photon
+//         fades in just left of the atom and flies past at PHOTON_SPEED; as
+//         it passes ② the electron falls (slow motion, big in the callout)
+//         and a twin is born on the atom; ③ the twin slides in beside our
+//         photon, a dashed amber line joins the two: in step (the pass, the
+//         fall and the birth are ONE event — light can't wait — so they
+//         play together, playbook 19d, and the next piece looks back:
+//         "Did you see it?")
+//   5.1   after "Did you see it? Now there are two, marching in step." —
+//         kept short: it is said while the pair is still in the frame — a
+//         living rest: the pair flies on in step and leaves through the
+//         frame's edge
+const TD_FROM = 2.6
+const TD_PATH = 100
+const TD_FALL = 0.8 // slow motion: the twin beat's fall takes 0.4 s
+const TD_SLIDE = 0.9 // (0.6 s in the twin beat)
+
+/** the twin moment at `s` seconds since our photon set off: the atom, our
+ *  photon flying past, the fall, the twin's birth and slide (the twin
+ *  beat's drawing, in slow motion). Drawn twice: on screen and, zoomed,
+ *  inside the callout. */
+function twinMoment(ctx: CanvasRenderingContext2D, x: number, y: number, K: number, s: number, idle: number) {
+  const pass = TD_PATH / PHOTON_SPEED
+  const since = s < 0 ? -1 : s - pass // since our photon passed: the fall
+  const fall = since < 0 ? 0 : clamp01(since / TD_FALL)
+  const e = crAtom(ctx, x, y, K, 1 - fall, idle, 0, 1, TOP)
+  const lineY = y - e.seat
+  const hx = x - TD_PATH + PHOTON_SPEED * Math.max(0, s)
+  let twin: { x: number; y: number } | null = null
+  if (since >= 0) {
+    const f = easeOut(clamp01(since / TD_SLIDE))
+    twin = { x: lerp(x, hx, f), y: lerp(lineY, lineY + 26, f) }
+    packet(ctx, twin.x, twin.y, RED, idle)
+    if (since < 0.9) {
+      ctx.strokeStyle = RED(0.8 * (1 - since / 0.9))
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(x, lineY, 8 + since * 50, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+  }
+  if (s >= 0) packet(ctx, hx, lineY, RED, idle, 0, RED_LAMBDA, Math.min(1, s / (pass * 0.3)))
+  return { e, lineY, hx, twin, since }
+}
+
+function drawTwinDrill(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number) {
+  backdrop(ctx, b)
+  const { sweep, open } = drillOpen(t)
+  const c = closeGeo(b)
+  rubyInside(ctx, b)
+  // what the child just saw: the twin beat's end, alive
+  if (open < 1) {
+    ctx.save()
+    ctx.globalAlpha *= 1 - open
+    lampBand(ctx, b, 0)
+    for (const [i, n] of c.nbrs.entries()) crAtom(ctx, n.x, n.y, c.nK, 0, idle, i * 1.7)
+    crAtom(ctx, c.x, c.y, c.K, 0, idle, 0, 1, TOP)
+    hereCorner(ctx, b)
+    ctx.restore()
+  }
+  if (open > 0) {
+    ctx.save()
+    ctx.globalAlpha *= open
+    // the light ends at the replay frame's edge
+    ctx.beginPath()
+    ctx.roundRect(14, 14, b.W - 28, b.UH - 28, 18)
+    ctx.clip()
+    // the camera moved left: the pair stays in the frame while the last
+    // piece is said (the atom at 0.22 W: ≈ 600 px of flight at 800 px wide)
+    const dx = -b.W * 0.28
+    const ax = c.x + dx
+    const ay = c.y
+    // the callout's circle, below-right of the atom
+    const cr = Math.min(b.W, b.UH) * 0.19
+    const cc = { x: ax + b.W * 0.36, y: Math.min(b.UH - cr - 30, ay + cr * 0.75) }
+    // the neighbours, faded back (none peeking out from behind the callout)
+    for (const [i, n] of c.nbrs.entries())
+      if (Math.hypot(n.x + dx - cc.x, n.y - cc.y) > cr + 70) crAtom(ctx, n.x + dx, n.y, c.nK, 0, idle, i * 1.7, 0.3)
+    const s = sinceLaunch('td:hero', t, TD_FROM, idle)
+    const m = twinMoment(ctx, ax, ay, c.K, s, idle)
+    // ① our photon, until its twin has joined it
+    if (s >= 0) stepRing(ctx, m.hx, m.lineY, 22, 1, idle, Math.min(1, s * 3) * (1 - (m.since >= 0 ? fadeIn(m.since, TD_SLIDE * 0.6, 0.3) : 0)))
+    // ③ the pair, side by side
+    const pairY = m.lineY + 13
+    if (m.since >= 0) stepRing(ctx, m.hx, pairY, 32, 3, idle, fadeIn(m.since, TD_SLIDE * 0.8, 0.3))
+    // in step: a dashed amber line joins the two, crest to crest (with ③)
+    if (m.twin && m.since >= TD_SLIDE * 0.8) {
+      ctx.save()
+      ctx.globalAlpha *= fadeIn(m.since, TD_SLIDE * 0.8, 0.4)
+      ctx.strokeStyle = AMBER
+      ctx.lineWidth = 2
+      ctx.setLineDash([4, 4])
+      ctx.beginPath()
+      ctx.moveTo(m.hx, m.lineY - 14)
+      ctx.lineTo(m.hx, m.lineY + 26 + 14)
+      ctx.stroke()
+      ctx.restore()
+    }
+    // the callout: zoomed in on the lifted electron
+    const focus = { x: ax, y: m.lineY + 7 * c.K }
+    const pop = bounce(sinceLaunch('td:callout', t, 1.2, idle), 0.4, 999, 0.1)
+    const inset = pop > 0 ? 0.6 + 0.4 * Math.min(1.1, pop) : 0
+    const k = 2
+    callout(ctx, focus, cc, cr * inset, clamp01(pop * 2), () => {
+      ctx.fillStyle = 'rgba(244, 63, 94, 0.07)'
+      ctx.fillRect(cc.x - cr * 1.2, cc.y - cr * 1.2, cr * 2.4, cr * 2.4)
+      ctx.save()
+      ctx.translate(cc.x, cc.y)
+      ctx.scale(k * inset, k * inset)
+      ctx.translate(-focus.x, -focus.y)
+      twinMoment(ctx, ax, ay, c.K, s, idle)
+      ctx.restore()
+    })
+    // ② the fall, seen up close
+    if (pop > 0 && m.since >= 0) stepRing(ctx, cc.x, cc.y, cr + 8, 2, idle, fadeIn(m.since, 0, 0.3) * (1 - fadeIn(m.since, TD_SLIDE + 0.6, 0.4)))
+    ctx.restore()
+  }
+  rewindSweep(ctx, b, sweep)
+  replayFrame(ctx, b, open)
+}
+
 // ---------- the rod between the mirrors ----------
 
 function rodGeo(b: Box) {
@@ -1008,8 +1267,10 @@ export function drawLaserBeat(ctx: CanvasRenderingContext2D, beat: string, t: nu
   else if (beat === 'inside') drawInside(ctx, b, t, idle)
   else if (beat === 'zoom') drawZoom(ctx, b, t, idle)
   else if (beat === 'flash') drawFlash(ctx, b, t, idle)
+  else if (beat === 'flashDrill') drawFlashDrill(ctx, b, t, idle)
   else if (beat === 'fall') drawFall(ctx, b, t, idle)
   else if (beat === 'twin') drawTwin(ctx, b, t, idle)
+  else if (beat === 'twinDrill') drawTwinDrill(ctx, b, t, idle)
   else if (beat === 'mirrors') drawMirrors(ctx, b, t, idle)
   else drawBeam(ctx, b, t, idle)
 }

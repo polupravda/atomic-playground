@@ -16,6 +16,10 @@ export const DETECTIVE_NARRATION: Record<string, string> = {
     '| The light goes through a prism. The prism spreads it out into a rainbow. This is called a spectrum. ... Spectrum. | But look closely. Some colors are missing! Thin dark lines cut through the rainbow.',
   catch:
     '~ Why are colors missing? | The star is wrapped in a thin layer of gas. Its atoms catch light. | Each kind of atom catches only its own colors. Exactly the colors it would glow with. | Those colors never reach us. So they leave dark lines.',
+  // 🔁 the drill-in (playbook 25): one atom, closer — the catch, the
+  // missing color, the dark line, ① ② ③, nothing new
+  catchDrill:
+    "Let's watch that once more, closer. | First, look at one atom in the gas. Other colors fly right past it. But its own color, it catches! | Then that color is gone. It never reaches us. | So what do we see in its place in the rainbow? ... A dark line!",
   hydrogen:
     '| Now we play detective. We hold up the barcode of hydrogen. | Its lines fit the dark lines exactly. This star has hydrogen!',
   oxygen: '| Next, we try oxygen. | Its lines do not fit any dark line. So this is not oxygen.',
@@ -33,6 +37,8 @@ export const DETECTIVE_NARRATION_DE = translated(DETECTIVE_NARRATION, {
     'Das Licht geht durch ein Prisma. Das Prisma fächert es zu einem Regenbogen auf. Das nennt man Spektrum. ... Spektrum. | Aber schau genau hin. Manche Farben fehlen! Dünne dunkle Linien ziehen sich durch den Regenbogen.',
   catch:
     'Warum fehlen da Farben? | Der Stern ist von einer dünnen Gasschicht umhüllt. Ihre Atome fangen Licht ein. | Jede Atomsorte fängt nur ihre eigenen Farben. Genau die Farben, in denen sie selbst leuchten würde. | Diese Farben kommen nie bei uns an. Darum bleiben dunkle Linien.',
+  catchDrill:
+    'Schauen wir uns das noch einmal ganz nah an. | Zuerst schau auf ein Atom im Gas. Andere Farben fliegen einfach an ihm vorbei. Aber seine eigene Farbe fängt es ein! | Dann ist diese Farbe weg. Sie kommt nie bei uns an. | Und was sehen wir an ihrer Stelle im Regenbogen? ... Eine dunkle Linie!',
   hydrogen:
     'Jetzt spielen wir Detektiv. Wir halten den Strichcode von Wasserstoff daneben. | Seine Linien passen genau zu den dunklen Linien. Dieser Stern hat Wasserstoff!',
   oxygen: 'Als Nächstes probieren wir Sauerstoff. | Seine Linien passen zu keiner dunklen Linie. Also ist es kein Sauerstoff.',
@@ -51,6 +57,8 @@ export const DETECTIVE_NARRATION_RU = translated(DETECTIVE_NARRATION, {
     'Свет проходит через призму. Призма раскладывает его в радугу. Это называют спе́ктром. ... Спектр. | Но посмотри внимательно. Некоторых цветов не хватает! Радугу пересекают тонкие тёмные линии.',
   catch:
     'Почему же не хватает цветов? | Звезду окутывает тонкий слой газа. Его атомы ловят свет. | Каждый вид атомов ловит только свой собственный свет. Ровно тот, которым он светился бы сам. | Этот свет до нас не доходит. Поэтому остаются тёмные линии.',
+  catchDrill:
+    'Посмотрим на это ещё раз, поближе. | Сначала посмотри на один атом в газе. Свет других цветов пролетает мимо него. А свой собственный свет он ловит! | Потом этого света больше нет. Он до нас не доходит. | И что же мы видим на его месте в радуге? ... Тёмную линию!',
   hydrogen:
     'Теперь поиграем в детективов. Приложим штрихкод водорода. | Его линии точно совпадают с тёмными линиями. В этой звезде есть водород!',
   oxygen: 'Теперь попробуем приложить кислород. | Его линии не совпадают ни с одной тёмной линией. Значит, это не кислород.',

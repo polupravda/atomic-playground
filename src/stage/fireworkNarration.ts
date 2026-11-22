@@ -25,6 +25,11 @@ export const FIREWORK_NARRATION: Record<string, string> = {
     'It falls back home. And a flash of deep red light flies out. | This little piece of light is called a photon. ... Photon. | A small drop makes red light. A big drop makes blue light.',
   closeup4:
     'Next door sits a sodium atom. ... Sodium. ... It does the same dance. | But its step is taller. So its photon is yellow.',
+  // 🔁 the drill-in (playbook rule 25): the same idea in new, plainer
+  // words — a cause chain, then a question — while a look-back replay
+  // plays ①②③; no new facts, photon said once
+  closeupDrill:
+    "Let's watch that once more, closer. | First, the heat pushes the electron up. It climbs one step. | Then it falls back down. And the fall makes a red photon. | Why is sodium's light yellow? ... Its step is taller. So it falls farther, and makes yellow light.",
   barcode:
     // show first: let the first photons land on the strips before explaining them
     '~ | Now many atoms flash at random. Every photon lands on its own line. | Slowly, a pattern of lines appears. | It is the element’s fingerprint. Every element has its own.',
@@ -48,6 +53,8 @@ export const FIREWORK_NARRATION_DE = translated(FIREWORK_NARRATION, {
     'Es fällt zurück nach Hause. Und ein Blitz aus tiefrotem Licht fliegt hinaus. | Dieses kleine Lichtstückchen nennt man Photon. ... Photon. | Ein kleiner Sprung nach unten macht rotes Licht. Ein großer Sprung macht blaues Licht.',
   closeup4:
     'Nebenan sitzt ein Natriumatom. ... Natrium. ... Es tanzt denselben Tanz. | Aber seine Stufe ist höher. Darum ist sein Photon gelb.',
+  closeupDrill:
+    'Schauen wir uns das noch einmal ganz nah an. | Zuerst schubst die Hitze das Elektron nach oben. Es klettert eine Stufe hoch. | Dann fällt es wieder herunter. Und der Fall macht ein rotes Photon. | Warum ist das Licht von Natrium gelb? ... Seine Stufe ist höher. Darum fällt es tiefer und macht gelbes Licht.',
   barcode:
     'Jetzt blitzen viele Atome durcheinander. Jedes Photon landet auf seiner eigenen Linie. | Langsam erscheint ein Muster aus Linien. | Es ist der Fingerabdruck des Elements. Jedes Element hat seinen eigenen.',
   payoff:
@@ -69,6 +76,8 @@ export const FIREWORK_NARRATION_RU = translated(FIREWORK_NARRATION, {
     'Он падает обратно домой. И наружу вылетает вспышка тёмно-красного света. | Такую маленькую порцию света называют фото́ном. ... Фото́н. | Маленький прыжок вниз даёт красный свет. Большой прыжок даёт синий свет.',
   closeup4:
     'По соседству сидит атом на́трия. ... На́трий. ... Он танцует тот же танец. | Но его ступенька выше. Поэтому его фотон жёлтый.',
+  closeupDrill:
+    'Посмотрим на это ещё раз, поближе. | Сначала жар толкает электрон вверх. Он поднимается на одну ступеньку. | Потом он падает обратно вниз. И от этого падения рождается красный фотон. | Почему свет натрия жёлтый? ... Его ступенька выше. Поэтому он падает дальше и даёт жёлтый свет.',
   barcode:
     'Теперь вспыхивает множество атомов, вперемешку. Каждый фотон попадает на свою линию. | Постепенно появляется узор из линий. | Это как отпечаток пальца у элемента. У каждого элемента он свой.',
   payoff:

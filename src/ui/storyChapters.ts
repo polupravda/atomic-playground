@@ -56,6 +56,30 @@ const CHAPTER_TEXT = {
   'Close-up: one atom': { de: 'Ganz nah: ein Atom', ru: 'Крупным планом: один атом' },
   Twins: { de: 'Zwillinge', ru: 'Близнецы' },
   'The mirrors': { de: 'Die Spiegel', ru: 'Зеркала' },
+  'The laser family': { de: 'Die Laser-Familie', ru: 'Семья лазеров' },
+  'Squeeze it': { de: 'Zusammendrücken', ru: 'Сжать свет' },
+  'Close-up: the steel': { de: 'Ganz nah: der Stahl', ru: 'Крупным планом: сталь' },
+  'Once more, closer': { de: 'Noch einmal, ganz nah', ru: 'Ещё раз, поближе' },
+  'The cut': { de: 'Der Schnitt', ru: 'Разрез' },
+  'Invisible light': { de: 'Unsichtbares Licht', ru: 'Невидимый свет' },
+  'Your eye': { de: 'Dein Auge', ru: 'Твой глаз' },
+  // 🌕 the Moon
+  'The flash': { de: 'Der Lichtblitz', ru: 'Вспышка' },
+  'The way back': { de: 'Der Weg zurück', ru: 'Обратный путь' },
+  'The timing': { de: 'Die Zeitmessung', ru: 'Секундомер' },
+  // 🔢 what "digital" means
+  Digits: { de: 'Ziffern', ru: 'Цифры' },
+  Bits: { de: 'Bits', ru: 'Биты' },
+  'A message': { de: 'Eine Nachricht', ru: 'Сообщение' },
+  'A photo': { de: 'Ein Foto', ru: 'Снимок' },
+  'A song': { de: 'Ein Lied', ru: 'Песня' },
+  // 📶 how Wi-Fi works
+  'The router': { de: 'Der Router', ru: 'Роутер' },
+  'The antenna': { de: 'Die Antenne', ru: 'Антенна' },
+  'The radio wave': { de: 'Die Funkwelle', ru: 'Радиоволна' },
+  'Bits on a wave': { de: 'Bits auf einer Welle', ru: 'Биты на волне' },
+  'The wall': { de: 'Die Wand', ru: 'Стенка' },
+  'The answer': { de: 'Die Antwort', ru: 'Ответ' },
   // every story's ending
   'The payoff': { de: 'Die Auflösung', ru: 'Разгадка' },
 } as const satisfies Record<string, Record<Exclude<NarrationLang, 'en'>, string>>

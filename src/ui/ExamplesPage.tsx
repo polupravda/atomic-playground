@@ -1,28 +1,30 @@
 import { memo, useCallback, useState } from 'react'
 import { useSpaceToPause } from './useSpaceToPause'
 import { PageNav } from './PageNav'
-import { usePageStore } from '../state/pageStore'
-import { FissionStage, chooserRows, type FissionReport } from '../stage/FissionStage'
+import { usePageStore, type ExampleId } from '../state/pageStore'
+import { FissionStage, type FissionReport } from '../stage/FissionStage'
 import { closeupFuelInfo } from '../stage/fissionCloseup'
-import { BOMB_DESIGNS, BOMB_NAMES, type BombDesignId } from '../core/fission'
+import { BOMB_DESIGNS, type BombDesignId } from '../core/fission'
 import { BOMB_PHOTO_GROUPS } from '../core/examplePhotos'
 import { BombsTable, ChainStats, CompareTable, DamageLegend, ParticleLegend } from './BombLegend'
 import { StoryTimeline } from './StoryTimeline'
-import { BombsIcon } from './BombsIcon'
-import { ComingSoonExample } from './ComingSoonExample'
-import { LaserExample } from './LaserExample'
+import { StoriesHome } from './StoriesHome'
+import { LaserExample, type LaserJourney } from './LaserExample'
 import { PlantExample } from './PlantExample'
+import { SignalsExample, type SignalsJourney } from './SignalsExample'
 import { LightExample } from './LightExample'
+import type { LightStoryId } from '../stage/LightStage'
+import type { CosmosJourneyId } from '../stage/CosmosStage'
 import { CosmosExample } from './CosmosExample'
 import { Paras, SectionHeader, type Para, SECTION_MAX } from './Paras'
-import { DemoControls, INFO_PANEL } from './DemoControls'
+import { BackToStories, INFO_PANEL, LiveOverlay, StoryTabs, backToMenu, type StoryTab } from './DemoControls'
 import { bombScripts, bombStoryKey } from '../stage/bombNarration'
-import { cancelNarration, useDemoNarration } from './useNarration'
+import { useDemoNarration } from './useNarration'
 import { useVoiceStore } from '../state/voiceStore'
 import { transcriptScript } from './storyChapters'
 import type { StorySeek } from '../stage/flowPacing'
 import { NarrationNotice } from './NarrationNotice'
-import { KEY, TRAY } from './surfaces'
+import { KEY } from './surfaces'
 
 /** each bomb's narration scripts, per language */
 const BOMB_NARRATION: Record<BombDesignId, ReturnType<typeof bombScripts>> = {
@@ -31,12 +33,12 @@ const BOMB_NARRATION: Record<BombDesignId, ReturnType<typeof bombScripts>> = {
   tsar: bombScripts('tsar'),
 }
 
-// R00 — "Atoms in action": a top-level sibling view of practical examples
-// where the atom ideas from the builder show up in the real world. Each
-// example = left column (main menu, where the demos are SUB-ITEMS of Atoms
-// in action · the demo's controls · info panel) + demo canvas (middle) +
-// story timeline / real photos (right). All demos stay mounted (the hidden
-// ones' animations pause); the shown one is pageStore.example.
+// R00 — 🎬 Stories: the stories menu (StoriesHome) or one playing story.
+// A story page = left column (main menu + voice card) · demo canvas with
+// ← back (middle) · 📖 Story / 📷 Photos / 📝 Notes (right). Every topic
+// page stays mounted (the hidden ones' animations pause) and gets its story
+// id from pageStore.story — null when not playing, which resets it
+// (docs/how-things-work/17-stories-menu.md).
 
 /** the live counters exist once the chain reaction runs */
 const counting = (r: FissionReport) =>
@@ -245,49 +247,49 @@ const initialReport: FissionReport = {
 
 export function ExamplesPage() {
   const page = usePageStore((s) => s.page)
-  const example = usePageStore((s) => s.example)
+  const story = usePageStore((s) => s.story)
+  // each topic's story id while it plays (null = not this topic). Every
+  // topic stays mounted; a story that is left falls back to null — reset.
+  const idOf = (ex: ExampleId) => (story?.example === ex ? story.id : null)
+  const shown = (ex: ExampleId) => (story?.example === ex ? 'h-full' : 'hidden')
+  const active = (ex: ExampleId) => page === 'examples' && story?.example === ex
   return (
     <>
-      <div className={example === 'bomb' ? 'h-full' : 'hidden'}>
-        <BombExample active={page === 'examples' && example === 'bomb'} />
+      <div className={story === null ? 'h-full' : 'hidden'}>
+        <StoriesHome />
       </div>
-      <div className={example === 'light' ? 'h-full' : 'hidden'}>
-        <LightExample active={page === 'examples' && example === 'light'} />
+      <div className={shown('bomb')}>
+        <BombExample active={active('bomb')} mode={idOf('bomb') as BombDesignId | null} />
       </div>
-      <div className={example === 'cosmos' ? 'h-full' : 'hidden'}>
-        <CosmosExample active={page === 'examples' && example === 'cosmos'} />
+      <div className={shown('light')}>
+        <LightExample active={active('light')} story={idOf('light') as LightStoryId | null} />
       </div>
-      <div className={example === 'plant' ? 'h-full' : 'hidden'}>
-        <PlantExample active={page === 'examples' && example === 'plant'} />
+      <div className={shown('cosmos')}>
+        <CosmosExample active={active('cosmos')} journey={idOf('cosmos') as CosmosJourneyId | null} />
       </div>
-      <div className={example === 'lasers' ? 'h-full' : 'hidden'}>
-        <LaserExample active={page === 'examples' && example === 'lasers'} />
+      <div className={shown('plant')}>
+        <PlantExample active={active('plant')} journey={idOf('plant') as 'story' | null} />
       </div>
-      {(['atoms', 'crystals'] as const).map((id) => (
-        <div key={id} className={example === id ? 'h-full' : 'hidden'}>
-          <ComingSoonExample id={id} />
-        </div>
-      ))}
+      <div className={shown('lasers')}>
+        <LaserExample active={active('lasers')} journey={idOf('lasers') as LaserJourney | null} />
+      </div>
+      <div className={shown('signals')}>
+        <SignalsExample active={active('signals')} journey={idOf('signals') as SignalsJourney | null} />
+      </div>
     </>
   )
 }
 
-function BombExample({ active }: { active: boolean }) {
-  // null = the lineup chooser
-  const [mode, setMode] = useState<BombDesignId | null>(null)
+function BombExample({ active, mode }: { active: boolean; mode: BombDesignId | null }) {
   const [paused, setPaused] = useState(false)
-  const choose = (id: BombDesignId | null) => {
-    cancelNarration() // navigating is a deliberate interruption
-    setMode(id)
+  // a new story (or none) starts unpaused
+  const [prevMode, setPrevMode] = useState(mode)
+  if (prevMode !== mode) {
+    setPrevMode(mode)
     setPaused(false)
   }
-  // the auto-return to the chooser does NOT cancel: the last line may finish
-  const onFinished = useCallback(() => {
-    setMode(null)
-    setPaused(false)
-  }, [])
   const [seek, setSeek] = useState<StorySeek | null>(null)
-  const [rightTab, setRightTab] = useState<'story' | 'photos'>('story')
+  const [rightTab, setRightTab] = useState<StoryTab>('story')
   const [report, setReport] = useState<FissionReport>(initialReport)
 
   // 🔊 narration — listen first, then watch (10-narration-strategy.md)
@@ -317,7 +319,7 @@ function BombExample({ active }: { active: boolean }) {
       : mode === 'implosion'
         ? ['implosion', 'gun', 'tsar']
         : ['gun', 'implosion', 'tsar']
-  // texts that need a fuel fall back to Little Boy's on the chooser
+  // texts that need a fuel fall back to Little Boy's while hidden
   const m = mode ?? 'gun'
   const running = mode !== null
   // ⎵ Space = ⏸ Pause / ▶ Resume while a story plays
@@ -325,35 +327,80 @@ function BombExample({ active }: { active: boolean }) {
 
   return (
     <div className="grid h-full min-h-0 grid-cols-[16rem_minmax(0,1fr)_18rem] grid-rows-[minmax(0,1fr)] gap-x-6">
-      {/* left: nav + info panel */}
+      {/* left: the menu + the voice card */}
       <div className="col-start-1 row-start-1 flex min-h-0 flex-col gap-3">
         <PageNav />
-        <DemoControls
-          chooser={
+      </div>
+
+      {/* middle: the demo canvas */}
+      <div className="col-start-2 row-start-1 flex min-h-0 flex-col items-center gap-2">
+        <div className="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
+          <FissionStage
+            mode={mode}
+            paused={paused}
+            seek={seek}
+            active={active}
+            timeScale={narration.timeScale}
+            holdBeat={narration.holdBeat}
+            fit={narration.fit}
+            speakingPiece={narration.speakingPiece}
+            onReport={setReport}
+            onFinished={backToMenu}
+          />
+          {running && <BackToStories />}
+          {mode !== null && counting(report) && (
+            <LiveOverlay>
+              <ChainStats mode={mode} r={report} />
+            </LiveOverlay>
+          )}
+          <NarrationNotice failed={narration.failed} missingLang={narration.missingLang} />
+          {running && (
             <button
               type="button"
-              onClick={() => choose(null)}
-              disabled={!running}
-              aria-current={running ? undefined : 'page'}
-              title="Go to the bomb selection screen"
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm font-medium ${
-                running ? `text-slate-100 ${KEY}` : 'cursor-default rounded-lg bg-sky-600 text-white'
+              onClick={() => setPaused((v) => !v)}
+              title="Pause or resume the story (Space)"
+              aria-pressed={paused}
+              className={`absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 text-sm ${
+                paused
+                  ? 'rounded-xl border border-sky-400 bg-sky-600 text-white transition hover:bg-sky-500'
+                  : `text-slate-200 ${KEY}`
               }`}
             >
-              <BombsIcon className="h-6 w-9 shrink-0" />
-              {running ? 'Choose another bomb' : 'Choose a bomb'}
+              {paused ? '▶ Resume' : '⏸ Pause'}
             </button>
-          }
-        />
-        {/* the info panel belongs to a story: none on the chooser */}
+          )}
+        </div>
+      </div>
+
+      {/* right: the story timeline, the real photos, or the notes */}
+      <div className="col-start-3 row-start-1 flex min-h-0 flex-col gap-2">
+        <StoryTabs tab={rightTab} onTab={setRightTab} />
+        {/* all stay mounted (scroll positions survive tab switches) */}
+        <div
+          data-story-scroll
+          className={`min-h-0 flex-1 overflow-y-auto pr-1 ${rightTab === 'story' ? '' : 'hidden'}`}
+        >
+          {mode !== null && (
+            <StoryTimeline
+              mode={mode}
+              script={transcript.script}
+              lang={transcript.lang}
+              currentId={report.storyId}
+              speakingPiece={narration.speakingPiece}
+              speakingSentence={narration.speakingSentence}
+              voiced={narration.voiced}
+              visible={active && rightTab === 'story'}
+              onSeek={onSeek}
+            />
+          )}
+        </div>
+        <div
+          className={`min-h-0 flex-1 overflow-y-auto pr-1 ${rightTab === 'photos' ? '' : 'hidden'}`}
+        >
+          <PhotoPanel mode={mode} />
+        </div>
         {mode !== null && (
-          <div className={INFO_PANEL}>
-            {counting(report) && (
-              <>
-                <SectionHeader type="live" />
-                <ChainStats mode={mode} r={report} />
-              </>
-            )}
+          <div className={`${INFO_PANEL} ${rightTab === 'notes' ? '' : 'hidden'}`}>
             {report.phase === 'explosion' && report.explosionStep < 4 && (
               <>
                 <SectionHeader type="legend">Damage on the ground (to scale)</SectionHeader>
@@ -375,104 +422,15 @@ function BombExample({ active }: { active: boolean }) {
             <SectionHeader type="legend" />
             <ParticleLegend mode={mode} />
             <SectionHeader type="how" />
-            <Paras max={SECTION_MAX} key={m} items={howItWorks(m)} />
+            <Paras max={SECTION_MAX} key={`how-${m}`} items={howItWorks(m)} />
             <SectionHeader type="how">Three ways to build one</SectionHeader>
-            <Paras max={SECTION_MAX} key={m} items={designOrder.map((d) => DESIGN_INFO[d])} />
+            <Paras max={SECTION_MAX} key={`designs-${m}`} items={designOrder.map((d) => DESIGN_INFO[d])} />
             <SectionHeader type="honest" />
-            <Paras max={SECTION_MAX} key={m} items={honestNotes(m)} className="text-slate-400" />
+            <Paras max={SECTION_MAX} key={`honest-${m}`} items={honestNotes(m)} className="text-slate-400" />
             <SectionHeader type="true" />
-            <Paras max={SECTION_MAX} key={m} items={TRUE_STORY} />
+            <Paras max={SECTION_MAX} key={`true-${m}`} items={TRUE_STORY} />
           </div>
         )}
-      </div>
-
-      {/* middle: the demo canvas */}
-      <div className="col-start-2 row-start-1 flex min-h-0 flex-col items-center gap-2">
-        <div className="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
-          <FissionStage
-            mode={mode}
-            paused={paused}
-            seek={seek}
-            active={active}
-            timeScale={narration.timeScale}
-            holdBeat={narration.holdBeat}
-            fit={narration.fit}
-            speakingPiece={narration.speakingPiece}
-            onReport={setReport}
-            onFinished={onFinished}
-          />
-          {mode === null && <Chooser onChoose={choose} />}
-          <NarrationNotice failed={narration.failed} missingLang={narration.missingLang} />
-          {running && (
-            <button
-              type="button"
-              onClick={() => setPaused((v) => !v)}
-              title="Pause or resume the story (Space)"
-              aria-pressed={paused}
-              className={`absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 text-sm ${
-                paused
-                  ? 'rounded-xl border border-sky-400 bg-sky-600 text-white transition hover:bg-sky-500'
-                  : `text-slate-200 ${KEY}`
-              }`}
-            >
-              {paused ? '▶ Resume' : '⏸ Pause'}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* right: the story timeline, or the real photos */}
-      <div className="col-start-3 row-start-1 flex min-h-0 flex-col gap-2">
-        <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
-          {(
-            [
-              ['story', '📖 Story'],
-              ['photos', '📷 Photos'],
-            ] as const
-          ).map(([id, text]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setRightTab(id)}
-              aria-pressed={rightTab === id}
-              className={`flex-1 rounded-lg px-3 py-1 transition ${
-                rightTab === id
-                  ? 'bg-sky-600 font-medium text-white'
-                  : 'text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              {text}
-            </button>
-          ))}
-        </div>
-        {/* both stay mounted (scroll positions survive tab switches) */}
-        <div
-          data-story-scroll
-          className={`min-h-0 flex-1 overflow-y-auto pr-1 ${rightTab === 'story' ? '' : 'hidden'}`}
-        >
-          {mode === null ? (
-            <p className="px-1 pt-2 text-sm text-slate-400">
-              👈 Pick a bomb — its story will appear here, step by step.
-            </p>
-          ) : (
-          <StoryTimeline
-            mode={mode}
-            script={transcript.script}
-            lang={transcript.lang}
-            currentId={report.storyId}
-            speakingPiece={narration.speakingPiece}
-            speakingSentence={narration.speakingSentence}
-            voiced={narration.voiced}
-            visible={active && rightTab === 'story'}
-            onSeek={onSeek}
-          />
-          )}
-        </div>
-        <div
-          className={`min-h-0 flex-1 overflow-y-auto pr-1 ${rightTab === 'photos' ? '' : 'hidden'}`}
-        >
-          <PhotoPanel mode={mode} />
-        </div>
       </div>
     </div>
   )
@@ -526,28 +484,3 @@ const PhotoPanel = memo(function PhotoPanel({ mode }: { mode: BombDesignId | nul
     </>
   )
 })
-
-
-/** Click targets over the canvas lineup: each bomb row is one big button
- *  ("▶ Watch it"); picking one starts its whole story (auto-play). */
-function Chooser({ onChoose }: { onChoose: (id: BombDesignId) => void }) {
-  const rows = chooserRows()
-  return (
-    <>
-      {rows.map((r) => (
-        <button
-          key={r.mode}
-          type="button"
-          onClick={() => onChoose(r.mode)}
-          aria-label={`Watch ${BOMB_NAMES[r.mode]}`}
-          className="group absolute rounded-xl border border-slate-700/0 transition hover:border-sky-400/70 hover:bg-sky-400/10 focus-visible:border-sky-400 focus-visible:outline-none"
-          style={{ left: r.left, top: r.top, width: r.right - r.left, height: r.bottom - r.top }}
-        >
-          <span className="absolute right-3 top-1.5 rounded-full bg-sky-600 px-3 py-1 text-sm font-semibold text-white shadow-md shadow-black/40 transition group-hover:scale-105 group-hover:bg-sky-500">
-            ▶ Watch it
-          </span>
-        </button>
-      ))}
-    </>
-  )
-}

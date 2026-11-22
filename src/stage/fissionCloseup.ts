@@ -3,6 +3,7 @@ import type { ParticleKind } from '../state/atomStore'
 import { shellConfiguration } from '../core/atom'
 import type { BombDesign } from '../core/fission'
 import { blit, clamp01, easeIn, easeInOut, easeOut, makeCanvasSprite, type Sprite } from './canvasUtil'
+import { callout, replayFrame, rewindSweep, stepRing, type Box, type Pt } from './laserCutScenes'
 
 // R01 close-up: late in the chain reaction the camera zooms into one nucleus
 // that has just been hit, and the canvas cross-fades into a close view drawn
@@ -626,4 +627,222 @@ export function drawCloseup(
   }
 
   ctx.restore()
+}
+
+// ---------- 🔁 the drill-in: the close-up once more, closer ----------
+
+// After the close-up (closeup5) the story says the chain once more, in
+// new plain words, while a look-back replay of the SAME close-up plays
+// (docs/how-things-work/15-kid-friendly-animation.md rule 25; the line:
+// bombNarration.ts `closeupDrill`). Its own story beat, SCIENCE paced
+// (not flow): story time stands still while a piece is said, then a 2.5 s
+// watch break plays the step. Holds at 0, 2.5, 5, 7.5 (drill time d):
+//   "Did you catch it? Let's see it again."
+//     → a rewind sweep ⏪ over the whole bomb, the camera zooms into the
+//       same atom again (the close-up's own zoom), the replay frame opens
+//       on atom 1 at rest
+//   "First, a neutron flies into the uranium nucleus."
+//     → ① the neutron flies in (amber step ring on it) and is swallowed
+//   "Then the nucleus wobbles, and it splits in two. That is fission!"
+//     → ② a callout circle beside atom 1 magnifies its nucleus: it
+//       stretches like a peanut and splits; the halves and the new
+//       neutrons fly out
+//   "And what flies out? ... New neutrons! One of them flies on to the
+//    next atom. So the chain keeps going."
+//     → said over the new neutrons drifting out in slow motion (a stream
+//       that started after its own statement, never frozen); then ③ the
+//       ring marks atom 2 and the neutron flies on to it along a faint
+//       trail; then the camera zooms back out to the whole bomb.
+// The steps are LAUNCHED on story time and played on the idle clock
+// (`launched`), so the replay keeps moving while the voice speaks: the
+// atoms' electrons spin, the hit nucleus trembles, and after the split the
+// pieces drift on in slow motion (never reaching atom 2 before ③). The
+// replay draws the same scene (drawCloseup) with the same atoms, the same
+// neutrons, the same split, at the same camera — only the frame, the
+// rings, the callout and the speed are new.
+
+/** drill time: the story beat's length (s) */
+export const DRILL_T = 11.6
+const D_ZOOM_IN = 0.5
+const D_STEP1 = 2.6
+const D_STEP2 = 5.1
+const D_STEP3 = 7.6
+const D_OUT = 10.0
+
+/** scene time (s after SCENE_START) of the replay's moments */
+// the neutron still hidden behind the left edge: while ① is announced the
+// replay rests on atom 1 alone (nothing hangs in mid-flight)
+const R_START = 0.2
+const R_HIT = SPLITS[0].hitT + 0.1 // swallowed, the nucleus starts to swell
+const R1_RATE = 0.9 // ① a little slow motion (it must fit its watch break)
+const R_SPLIT_END = SPLITS[0].splitT + 0.7 // halves apart, neutrons out
+const R2_LEN = 2.3 // ② fits its watch break
+const R2_RATE = (R_SPLIT_END - R_HIT) / R2_LEN
+/** after ②, while "What flies out?" is said: slow motion that slows on
+ *  (never stops, never reaches atom 2) */
+const R_DRIFT = 0.8
+const R_DRIFT_RATE = 0.15
+const R_AT_ATOM2 = SPLITS[1].hitT + 0.2
+const R3_LEN = 2.0
+
+const launches = new Map<string, { el: number; seen: number; d: number }>()
+/**
+ * Seconds since a step was launched at story time `at`: counts on the
+ * idle clock (so it plays while the story is held for the voice), never
+ * less than the story time since launch (a seek lands right), restarts on
+ * a rewind, and ignores the gap of a ⏸ pause. −1 = not launched yet.
+ */
+function launched(key: string, d: number, at: number, idle: number): number {
+  if (d < at) {
+    launches.delete(key)
+    return -1
+  }
+  let l = launches.get(key)
+  if (!l || d < l.d - 0.1) l = { el: d - at, seen: idle, d }
+  else {
+    const gap = idle - l.seen
+    if (gap > 0 && gap < 0.25) l.el += gap
+    l.seen = idle
+    l.d = d
+  }
+  l.el = Math.max(l.el, d - at)
+  launches.set(key, l)
+  return l.el
+}
+
+/** the replay's scene time (s after SCENE_START) at drill time d */
+function replayScene(d: number, idle: number): number {
+  if (d < D_STEP1) return R_START
+  const e1 = launched('bd:1', d, D_STEP1, idle)
+  if (d < D_STEP2) return Math.min(R_HIT, R_START + e1 * R1_RATE)
+  const e2 = launched('bd:2', d, D_STEP2, idle)
+  const at2 = (e: number) =>
+    e <= R2_LEN ? R_HIT + e * R2_RATE : R_SPLIT_END + R_DRIFT * (1 - Math.exp(-((e - R2_LEN) * R_DRIFT_RATE) / R_DRIFT))
+  if (d < D_STEP3) return at2(e2)
+  const e3 = launched('bd:3', d, D_STEP3, idle)
+  const s3 = at2(Math.max(0, e2 - e3))
+  // ③ one steady speed: the neutron reaches atom 2 after R3_LEN, and the
+  // replay goes on (atom 2 starts to split) while the camera zooms out
+  return Math.min(SPLITS[2].splitT, s3 + e3 * Math.max(0.6, (R_AT_ATOM2 - s3) / R3_LEN))
+}
+
+/** where things are on screen at scene time s (drawCloseup's camera) */
+function sceneSpots(s: number, W: number, H: number) {
+  const k = Math.min(W, H) / 800
+  const pan = easeInOut(clamp01((s - PAN_START) / (PAN_END - PAN_START)))
+  const ox = W / 2 - CAM_END.x * pan * k
+  const oy = H * 0.47 - CAM_END.y * pan * k
+  const at = (sp: { x: number; y: number }) => ({ x: ox + sp.x * k, y: oy + sp.y * k })
+  const atoms = SPLITS.map(at)
+  const first = SPLITS[0]
+  const p = clamp01(s / first.hitT)
+  const neutron = s < first.hitT ? { x: -40 * k + (atoms[0].x + 40 * k) * p, y: atoms[0].y + 8 * k * (1 - p) } : null
+  return { k, atoms, neutron }
+}
+
+/** the camera of the drill: zoom on the whole bomb's atom, the close
+ *  view's alpha, the amber "this atom" circle, the replay frame */
+export function drillCamera(d: number, idle: number): { zoom: number; sceneAlpha: number; marker: number; frame: number; sweep: number } {
+  const zIn = clamp01((d - D_ZOOM_IN) / ZOOM_T)
+  const zOut = clamp01((d - D_OUT) / ZOOM_T)
+  const zoom = d < D_OUT ? 1 + (MAX_ZOOM - 1) * easeInOut(zIn) : 1 + (MAX_ZOOM - 1) * (1 - easeInOut(zOut))
+  const sceneAlpha =
+    d < D_OUT ? clamp01((d - (D_ZOOM_IN + ZOOM_T - 0.35)) / 0.35) : 1 - clamp01((d - D_OUT) / 0.35)
+  // the circle marks the atom we look at again: it fades in while the
+  // opener is said (idle clock), goes as the zoom starts, and comes back
+  // once we are out again
+  const pulse = 0.8 + 0.2 * Math.sin(idle * 6)
+  const back = D_OUT + ZOOM_T
+  const marker =
+    d < D_ZOOM_IN + 0.3
+      ? pulse * clamp01(launched('bd:mk', d, 0, idle) / 0.4) * (1 - clamp01((d - D_ZOOM_IN) / 0.3))
+      : d >= back
+        ? 1 - clamp01((d - back) / (DRILL_T - back))
+        : 0
+  const frame = clamp01((d - 1.0) / 0.5) * (1 - clamp01((d - D_OUT) / 0.5))
+  return { zoom, sceneAlpha, marker, frame, sweep: clamp01((d - 0.1) / 0.9) }
+}
+
+const fadeIn = (t: number, at: number, len = 0.4) => clamp01((t - at) / len)
+
+/** a faint dotted trail: the way the neutron just flew */
+function trail(ctx: CanvasRenderingContext2D, a: Pt, b: Pt, alpha: number) {
+  if (alpha <= 0) return
+  ctx.save()
+  ctx.globalAlpha *= alpha
+  ctx.strokeStyle = 'rgba(253, 230, 138, 0.55)'
+  ctx.lineWidth = 2
+  ctx.setLineDash([3, 7])
+  ctx.beginPath()
+  ctx.moveTo(a.x, a.y)
+  ctx.lineTo(b.x, b.y)
+  ctx.stroke()
+  ctx.restore()
+}
+
+/**
+ * The drill's close view, over the (zoomed) whole bomb the stage drew:
+ * the replay of the close-up, its step rings and callout, the rewind
+ * sweep and the replay frame. `UH` = the height above the buttons.
+ */
+export function drawCloseupDrill(
+  ctx: CanvasRenderingContext2D,
+  d: number,
+  W: number,
+  H: number,
+  UH: number,
+  fuel: CloseupFuel,
+  idle: number,
+) {
+  const b: Box = { W, UH, H }
+  const cam = drillCamera(d, idle)
+  const s = replayScene(d, idle)
+  const T = SCENE_START + s
+  if (cam.sceneAlpha > 0) {
+    drawCloseup(ctx, T, W, H, cam.sceneAlpha, fuel, idle)
+    ctx.save()
+    ctx.globalAlpha *= cam.sceneAlpha
+    const g = sceneSpots(s, W, H)
+    const k = g.k
+    // ① the neutron flies in, the ring rides on it, then sits on the nucleus
+    const r1 = fadeIn(d, D_STEP1) * (1 - fadeIn(d, D_STEP2))
+    const p1 = g.neutron ?? g.atoms[0]
+    if (g.neutron) trail(ctx, { x: 0, y: g.neutron.y }, g.neutron, r1 * 0.8)
+    stepRing(ctx, p1.x, p1.y, (g.neutron ? 30 : 46) * k, 1, idle, r1)
+    // ② a callout beside atom 1, its nucleus magnified: the stretch and
+    // the split (lower left — the halves fly up and down-right, the new
+    // neutrons up-right, right and left above it)
+    const cr = Math.min(W, UH) * 0.17
+    const cc = { x: W * 0.2, y: Math.min(UH - cr - 34, H * 0.47 + 165 * k) }
+    const pop = clamp01(launched('bd:co', d, D_STEP2, idle) / 0.35)
+    // it closes right after the split's flash: the halves fly out of its
+    // magnified view, the main replay shows where they go
+    const shut = 1 - clamp01((s - (SPLITS[0].splitT + 0.45)) / 0.35)
+    const size = pop * (2 - pop) // ease out
+    if (pop > 0 && shut > 0) {
+      const a = g.atoms[0]
+      const Z = 2.4
+      callout(ctx, a, cc, cr * (0.6 + 0.4 * size), pop * shut, () => {
+        ctx.save()
+        ctx.translate(cc.x, cc.y)
+        ctx.scale(Z, Z)
+        ctx.translate(-a.x, -a.y)
+        drawCloseup(ctx, T, W, H, 1, fuel, idle)
+        ctx.restore()
+      })
+      stepRing(ctx, cc.x, cc.y, cr + 8, 2, idle, fadeIn(d, D_STEP2 + 0.2) * shut)
+    }
+    // ③ the next atom gets the ring BEFORE the neutron gets there; a faint
+    // trail shows the way from atom 1
+    const r3 = fadeIn(d, D_STEP3) * (1 - fadeIn(d, D_OUT, 0.3))
+    if (r3 > 0) {
+      const [a1, a2] = g.atoms
+      const reach = clamp01((s - SPLITS[0].splitT) / (SPLITS[1].hitT - SPLITS[0].splitT))
+      trail(ctx, a1, { x: a1.x + (a2.x - a1.x) * reach, y: a1.y + (a2.y - a1.y) * reach }, r3)
+      stepRing(ctx, a2.x, a2.y, 52 * k, 3, idle, r3)
+    }
+    ctx.restore()
+  }
+  rewindSweep(ctx, b, cam.sweep)
+  replayFrame(ctx, b, cam.frame)
 }

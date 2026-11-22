@@ -3,7 +3,6 @@ import { PageNav } from './PageNav'
 import { SideDrawer } from './SideDrawer'
 import { SegmentedSwitch } from './SegmentedSwitch'
 import { Paras, SECTION_MAX, SectionHeader, para, type Para } from './Paras'
-import { NarrationLangSwitch, VoiceSwitch } from './VoiceSwitch'
 import { interruptNarration, useDemoNarration } from './useNarration'
 import { FLAT, KEY } from './surfaces'
 import { usePageStore } from '../state/pageStore'
@@ -282,11 +281,8 @@ function CrystalView({
       <div className="flex h-full w-64 shrink-0 flex-col gap-3">
         {!inDrawer && (
           <>
+            {/* the menu + the voice card (the scenes' spoken intros follow it) */}
             <PageNav />
-            <div className={`flex w-64 shrink-0 flex-col gap-1.5 p-1.5 ${FLAT}`}>
-              <VoiceSwitch />
-              <NarrationLangSwitch />
-            </div>
           </>
         )}
         <div className={`min-h-0 flex-1 overflow-y-auto p-3 text-sm leading-relaxed text-slate-300 ${FLAT}`}>

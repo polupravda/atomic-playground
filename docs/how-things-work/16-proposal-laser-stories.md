@@ -2,8 +2,8 @@
 
 > Status: **approved 2026-11-20 with Elena's answers** (end of file): THREE
 > stories — the Moon became its own story. **Story 1 built 2026-11-20**
-> (roadmap 49), awaiting manual test; stories 2 and 3 show as "coming
-> soon" in the chooser. Replaces the
+> (roadmap 49), **story 2 built 2026-11-21** (roadmap 49e), **story 3 built
+> 2026-11-21** (roadmap 49f), all awaiting manual test. Replaces the
 > Light lab scene L16 (built and removed the same day; no laser scene in
 > the Light lab at all). Story rules: [12-story-designs-for-kids.md](12-story-designs-for-kids.md);
 > pictures: the playbook [15-kid-friendly-animation.md](15-kid-friendly-animation.md)
@@ -112,6 +112,21 @@ everyday word; "photon" is known from the firework and re-used).
 
 ## Story 2 — ✂️ Light that cuts
 
+> **Built 2026-11-21**: `stage/laserCutScenes.ts` (beats family · squeeze
+> · heat · drill · cut · invisible · eye · safe), `stage/laserCutNarration.ts`
+> (EN · DE · RU, audio `public/narration/laser-cut/`), the laser family's
+> numbers in `core/laser.ts` (+ tests). As built, under the playbook rules
+> written since the proposal: **say it → show it → explain it** in every
+> science beat (the lens slides in only after "A lens squeezes…", photons
+> land only after "Each photon that lands…"); a **🔁 drill-in** after the
+> key event (beat `drill`: a rewind sweep, a replay frame with ①②③ —
+> the app's first drill-in, playbook 25); every photon at the one story
+> speed, launched on story time and flown on the idle clock; the eye is
+> THE Light lab eye (moved to `stage/lightPacket.ts` as `drawEye`, with
+> the ghost look `ghostCss`); sunlight in the eye is ordinary light's warm
+> white. The lineup's power gauge spans 0.1 mW … 10¹⁵ W (log); the voice
+> says "millions of times stronger than a pointer" (4 kW vs 1 mW, tested).
+
 **New words (3):** **infrared** · **retina** · **focus** (said as
 "squeeze into a spot" first, then named). **Hero:** the cutting laser's
 spot (amber ring), then the beam entering the eye.
@@ -146,6 +161,50 @@ spot (amber ring), then the beam entering the eye.
 ---
 
 ## Story 3 — 🌕 Lasers to the Moon
+
+> **Built 2026-11-21**: `stage/laserMoonScenes.ts` (beats question ·
+> mirrors · trick · flash · back · timing · drill · drift),
+> `stage/laserMoonNarration.ts` (EN · DE · RU, audio
+> `public/narration/laser-moon/`), the Moon's numbers in `core/laser.ts`
+> (+ tests: round trip 2.56 s, drift ≈ fingernails, 10¹⁷, the five
+> reflectors' places). As built, changed from the table below:
+> - **the flash is green** (532 nm) — what today's stations fire; the
+>   voice never names the color (the first, 1969, flashes were ruby red:
+>   in the info panel). The hero is a green photon with the amber ring.
+> - the voice says where we travel before every camera move ("Let's fly
+>   to the Moon.", "Let's look closer at one little mirror.", "Let's go
+>   back down to Earth.", "Let's watch the light land on the Moon.") —
+>   so `back` gained an opening piece;
+> - **the way back** is seen from the Moon's ground: Earth hangs in the
+>   black sky, the flash rains down from it onto the dust (each photon
+>   straight from Earth), the hero bumps the reflector and flies straight
+>   back to Earth, which blips green; then a box of countless faint
+>   photons with ONE amber one;
+> - **the trick**: the glass corner looked into (three faces, darker toward
+>   the deep corner) beside a room's corner; three photons, each in and
+>   straight back out along its own way (dashed trail); then a bicycle's
+>   red reflector sends a torch's light straight back, red;
+> - **the timing** (show first) callbacks the question: the tape measure
+>   comes back as a band of light reaching the Moon; a callout shows
+>   millimetres at its tip;
+> - **light's speed never changes** (Elena, 2026-11-21: "important —
+>   this is why we can measure so precisely"): its own piece in the
+>   timing beat ("Light always flies at exactly the same speed. It never
+>   speeds up, and it never slows down." → "So the time tells us exactly
+>   how far away the Moon is."), shown by a photon climbing beside the
+>   trip and dropping an amber mark at every tick of the clock — evenly
+>   spaced, the same bracket between every two; the drill-in's last piece
+>   says it again ("…so a longer trip means a farther Moon"), the info
+>   panel gives 299,792.458 km/s and the metre's definition;
+> - a **🔁 drill-in** (`drill`, rule 25) after the timing: ① the flash up,
+>   ② the reflector sends the hero back, ③ the stopwatch — then the Moon
+>   slides farther and the same trip reads longer (the drill's path is
+>   drawn shorter, never a faster photon);
+> - **the drift**: a calendar rolls 1969 → today, the Moon edges away
+>   (ghost outline, amber bar), a fingernail grows by the same amber
+>   length; the last flash glints back;
+> - the panel is drawn about twice its true share beside the astronaut
+>   (46 cm vs 1.8 m), with 40 of its 100 round corners.
 
 Enough material for its own story (Elena: "if it's enough material"):
 the mirrors astronauts left, the trick that sends light straight back,

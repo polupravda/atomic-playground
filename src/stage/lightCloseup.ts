@@ -3,6 +3,8 @@ import type { ParticleKind } from '../state/atomStore'
 import { shellConfiguration } from '../core/atom'
 import { SPECTRA, dropHeight, wavelengthToCss, type SpectrumElementId } from '../core/spectra'
 import { blit, clamp01, easeIn, easeInOut, makeCanvasSprite, type Sprite } from './canvasUtil'
+import { bounce, callout, fadeIn, replayFrame, rewindSweep, stepRing, type Box, type Pt } from './laserCutScenes'
+import { sinceLaunch } from './laserScenes'
 
 // R02 close-up: the camera zooms into one glowing firework spark and the
 // canvas cross-fades into a close view drawn in the app's shell-view atom
@@ -287,9 +289,30 @@ export function drawPhoton(
   }
 }
 
-/** one atom's dance, `q` = time relative to its start, `rate` speeds it up */
+/** an atom's rings: home shells, its outer ring and the dashed seat */
+function atomRadii(el: 'li' | 'na', k: number) {
+  const look = LOOKS[el](k)
+  const shells = shellConfiguration(NUCLEONS[el].protons, NUCLEONS[el].protons)
+  const rOuter = look.r0 + look.gap * (shells.length - 1)
+  return { shells, rOuter, rExc: rOuter + look.gap * 1.15 }
+}
+
+/** where an atom's energy staircase stands: its x, the home rung's y and
+ *  the step height (∝ the photon's energy) */
+function ladderOf(el: 'li' | 'na', x: number, y: number, side: 1 | -1, k: number) {
+  const nm = SPECTRA[el].lines[0].nm
+  return {
+    lx: x + side * (atomRadii(el, k).rExc + 96 * k),
+    base: y + 64 * k,
+    stepH: dropHeight(nm) * 150 * k,
+    nm,
+  }
+}
+
+/** one atom's dance, `q` = time relative to its start; `rate` < 1 plays
+ *  it faster (the dance takes ATOM_LEN × rate seconds) */
 function atomClock(q: number, rate: number) {
-  const r = q * rate
+  const r = q / rate
   return {
     flash: clamp01(r / FLASH_END),
     flashAlpha: r < FLASH_END ? Math.sin(Math.PI * clamp01(r / FLASH_END)) : 0,
@@ -300,7 +323,7 @@ function atomClock(q: number, rate: number) {
         ? easeInOut(clamp01((r - LIFT0) / (LIFT1 - LIFT0)))
         : 1 - easeIn(clamp01((r - FALL0) / (FALL1 - FALL0))),
     wobble: r > LIFT1 && r < FALL0 ? Math.sin(r * 14) * 0.5 + 0.5 : 0,
-    photonT: r >= FALL1 ? (r - FALL1) / rate : -1, // photon flies in real time
+    photonT: r >= FALL1 ? (r - FALL1) * rate : -1, // photon flies in real time
     r,
   }
 }
@@ -316,15 +339,16 @@ function drawJumpAtom(
   rate: number,
   spin: number,
   tNow: number,
+  /** the photon's flight time when it flies on the idle clock (the
+   *  drill-in's replay); default: the dance's own clock */
+  photonT?: number,
 ) {
   const el = spec.el as 'li' | 'na'
   const look = LOOKS[el](k)
   const sp = sprites(k)
   const x = X(spec.x)
   const y = Y(spec.y)
-  const shells = shellConfiguration(NUCLEONS[el].protons, NUCLEONS[el].protons)
-  const rOuter = look.r0 + look.gap * (shells.length - 1)
-  const rExc = rOuter + look.gap * 1.15
+  const { shells, rOuter, rExc } = atomRadii(el, k)
   const clock = q >= 0 ? atomClock(q, rate) : null
   const nm = SPECTRA[el].lines[0].nm
 
@@ -387,18 +411,17 @@ function drawJumpAtom(
     }
   }
   // the photon of the fall
-  if (clock && clock.photonT >= 0 && clock.photonT < PHOTON_LIFE) {
-    const head = rOuter + clock.photonT * 330 * k
-    const a = clock.photonT < PHOTON_LIFE - 0.5 ? 1 : (PHOTON_LIFE - clock.photonT) / 0.5
+  const pT = photonT ?? (clock ? clock.photonT : -1)
+  if (clock && pT >= 0 && pT < PHOTON_LIFE) {
+    const head = rOuter + pT * 330 * k
+    const a = pT < PHOTON_LIFE - 0.5 ? 1 : (PHOTON_LIFE - pT) / 0.5
     drawPhoton(ctx, x, y, spec.photonAngle, head, a, tNow, k, nm)
   }
   // name tag
   tag(ctx, SPECTRA[el].name, x, y + rExc + 24 * k, q >= 0 ? AMBER : SLATE)
 
   // ---- the energy staircase ----
-  const lx = x + spec.ladderSide * (rExc + 96 * k)
-  const base = y + 64 * k
-  const stepH = dropHeight(nm) * 150 * k
+  const { lx, base, stepH } = ladderOf(el, x, y, spec.ladderSide, k)
   ctx.strokeStyle = 'rgba(148, 163, 184, 0.8)'
   ctx.lineWidth = 2
   const rung = (ry: number) => {
@@ -520,9 +543,179 @@ export function drawLightCloseup(
   ctx.restore()
 }
 
-/** fade of the whole close-up into the barcode free-run (last 0.4 s) */
-export function lightCloseupOutAlpha(t: number): number {
-  return 1 - clamp01((t - (LIGHT_CLOSEUP_TOTAL - 0.4)) / 0.4)
+// ---------- 🔁 the drill-in (playbook rule 25) ----------
+//
+// `closeupDrill`, right after sodium's yellow photon: the same dance again,
+// as a look back. Story time holds at 0, 2.5, 5 and 7.5 while the four
+// pieces are said (science pacing); each event plays right after its piece:
+//   0    "Let's watch that once more, closer." over the close-up's last
+//        frame (electrons circling) → a ⏪ rewind sweep, and the replay
+//        frame opens on BOTH atoms side by side, a little smaller, their
+//        staircases standing next to each other in the middle
+//   2.5  "First, the heat pushes the electron up…" → ① on lithium: the
+//        heat washes over it, the electron climbs to the dashed seat (and
+//        wobbles there — idle motion — while the next piece is said)
+//   5    "Then it falls back down…" → ② it falls, the ladder's red arrow,
+//        the red photon flies out (on the idle clock: it never hangs)
+//   7.5  "Why is sodium's light yellow? … Its step is taller…" → ③ a
+//        callout circle on the tops of the two staircases (lithium's top
+//        marked by a dashed line), then sodium's dance: its dot climbs
+//        ABOVE that line, falls, and the yellow photon flies out
+// then the replay fades to black and the barcode free-run fades in.
+// Same atoms, same rings, same ladders, same wavy photons as the close-up —
+// only the framing, the speed and the marks change.
+
+export const LIGHT_DRILL_T = 13
+/** the replay's size against the close-up (both atoms fit side by side) */
+const DRILL_SCALE = 0.72
+const DRILL_OUT = 0.4
+
+/** piecewise-linear keyframes [t, value]; −1 before the first */
+function keyed(t: number, keys: Array<[number, number]>): number {
+  if (t < keys[0][0]) return -1
+  for (let i = 1; i < keys.length; i++) {
+    const [t0, v0] = keys[i - 1]
+    const [t1, v1] = keys[i]
+    if (t < t1) return v0 + ((v1 - v0) * (t - t0)) / (t1 - t0)
+  }
+  return keys[keys.length - 1][1]
+}
+// drill time → each atom's dance time (FLASH_END 2.3, lift 2.5–4.3, fall
+// 6.4–7.5): ① the flash and the climb, the wobble held at its widest
+// (r = 4.6) while piece 3 is said; ② the fall; lithium calm again before
+// piece 4; ③ sodium's whole dance, a little quicker (seen twice already)
+const LI_KEYS: Array<[number, number]> = [
+  [2.6, 0.8], [3.3, 2.4], [4.8, 4.3], [5.0, 4.6], [5.1, 6.4], [6.1, FALL1], [7.4, 10],
+]
+const LI_PHOTON_AT = 6.1
+const NA_KEYS: Array<[number, number]> = [
+  [8.0, 0.8], [8.6, 2.4], [9.6, 4.3], [10.0, 6.4], [10.8, FALL1], [LIGHT_DRILL_T, 9.6],
+]
+const NA_PHOTON_AT = 10.8
+
+function drillGeo(W: number, UH: number, H: number) {
+  const k = (Math.min(W, H) / 800) * DRILL_SCALE
+  const y = UH * 0.4
+  // the staircases face each other in the middle, 84 world units apart
+  const off = (atomRadii('li', 1).rExc + 96 + 42) * k
+  const li = { x: W / 2 - off, y }
+  const na = { x: W / 2 + off, y }
+  const liL = ladderOf('li', li.x, li.y, 1, k)
+  const naL = ladderOf('na', na.x, na.y, -1, k)
+  return { k, li, na, liL, naL }
+}
+
+/** one staircase's top rung, its dot and its drop arrow, seen through the
+ *  callout (y mapped by `Y`) */
+function zoomedStep(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  Y: (wy: number) => number,
+  L: { base: number; stepH: number; nm: number },
+  lift: number,
+  dropA: number,
+  dotR: number,
+) {
+  const top = Y(L.base - L.stepH)
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.9)'
+  ctx.lineWidth = 3
+  ctx.beginPath()
+  ctx.moveTo(x - 30, top)
+  ctx.lineTo(x + 30, top)
+  ctx.stroke()
+  if (dropA > 0) {
+    ctx.save()
+    ctx.globalAlpha *= dropA
+    ctx.strokeStyle = wavelengthToCss(L.nm)
+    ctx.lineWidth = 4
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(x + 14, top + 8)
+    ctx.lineTo(x + 14, Y(L.base))
+    ctx.stroke()
+    ctx.restore()
+  }
+  drawGlossyParticle(ctx, 'electrons', x, Y(L.base - L.stepH * lift), dotR)
+}
+
+export function drawLightCloseupDrill(
+  ctx: CanvasRenderingContext2D,
+  t: number,
+  W: number,
+  UH: number,
+  H: number,
+  /** IDLE time: spin, wobble, photon flights — never stops */
+  idle: number,
+) {
+  const b: Box = { W, UH, H }
+  ctx.save()
+  ctx.globalAlpha *= 1 - fadeIn(t, LIGHT_DRILL_T - DRILL_OUT, DRILL_OUT)
+  ctx.fillStyle = '#020617'
+  ctx.fillRect(0, 0, W, H)
+  // the opener is said over the close-up's last picture, still alive
+  const was = 1 - fadeIn(t, 0.3, 0.45)
+  if (was > 0) drawLightCloseup(ctx, LIGHT_CLOSEUP_TOTAL, W, H, was, idle)
+
+  const open = fadeIn(t, 0.75, 0.5)
+  const { k, li, na, liL, naL } = drillGeo(W, UH, H)
+  const spin = idle * 0.5
+  const rLi = keyed(t, LI_KEYS)
+  const rNa = keyed(t, NA_KEYS)
+  const liPh = sinceLaunch('fw-drill:li', t, LI_PHOTON_AT, idle)
+  const naPh = sinceLaunch('fw-drill:na', t, NA_PHOTON_AT, idle)
+  if (open > 0) {
+    ctx.save()
+    ctx.globalAlpha *= open
+    const at = (p: { x: number; y: number }) => ({ X: (wx: number) => p.x + wx * k, Y: (wy: number) => p.y + wy * k })
+    const L = at(li)
+    const N = at(na)
+    drawJumpAtom(ctx, { el: 'li', x: 0, y: 0, photonAngle: ATOMS[0].photonAngle, ladderSide: 1 }, L.X, L.Y, k, rLi, 1, spin, idle, liPh)
+    drawJumpAtom(ctx, { el: 'na', x: 0, y: 0, photonAngle: ATOMS[1].photonAngle, ladderSide: -1 }, N.X, N.Y, k, rNa, 1, spin + 2, idle, naPh)
+    // the warm glow: still inside the spark
+    const g = ctx.createRadialGradient(W / 2, UH / 2, 0, W / 2, UH / 2, Math.max(W, UH) * 0.7)
+    g.addColorStop(0, 'rgba(251, 146, 60, 0.05)')
+    g.addColorStop(1, 'rgba(251, 146, 60, 0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, W, UH)
+
+    // ① the heat pushes lithium's electron up; ② it falls, a red photon
+    const ringR = atomRadii('li', k).rExc + 44 // clear of the two tags
+    stepRing(ctx, li.x, li.y, ringR, 1, idle, fadeIn(t, 2.6, 0.4) * (1 - fadeIn(t, 5, 0.4)))
+    stepRing(ctx, li.x, li.y, ringR, 2, idle, fadeIn(t, 5.1, 0.4) * (1 - fadeIn(t, 7.5, 0.4)))
+
+    // ③ a callout on the two staircases' tops: lithium's step, sodium's
+    // taller one (lithium's top marked by a dashed line across both)
+    const liTop = liL.base - liL.stepH
+    const naTop = naL.base - naL.stepH
+    const from: Pt = { x: W / 2, y: (liTop + naTop) / 2 }
+    const cr = Math.min(W, UH) * 0.14
+    const cc: Pt = { x: W / 2, y: Math.min(UH - cr - 40, liL.base + 40 + cr) }
+    const pop = bounce(sinceLaunch('fw-drill:callout', t, 7.6, idle), 0.4, 999, 0.1)
+    const inset = pop > 0 ? 0.6 + 0.4 * Math.min(1.1, pop) : 0
+    const Z = 3 // the rungs' height difference, three times bigger
+    callout(ctx, from, cc, cr * inset, clamp01(pop * 2), () => {
+      const Y = (wy: number) => cc.y + (wy - from.y) * Z * inset
+      const liLift = rLi >= 0 ? atomClock(rLi, 1).lift : 0
+      const naLift = rNa >= 0 ? atomClock(rNa, 1).lift : 0
+      const drop = (r: number) => (r >= FALL1 ? Math.min(1, (r - FALL1) / 0.4) : 0)
+      ctx.save()
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.8)'
+      ctx.lineWidth = 2
+      ctx.setLineDash([7, 6])
+      ctx.beginPath()
+      ctx.moveTo(cc.x - cr, Y(liTop))
+      ctx.lineTo(cc.x + cr, Y(liTop))
+      ctx.stroke()
+      ctx.restore()
+      zoomedStep(ctx, cc.x - cr * 0.42, Y, liL, liLift, drop(rLi), 4 * k * Z * inset)
+      zoomedStep(ctx, cc.x + cr * 0.42, Y, naL, naLift, drop(rNa), 4 * k * Z * inset)
+    })
+    if (pop > 0) stepRing(ctx, cc.x, cc.y, cr + 8, 3, idle, fadeIn(t, 7.7, 0.4))
+    ctx.restore()
+  }
+  rewindSweep(ctx, b, clamp01((t - 0.1) / 0.9))
+  replayFrame(ctx, b, fadeIn(t, 0.9, 0.5))
+  ctx.restore()
 }
 
 // exported for tests

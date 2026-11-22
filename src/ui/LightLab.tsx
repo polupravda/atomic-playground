@@ -56,7 +56,6 @@ import { Paras, SECTION_MAX, SectionHeader, para, type Para } from './Paras'
 import { SideDrawer } from './SideDrawer'
 import { SegmentedSwitch } from './SegmentedSwitch'
 import { CHIP_KEY, FLAT, KEY, TRAY } from './surfaces'
-import { NarrationLangSwitch, VoiceSwitch } from './VoiceSwitch'
 import { interruptNarration, useDemoNarration } from './useNarration'
 import { microscopeInfo } from './microscopeInfo'
 import { MicroscopeStage } from '../stage/MicroscopeStage'
@@ -163,10 +162,12 @@ function LabSlider({
   )
 }
 
-/** Light lab DRAWER scenes designed in proposal 11 (L15–L16), not built
- *  yet: listed with the other scene buttons, switched off, "🔜 soon" */
+/** Light lab DRAWER scenes designed, not built yet (L15 in proposal 11,
+ *  L17 in proposal 18): listed with the other scene buttons, switched off,
+ *  "🔜 soon" */
 const PLANNED_SCENES: Array<{ label: string; about: string }> = [
   { label: '🌅 Blue sky, red sunset', about: 'air bounces blue light around' },
+  { label: '🖼️ Pixel painter', about: "paint a screen lamp by lamp, see each pixel's numbers and bits, send it" },
 ]
 
 /** the scenes that open in a drawer over the wave machine (the main view),
@@ -630,23 +631,19 @@ function LightLabView({
     // the page never scrolls: both side columns scroll INSIDE their blocks,
     // the row keeps the wrapper's fixed height
     <div className="flex h-full min-h-0 items-start gap-6">
-      {/* left: nav + 📷 photos / ℹ️ info (photos default; both stay mounted) */}
+      {/* left: nav + 📷 photos / 📝 notes (photos default; both stay mounted) */}
       <div className="flex h-full w-64 shrink-0 flex-col gap-3">
         {!inDrawer && (
           <>
+            {/* the menu + the voice card (the scenes' spoken intros follow it) */}
             <PageNav />
-            {/* the scenes' spoken intros follow the global voice switch */}
-            <div className={`flex w-64 shrink-0 flex-col gap-1.5 p-1.5 ${FLAT}`}>
-              <VoiceSwitch />
-              <NarrationLangSwitch />
-            </div>
           </>
         )}
         <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
           {(
             [
               ['photo', '📷 Photos'],
-              ['info', 'ℹ️ Info'],
+              ['info', '📝 Notes'],
             ] as const
           ).map(([id, text]) => (
             <button

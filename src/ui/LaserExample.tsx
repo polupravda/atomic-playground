@@ -1,31 +1,33 @@
 import { memo, useCallback, useState } from 'react'
 import { PageNav } from './PageNav'
-import { DemoControls, INFO_PANEL } from './DemoControls'
+import { BackToStories, INFO_PANEL, StoryTabs, backToMenu, type StoryTab } from './DemoControls'
 import { NarrationNotice } from './NarrationNotice'
 import { Paras, SectionHeader, para, type Para, SECTION_MAX } from './Paras'
 import { TimelineColumn, type StoryBeat } from './TimelineColumn'
 import { transcriptScript } from './storyChapters'
 import { useVoiceStore } from '../state/voiceStore'
 import type { StorySeek } from '../stage/flowPacing'
-import { Thumb } from './ComingSoonExample'
-import { FLAT, KEY, TRAY } from './surfaces'
-import { cancelNarration, useDemoNarration } from './useNarration'
+import { FLAT, KEY } from './surfaces'
+import { useDemoNarration } from './useNarration'
 import { useSpaceToPause } from './useSpaceToPause'
 import { SequenceStage, type SequenceStory } from '../stage/SequenceStage'
 import { FISSION_H, FISSION_W } from '../stage/FissionStage'
 import { LASER_ORDER, LASER_T, drawLaserBeat } from '../stage/laserScenes'
 import { LASER_SCRIPTS, LASER_STORY_KEY } from '../stage/laserNarration'
+import { CUT_ORDER, CUT_T, drawCutBeat } from '../stage/laserCutScenes'
+import { CUT_SCRIPTS, CUT_STORY_KEY } from '../stage/laserCutNarration'
+import { MOON_ORDER, MOON_T, drawMoonBeat } from '../stage/laserMoonScenes'
+import { MOON_SCRIPTS, MOON_STORY_KEY } from '../stage/laserMoonNarration'
 import { LASER_PHOTO_GROUPS } from '../core/laserPhotos'
 
 // R08 — 🔦 Lasers: a 🎬 story demo with the page anatomy of the others
 // (16rem info · canvas · 18rem story/photos). Three stories (proposal 16):
 // 🔦 How a laser makes its light (built 2026-11-20), ✂️ Light that cuts
-// and 🌕 Lasers to the Moon (coming soon).
+// and 🌕 Lasers to the Moon (built 2026-11-21).
 
-const STORY: SequenceStory = { order: LASER_ORDER, durations: LASER_T, draw: drawLaserBeat }
 const BUTTON_ZONE = 86
 
-type LaserJourney = 'how'
+export type LaserJourney = 'how' | 'cut' | 'moon'
 
 // the info panel, for adults: one scannable sentence per item, key phrase
 // in bold (Paras.tsx)
@@ -39,7 +41,7 @@ const HOW: Para[] = [
 
 const HONEST: Para[] = [
   para('🔢', 'A real flash holds billions of billions of photons;', ' a handful stand for them, and the column\'s doubling is capped.'),
-  para('⚛️', 'In ruby the red light comes from chromium\'s inner electrons', ' (an atom that lost three), drawn here as its one outer electron on a higher step.'),
+  para('⚛️', 'In ruby the red light comes from chromium\'s inner electrons', ' (an atom that lost three), drawn here as its one outer electron moving out to a bigger ring.'),
   para('🪞', 'The partly-silver mirror lets only a few photons in a hundred through,', ' not as many as drawn.'),
   para('🐢', 'Slowed hugely:', ' a photon crosses the ruby in less than a billionth of a second.'),
   para('⚡', 'Ruby lasers flash rather than shine steadily;', ' pointers use tiny chips instead of ruby.'),
@@ -52,49 +54,156 @@ const TRUE: Para[] = [
   para('🤷', '"A solution looking for a problem"', ' — today lasers read barcodes, carry the internet through glass fibres and play music discs.'),
 ]
 
+// ✂️ Light that cuts
+const CUT_HOW: Para[] = [
+  para('🔎', 'A lens squeezes the whole beam into a spot thinner than a hair,', ' so thousands of watts land on a speck: the iron atoms there shake until the steel melts.'),
+  para('💨', 'A jet of gas blows the melt out of the cut', ' as the spot moves along the drawing.'),
+  para('🌈', 'Lasers and their light:', ' pointers and shop scanners (red, green or blue chips), CDs infrared, DVDs red, Blu-ray blue-violet (the "Blu" is its laser), internet fibres infrared, eye surgery ultraviolet, cutters infrared.'),
+  para('👁️', 'The eye\'s lens concentrates a laser beam about 100,000 times on the retina,', ' which has no pain sense — it cannot warn you.'),
+  para('😉', 'A weak visible beam (under 1 mW) is usually stopped by the blink,', ' a quarter of a second; invisible infrared gives no blink at all — and cheap green pointers can leak it.'),
+  para('⚠️', 'Pointers sold to the public should be under 1 mW in Europe (5 mW in the US);', ' strong lasers are dangerous even when reflected.'),
+]
+
+const CUT_HONEST: Para[] = [
+  para('📏', 'The power gauge is a log scale:', ' each step is ten times stronger; the powers are rounded, typical values.'),
+  para('🏟️', 'The biggest laser\'s bar is its peak,', ' held for a few billionths of a second.'),
+  para('👻', 'Infrared and ultraviolet are invisible:', ' they are drawn ghost-pale so you can follow them.'),
+  para('🐢', 'The cut is sped up,', ' the star is huge, and real cutters work behind closed covers.'),
+  para('⚛️', 'Steel is mostly iron;', ' its atoms shake a little even when cold, and a handful stand for countless billions.'),
+]
+
+const CUT_TRUE: Para[] = [
+  para('☀️', '5 December 2022:', ' the biggest laser (192 beams, in a building three football fields long) made a tiny star burn on Earth for an instant — fusion ignition, the 🌟 Sun story\'s fusion, made by light.'),
+  para('💿', 'Blu-ray is named after its blue laser:', ' a shorter wave makes smaller dots, so more fits on the disc.'),
+]
+
+// 🌕 Lasers to the Moon
+const MOON_HOW: Para[] = [
+  para('📐', 'The reflector is a "corner cube":', ' three mirrors at right angles send light straight back where it came from, from any direction — bike reflectors and road signs use the same shape.'),
+  para('🌕', 'Five reflectors work today:', ' Apollo 11 left 100 corners (1969), Apollo 14 another 100, Apollo 15 three hundred; the Soviet robot cars Lunokhod 1 and 2 carry 14 each.'),
+  para('🟢', 'Today\'s stations fire green flashes (532 nm)', ' through big telescopes, many each second; the first, in 1969, used ruby lasers — the red of the 🔦 first story.'),
+  para('⏱️', 'Up and back takes about 2.6 seconds:', ' half that time times the speed of light is the distance — about 384,400 km on average. The Moon\'s path is an oval, so it changes by some 40,000 km every month.'),
+  para('🚦', 'Light in empty space always flies at the same speed', ' — 299,792.458 km every second, never faster or slower; that is why a time can be turned into a distance (the metre itself is defined by it).'),
+  para('🎯', 'Timing the trip to a few trillionths of a second', ' measures the distance to a few millimetres.'),
+]
+const MOON_HONEST: Para[] = [
+  para('🐢', 'Light is drawn hugely slowed:', ' it really takes about 1.3 s each way; the stopwatch shows the real time.'),
+  para('📏', 'Earth and Moon are drawn far closer than they are', ' — the real gap is about 30 Earths wide — and the drift is enlarged millions of times.'),
+  para('🌫️', 'The spot is about two kilometres wide;', ' "a town" is rounded, and the town is drawn only for size.'),
+  para('🔢', 'One photon home per hundred million billion is a rough figure;', ' stations collect a few per second from thousands of flashes.'),
+  para('🪞', 'The panel is drawn with 40 round corners', ' (Apollo 11\'s has 100, in a 46 cm square).'),
+]
+const MOON_TRUE: Para[] = [
+  para('🧑‍🚀', '21 July 1969:', ' Buzz Aldrin set up Apollo 11\'s reflector; days later, the Lick Observatory caught the first echo.'),
+  para('🌊', 'The Moon drifts away about 3.8 cm a year', ' because Earth\'s tides tug it forward — the same tug slowly makes Earth\'s day longer.'),
+  para('🌫️', 'From the side a laser beam is invisible in clean air;', ' light shows use fog so each droplet bounces a little light to you.'),
+]
+
 // 📖 the story column: each beat's chapter and icon — its words are the
 // narration script itself (TimelineColumn)
-const BEATS: Record<string, StoryBeat> = {
+const HOW_BEATS: Record<string, StoryBeat> = {
   question: { id: 'question', group: '❓ A question', icon: '❓' },
   inside: { id: 'inside', group: '🔦 Inside a laser', icon: '🔦' },
   zoom: { id: 'zoom', group: '🔍 Close-up: one atom', icon: '🔍' },
   flash: { id: 'flash', group: '🔍 Close-up: one atom', icon: '⚡' },
+  flashDrill: { id: 'flashDrill', group: '🔁 Once more, closer', icon: '🔁' },
   fall: { id: 'fall', group: '🔍 Close-up: one atom', icon: '🎲' },
   twin: { id: 'twin', group: '👯 Twins', icon: '👯' },
+  twinDrill: { id: 'twinDrill', group: '🔁 Once more, closer', icon: '🔁' },
   mirrors: { id: 'mirrors', group: '🪞 The mirrors', icon: '🪞' },
   beam: { id: 'beam', group: '🎈 The payoff', icon: '🔴' },
 }
 
-const ROW_M = 18
-const ROW_GAP = 14
-const ROW_H = 190
+const CUT_BEATS: Record<string, StoryBeat> = {
+  family: { id: 'family', group: '🔦 The laser family', icon: '🔦' },
+  squeeze: { id: 'squeeze', group: '🔎 Squeeze it', icon: '🔎' },
+  heat: { id: 'heat', group: '🔍 Close-up: the steel', icon: '🔥' },
+  drill: { id: 'drill', group: '🔁 Once more, closer', icon: '🔁' },
+  cut: { id: 'cut', group: '✂️ The cut', icon: '⭐' },
+  invisible: { id: 'invisible', group: '👻 Invisible light', icon: '👻' },
+  eye: { id: 'eye', group: '👁️ Your eye', icon: '👁️' },
+  safe: { id: 'safe', group: '🛡️ Safety', icon: '🛡️' },
+}
 
-export function LaserExample({ active }: { active: boolean }) {
-  // null = the chooser
-  const [journey, setJourney] = useState<LaserJourney | null>(null)
+const MOON_BEATS: Record<string, StoryBeat> = {
+  question: { id: 'question', group: '❓ A question', icon: '❓' },
+  mirrors: { id: 'mirrors', group: '🪞 The mirrors', icon: '🧑‍🚀' },
+  trick: { id: 'trick', group: '📐 The trick', icon: '📐' },
+  flash: { id: 'flash', group: '🔭 The flash', icon: '🔭' },
+  back: { id: 'back', group: '↩️ The way back', icon: '↩️' },
+  timing: { id: 'timing', group: '⏱️ The timing', icon: '⏱️' },
+  drill: { id: 'drill', group: '🔁 Once more, closer', icon: '🔁' },
+  drift: { id: 'drift', group: '🎈 The payoff', icon: '🌙' },
+}
+
+/** everything that differs between the stories */
+const JOURNEYS: Record<
+  LaserJourney,
+  {
+    story: SequenceStory
+    order: readonly string[]
+    beats: Record<string, StoryBeat>
+    scripts: typeof LASER_SCRIPTS
+    storyKey: string
+    how: Para[]
+    honest: Para[]
+    trueStory: Para[]
+  }
+> = {
+  how: {
+    story: { order: LASER_ORDER, durations: LASER_T, draw: drawLaserBeat },
+    order: LASER_ORDER,
+    beats: HOW_BEATS,
+    scripts: LASER_SCRIPTS,
+    storyKey: LASER_STORY_KEY,
+    how: HOW,
+    honest: HONEST,
+    trueStory: TRUE,
+  },
+  cut: {
+    story: { order: CUT_ORDER, durations: CUT_T, draw: drawCutBeat },
+    order: CUT_ORDER,
+    beats: CUT_BEATS,
+    scripts: CUT_SCRIPTS,
+    storyKey: CUT_STORY_KEY,
+    how: CUT_HOW,
+    honest: CUT_HONEST,
+    trueStory: CUT_TRUE,
+  },
+  moon: {
+    story: { order: MOON_ORDER, durations: MOON_T, draw: drawMoonBeat },
+    order: MOON_ORDER,
+    beats: MOON_BEATS,
+    scripts: MOON_SCRIPTS,
+    storyKey: MOON_STORY_KEY,
+    how: MOON_HOW,
+    honest: MOON_HONEST,
+    trueStory: MOON_TRUE,
+  },
+}
+
+
+export function LaserExample({ active, journey }: { active: boolean; journey: LaserJourney | null }) {
   const [paused, setPaused] = useState(false)
   const [beat, setBeat] = useState<string>(LASER_ORDER[0])
-  const [seek, setSeek] = useState<StorySeek | null>(null)
-  const [rightTab, setRightTab] = useState<'story' | 'photos'>('story')
-  const choose = (j: LaserJourney | null) => {
-    cancelNarration() // navigating is a deliberate interruption
-    setJourney(j)
+  // a new story (or none) starts unpaused, at its first beat
+  const [prev, setPrev] = useState(journey)
+  if (prev !== journey) {
+    setPrev(journey)
     setPaused(false)
-    setBeat(LASER_ORDER[0])
+    setBeat(journey ? JOURNEYS[journey].order[0] : LASER_ORDER[0])
   }
-  // the auto-return to the chooser does NOT cancel: the last line may finish
-  const onFinished = useCallback(() => {
-    setJourney(null)
-    setPaused(false)
-  }, [])
+  const J = journey ? JOURNEYS[journey] : null
+  const [seek, setSeek] = useState<StorySeek | null>(null)
+  const [rightTab, setRightTab] = useState<StoryTab>('story')
   const running = journey !== null
   // ⎵ Space = ⏸ Pause / ▶ Resume while the story plays
   useSpaceToPause(active && running, () => setPaused((v) => !v))
 
   const narration = useDemoNarration({
-    storyKey: journey ? LASER_STORY_KEY : null,
+    storyKey: J ? J.storyKey : null,
     beatId: beat,
-    scripts: journey ? LASER_SCRIPTS : null,
+    scripts: J ? J.scripts : null,
     active,
     paused,
   })
@@ -109,52 +218,23 @@ export function LaserExample({ active }: { active: boolean }) {
     [seekTo],
   )
   const voiceLang = useVoiceStore((s) => s.lang)
-  const transcript = transcriptScript(LASER_SCRIPTS, voiceLang)
+  const transcript = transcriptScript(J ? J.scripts : LASER_SCRIPTS, voiceLang)
 
-  const rowW = FISSION_W - 2 * ROW_M
   return (
     <div className="grid h-full min-h-0 grid-cols-[16rem_minmax(0,1fr)_18rem] grid-rows-[minmax(0,1fr)] gap-x-6">
-      {/* left: nav + info panel */}
+      {/* left: the menu + the voice card */}
       <div className="col-start-1 row-start-1 flex min-h-0 flex-col gap-3">
         <PageNav />
-        <DemoControls
-          chooser={
-            <button
-              type="button"
-              onClick={() => choose(null)}
-              disabled={!running}
-              aria-current={running ? undefined : 'page'}
-              title="Go to the story selection screen"
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm font-medium ${
-                running ? `text-slate-100 ${KEY}` : 'cursor-default rounded-lg bg-sky-600 text-white'
-              }`}
-            >
-              <span aria-hidden>🔦</span>
-              {running ? 'Choose another story' : 'Choose a story'}
-            </button>
-          }
-        />
-        {/* the info panel belongs to a story: none on the chooser */}
-        {running && (
-          <div className={INFO_PANEL}>
-            <SectionHeader type="how" />
-            <Paras max={SECTION_MAX} items={HOW} />
-            <SectionHeader type="honest" />
-            <Paras max={SECTION_MAX} items={HONEST} className="text-slate-400" />
-            <SectionHeader type="true" />
-            <Paras max={SECTION_MAX} items={TRUE} />
-          </div>
-        )}
       </div>
 
-      {/* middle: the canvas, with the chooser over it */}
+      {/* middle: the canvas */}
       <div className="col-start-2 row-start-1 flex min-h-0 flex-col items-center gap-2">
         <div className="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
           <SequenceStage
             width={FISSION_W}
             height={FISSION_H}
             buttonZone={BUTTON_ZONE}
-            story={journey ? STORY : null}
+            story={J ? J.story : null}
             storyKey={journey}
             paused={paused}
             seek={seek}
@@ -163,47 +243,9 @@ export function LaserExample({ active }: { active: boolean }) {
             holdBeat={narration.holdBeat}
             fit={narration.fit}
             onReport={setBeat}
-            onFinished={onFinished}
+            onFinished={backToMenu}
           />
-          {journey === null && (
-            <>
-              {(
-                [
-                  { id: 'how', thumb: 'laser-how', label: '🔦 How a laser makes its light', subtitle: 'light that copies itself between two mirrors', ready: true },
-                  { id: 'cut', thumb: 'laser-cut', label: '✂️ Light that cuts', subtitle: 'from a tiny pointer to a laser that cuts steel', ready: false },
-                  { id: 'moon', thumb: 'laser-moon', label: '🌕 Lasers to the Moon', subtitle: 'a flash, a mirror on the Moon, and back', ready: false },
-                ] as const
-              ).map((r, i) => (
-                <div
-                  key={r.id}
-                  className={`absolute flex items-center overflow-hidden rounded-[14px] border border-slate-700/90 bg-[#0b1226] ${r.ready ? '' : 'opacity-45'}`}
-                  style={{ left: ROW_M, top: ROW_M + i * (ROW_H + ROW_GAP), width: rowW, height: ROW_H }}
-                >
-                  <div className="flex min-w-0 flex-1 flex-col gap-1 pl-[18px]">
-                    <span className="text-[17px] font-semibold text-slate-200">{r.label}</span>
-                    <span className="text-[13px] text-slate-400">{r.subtitle}</span>
-                  </div>
-                  <Thumb id={r.thumb} w={Math.round(rowW * 0.45)} h={ROW_H} />
-                  {r.ready ? (
-                    <button
-                      type="button"
-                      onClick={() => choose('how')}
-                      aria-label="Watch How a laser makes its light"
-                      className="group absolute inset-0 rounded-[14px] border border-slate-700/0 transition hover:border-sky-400/70 hover:bg-sky-400/10 focus-visible:border-sky-400 focus-visible:outline-none"
-                    >
-                      <span className="absolute right-3 top-1.5 rounded-full bg-sky-600 px-3 py-1 text-sm font-semibold text-white shadow-md shadow-black/40 transition group-hover:scale-105 group-hover:bg-sky-500">
-                        ▶ Watch it
-                      </span>
-                    </button>
-                  ) : (
-                    <span className="absolute right-3 top-1.5 rounded-full bg-slate-800/80 px-3 py-1 text-sm text-slate-400">
-                      🔜 coming soon
-                    </span>
-                  )}
-                </div>
-              ))}
-            </>
-          )}
+          {running && <BackToStories />}
           <NarrationNotice failed={narration.failed} missingLang={narration.missingLang} />
           {running && (
             <button
@@ -223,34 +265,13 @@ export function LaserExample({ active }: { active: boolean }) {
         </div>
       </div>
 
-      {/* right: the story timeline, or the real photos */}
+      {/* right: the story timeline, the real photos, or the notes */}
       <div className="col-start-3 row-start-1 flex min-h-0 flex-col gap-2">
-        <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
-          {(
-            [
-              ['story', '📖 Story'],
-              ['photos', '📷 Photos'],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setRightTab(id)}
-              aria-pressed={rightTab === id}
-              className={`flex-1 rounded-lg px-3 py-1 transition ${
-                rightTab === id ? 'bg-sky-600 font-medium text-white' : 'text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <StoryTabs tab={rightTab} onTab={setRightTab} />
         <div className={`min-h-0 flex-1 overflow-y-auto pr-1 ${rightTab === 'story' ? '' : 'hidden'}`}>
-          {journey === null ? (
-            <p className="px-1 pt-2 text-sm text-slate-400">👈 Pick a story — it will appear here, step by step.</p>
-          ) : (
+          {J !== null && (
             <TimelineColumn
-              beats={LASER_ORDER.map((id) => BEATS[id])}
+              beats={J.order.map((id) => J.beats[id])}
               script={transcript.script}
               lang={transcript.lang}
               speakingPiece={narration.speakingPiece}
@@ -259,14 +280,24 @@ export function LaserExample({ active }: { active: boolean }) {
               currentId={beat}
               visible={active && rightTab === 'story'}
               onSeek={onSeek}
-              restartIds={[LASER_ORDER[0]]}
-              resetKey={journey}
+              restartIds={[J.order[0]]}
+              resetKey={J.storyKey}
             />
           )}
         </div>
         <div className={`min-h-0 flex-1 overflow-y-auto pr-1 ${rightTab === 'photos' ? '' : 'hidden'}`}>
           <LaserPhotos />
         </div>
+        {J && (
+          <div className={`${INFO_PANEL} ${rightTab === 'notes' ? '' : 'hidden'}`}>
+            <SectionHeader type="how" />
+            <Paras max={SECTION_MAX} items={J.how} />
+            <SectionHeader type="honest" />
+            <Paras max={SECTION_MAX} items={J.honest} className="text-slate-400" />
+            <SectionHeader type="true" />
+            <Paras max={SECTION_MAX} items={J.trueStory} />
+          </div>
+        )}
       </div>
     </div>
   )

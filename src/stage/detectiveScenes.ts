@@ -1,5 +1,7 @@
 import { clamp01, easeInOut, easeOut } from './canvasUtil'
 import { SPECTRA, wavelengthToCss, type SpectrumElementId } from '../core/spectra'
+import { bounce, callout, replayFrame, rewindSweep, stepRing } from './laserCutScenes'
+import { sinceLaunch } from './laserScenes'
 
 // R04 — 🔭 Star detective (proposal 06 / step 34c, moved to 🌟 Star stuff
 // 2026-11-18): how we know what a star is made of — by reading the dark
@@ -13,13 +15,19 @@ import { SPECTRA, wavelengthToCss, type SpectrumElementId } from '../core/spectr
 //              — its lines sit exactly on dark lines ✓
 //   oxygen     a suspect that does NOT fit ✗ (the method, not luck)
 //   helium     helium explains the remaining dark lines ✓
+//   catchDrill 🔁 the drill-in (playbook 25): a rewind sweep, then the
+//              replay frame on the same star and gas: ① a callout circle on
+//              one hydrogen atom — a green and a blue photon fly past, the
+//              red one is caught (its electron jumps up); ② the way the red
+//              would have gone, drawn to its place in the rainbow: nothing
+//              arrives; ③ a dark line forms there, then the others
 //   discovery  the true story: helium was found in the Sun's light during
 //              the 1868 eclipse, 27 years before anyone found it on Earth
 // Honest: a hot blue-white star (like Spica) really shows hydrogen AND
 // helium dark lines; the 1868 line was BRIGHT (glowing gas at the Sun's
 // edge) — the same fingerprint, seen the other way round.
 
-export const DETECTIVE_ORDER = ['star', 'prism', 'catch', 'hydrogen', 'oxygen', 'helium', 'discovery'] as const
+export const DETECTIVE_ORDER = ['star', 'prism', 'catch', 'catchDrill', 'hydrogen', 'oxygen', 'helium', 'discovery'] as const
 export type DetectivePhase = (typeof DETECTIVE_ORDER)[number]
 
 /** story seconds per beat (each science line holds its beat while spoken) */
@@ -27,6 +35,8 @@ export const DETECTIVE_T: Record<DetectivePhase, number> = {
   star: 5,
   prism: 6,
   catch: 10,
+  // science pacing: four pieces, held at 0, 2.5, 5, 7.5
+  catchDrill: 10,
   hydrogen: 5,
   oxygen: 5,
   helium: 7.5,
@@ -191,7 +201,15 @@ function drawPrism(ctx: CanvasRenderingContext2D, b: Board, glow: number) {
 
 /** the star's rainbow, `grow` 0→1 spreading out from the prism, its dark
  *  lines at `dark` 0→1 */
-function drawRainbow(ctx: CanvasRenderingContext2D, b: Board, grow: number, dark: number, fan = true) {
+function drawRainbow(
+  ctx: CanvasRenderingContext2D,
+  b: Board,
+  grow: number,
+  dark: number,
+  fan = true,
+  /** per dark line (by nm), overriding `dark` */
+  lineDark?: (nm: number) => number,
+) {
   if (grow <= 0) return
   // the fan of light from the prism to the strip
   if (fan) {
@@ -218,7 +236,12 @@ function drawRainbow(ctx: CanvasRenderingContext2D, b: Board, grow: number, dark
   for (let f = 0; f <= 1.0001; f += 0.05) g.addColorStop(Math.min(1, f), wavelengthToCss(NM0 + f * (NM1 - NM0), 0.95))
   ctx.fillStyle = g
   ctx.fillRect(b.sx, b.sy, b.sw, b.sh)
-  if (dark > 0) {
+  if (lineDark) {
+    for (const l of STAR_LINES) {
+      ctx.fillStyle = `rgba(2, 6, 23, ${0.93 * lineDark(l.nm)})`
+      ctx.fillRect(xOf(b, l.nm) - 1.6, b.sy, 3.2, b.sh)
+    }
+  } else if (dark > 0) {
     ctx.fillStyle = `rgba(2, 6, 23, ${0.93 * dark})`
     for (const l of STAR_LINES) ctx.fillRect(xOf(b, l.nm) - 1.6, b.sy, 3.2, b.sh)
   }
@@ -324,30 +347,47 @@ function drawSuspect(
 
 // ---------- the catch: why lines go dark ----------
 
-/** photons stream from the star through its thin outer gas; atoms of
- *  hydrogen and helium catch exactly their own colors (their electron
- *  jumps UP — the firework's jump, the other way round) */
-function drawCatch(ctx: CanvasRenderingContext2D, W: number, UH: number, t: number, idle: number) {
-  sky(ctx, W, UH + 86)
+interface CatchAtom {
+  el: 'h' | 'he'
+  x: number
+  y: number
+}
+
+/** the catch scene's layout: the star at the left, its gas, four atoms, the
+ *  rainbow strip of what reaches us */
+function catchGeo(W: number, UH: number) {
   const cx = W * 0.12
   const cy = UH * 0.42
   const R = UH * 0.3
-  // the star (a big bright ball, its edge at the left)
-  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R)
-  g.addColorStop(0, '#f8fafc')
-  g.addColorStop(0.7, '#bfdbfe')
-  g.addColorStop(1, '#60a5fa')
-  ctx.fillStyle = g
+  const gx0 = cx + R
+  const gx1 = gx0 + W * 0.2
+  const atoms: CatchAtom[] = [
+    { el: 'h', x: gx0 + 50, y: cy - R * 0.45 },
+    { el: 'he', x: gx0 + 110, y: cy + R * 0.05 },
+    { el: 'h', x: gx0 + 70, y: cy + R * 0.5 },
+    { el: 'he', x: gx0 + 140, y: cy - R * 0.7 },
+  ]
+  const b = board(W, UH)
+  const strip: Board = { ...b, sy: UH * 0.84, sh: 40, sx: W * 0.3, sw: W * 0.64 }
+  return { cx, cy, R, gx0, gx1, atoms, strip }
+}
+type CatchGeo = ReturnType<typeof catchGeo>
+
+/** the star (a big bright ball, its edge at the left) and its thin outer
+ *  gas: a pale shell wrapped all around the ball, overlapping its edge (no
+ *  hard border where the star ends) */
+function catchStar(ctx: CanvasRenderingContext2D, g: CatchGeo, shell: number) {
+  const { cx, cy, R, gx0, gx1 } = g
+  const sg0 = ctx.createRadialGradient(cx, cy, 0, cx, cy, R)
+  sg0.addColorStop(0, '#f8fafc')
+  sg0.addColorStop(0.7, '#bfdbfe')
+  sg0.addColorStop(1, '#60a5fa')
+  ctx.fillStyle = sg0
   ctx.beginPath()
   ctx.arc(cx, cy, R, 0, Math.PI * 2)
   ctx.fill()
-  // its thin outer gas: a pale shell wrapped all around the ball,
-  // overlapping its edge (no hard border where the star ends)
-  const shell = clamp01(t / 1.2)
-  const gx0 = cx + R
-  const gx1 = gx0 + W * 0.2
   ctx.save()
-  ctx.globalAlpha = shell
+  ctx.globalAlpha *= shell
   const outer = gx1 - cx
   const sg = ctx.createRadialGradient(cx, cy, R * 0.82, cx, cy, outer)
   sg.addColorStop(0, 'rgba(148, 163, 184, 0)')
@@ -360,20 +400,20 @@ function drawCatch(ctx: CanvasRenderingContext2D, W: number, UH: number, t: numb
   ctx.fill()
   text(ctx, 'thin outer gas', (gx0 + gx1) / 2, cy - R * 0.9 - 14)
   ctx.restore()
-  // the atoms in the gas: hydrogen (H) and helium (He)
-  const atoms = [
-    { el: 'h' as const, x: gx0 + 50, y: cy - R * 0.45 },
-    { el: 'he' as const, x: gx0 + 110, y: cy + R * 0.05 },
-    { el: 'h' as const, x: gx0 + 70, y: cy + R * 0.5 },
-    { el: 'he' as const, x: gx0 + 140, y: cy - R * 0.7 },
-  ]
-  // the photons: one stream per lane, colors cycling through the rainbow;
-  // a photon whose color is one of an atom's lines is caught by it
+}
+
+/** the photons: one stream per lane, colors cycling through the rainbow; a
+ *  photon whose color is one of an atom's lines is caught by it. Returns
+ *  each atom's last catch time. `skip`: an atom that catches nothing here
+ *  and whose lane stays clear (the drill-in's hero) */
+function catchStream(ctx: CanvasRenderingContext2D, W: number, g: CatchGeo, t: number, skip = -1) {
+  const { cx, cy, R, atoms } = g
   const lanes = 9
   const speed = 150
   const lastCatch = new Map<number, number>()
   for (let lane = 0; lane < lanes; lane++) {
     const y = cy - R * 0.8 + (lane / (lanes - 1)) * R * 1.6
+    if (skip >= 0 && Math.abs(y - atoms[skip].y) < R * 0.15) continue
     for (let k = 0; k < 4; k++) {
       // each photon's own clock (story time: the stream belongs to the story)
       const born = k * 1.1 + lane * 0.37
@@ -388,7 +428,7 @@ function drawCatch(ctx: CanvasRenderingContext2D, W: number, UH: number, t: numb
       const nm = lineColor ? SPECTRA[el].lines[Math.floor(rnd(id + cycle * 97, 11) * 2)].nm : NM0 + rnd(id + cycle * 97, 12) * (NM1 - NM0)
       const x = cx + R * 0.9 + age * speed
       // the atom that catches it: the nearest atom of that element
-      const catcher = lineColor ? atoms.filter((a) => a.el === el).sort((a, b2) => Math.abs(a.y - y) - Math.abs(b2.y - y))[0] : null
+      const catcher = lineColor ? atoms.filter((a, i) => a.el === el && i !== skip).sort((a, b2) => Math.abs(a.y - y) - Math.abs(b2.y - y))[0] : null
       if (catcher && x >= catcher.x) {
         lastCatch.set(atoms.indexOf(catcher), Math.max(lastCatch.get(atoms.indexOf(catcher)) ?? -9, born + (catcher.x - cx - R * 0.9) / speed + cycle * 4.4))
         continue // swallowed
@@ -401,46 +441,223 @@ function drawCatch(ctx: CanvasRenderingContext2D, W: number, UH: number, t: numb
       ctx.fill()
     }
   }
-  // draw the atoms; a fresh catch makes the electron jump up (bigger ring)
-  for (const [i, a] of atoms.entries()) {
-    const since = t - (lastCatch.get(i) ?? -9)
-    const jump = since >= 0 && since < 0.9 ? Math.sin((since / 0.9) * Math.PI) : 0
-    const r0 = 13
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)'
-    ctx.lineWidth = 1
+  return lastCatch
+}
+
+/** one atom of the gas; `jump` 0→1 lifts its electron to the bigger ring */
+function catchAtom(ctx: CanvasRenderingContext2D, a: CatchAtom, i: number, jump: number, idle: number, label = true) {
+  const r0 = 13
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.arc(a.x, a.y, r0, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.setLineDash([3, 3])
+  ctx.beginPath()
+  ctx.arc(a.x, a.y, r0 * 1.8, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.setLineDash([])
+  ctx.fillStyle = '#f87171'
+  ctx.beginPath()
+  ctx.arc(a.x, a.y, a.el === 'he' ? 5 : 4, 0, Math.PI * 2)
+  ctx.fill()
+  const er = r0 + (r0 * 0.8) * jump
+  const ea = idle * 2.4 + i
+  ctx.fillStyle = '#38bdf8'
+  ctx.beginPath()
+  ctx.arc(a.x + Math.cos(ea) * er, a.y + Math.sin(ea) * er, 3, 0, Math.PI * 2)
+  ctx.fill()
+  if (jump > 0.2) {
+    ctx.strokeStyle = `rgba(251, 191, 36, ${jump})`
+    ctx.lineWidth = 2
     ctx.beginPath()
-    ctx.arc(a.x, a.y, r0, 0, Math.PI * 2)
+    ctx.arc(a.x, a.y, er + 6, 0, Math.PI * 2)
     ctx.stroke()
-    ctx.setLineDash([3, 3])
-    ctx.beginPath()
-    ctx.arc(a.x, a.y, r0 * 1.8, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.setLineDash([])
-    ctx.fillStyle = '#f87171'
-    ctx.beginPath()
-    ctx.arc(a.x, a.y, a.el === 'he' ? 5 : 4, 0, Math.PI * 2)
-    ctx.fill()
-    const er = r0 + (r0 * 0.8) * jump
-    const ea = idle * 2.4 + i
-    ctx.fillStyle = '#38bdf8'
-    ctx.beginPath()
-    ctx.arc(a.x + Math.cos(ea) * er, a.y + Math.sin(ea) * er, 3, 0, Math.PI * 2)
-    ctx.fill()
-    if (jump > 0.2) {
-      ctx.strokeStyle = `rgba(251, 191, 36, ${jump})`
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.arc(a.x, a.y, er + 6, 0, Math.PI * 2)
-      ctx.stroke()
-    }
-    text(ctx, a.el === 'h' ? 'hydrogen' : 'helium', a.x, a.y + 34, '#cbd5e1', 11)
   }
-  // what reaches us: the rainbow with its dark lines, forming as atoms catch
-  const b = board(W, UH)
-  const strip = { ...b, sy: UH * 0.84, sh: 40, sx: W * 0.3, sw: W * 0.64 }
-  const dark = clamp01((t - 3) / 5)
-  drawRainbow(ctx, strip, 1, dark, false)
+  if (label) text(ctx, a.el === 'h' ? 'hydrogen' : 'helium', a.x, a.y + 34, '#cbd5e1', 11)
+}
+
+const catchJump = (since: number, len = 0.9) => (since >= 0 && since < len ? Math.sin((since / len) * Math.PI) : 0)
+
+/** what reaches us: the rainbow with its dark lines */
+function catchStrip(ctx: CanvasRenderingContext2D, g: CatchGeo, dark: number, lineDark?: (nm: number) => number) {
+  const strip = g.strip
+  drawRainbow(ctx, strip, 1, dark, false, lineDark)
   text(ctx, 'what reaches us: the rainbow, with the caught colors missing', strip.sx + strip.sw / 2, strip.sy - 14)
+}
+
+/** photons stream from the star through its thin outer gas; atoms of
+ *  hydrogen and helium catch exactly their own colors (their electron
+ *  jumps UP — the firework's jump, the other way round) */
+function drawCatch(ctx: CanvasRenderingContext2D, W: number, UH: number, t: number, idle: number) {
+  sky(ctx, W, UH + 86)
+  const g = catchGeo(W, UH)
+  catchStar(ctx, g, clamp01(t / 1.2))
+  const lastCatch = catchStream(ctx, W, g, t)
+  // draw the atoms; a fresh catch makes the electron jump up (bigger ring)
+  for (const [i, a] of g.atoms.entries()) catchAtom(ctx, a, i, catchJump(t - (lastCatch.get(i) ?? -9)), idle)
+  // what reaches us: the rainbow with its dark lines, forming as atoms catch
+  catchStrip(ctx, g, clamp01((t - 3) / 5))
+}
+
+// ---------- 🔁 the drill-in: one atom, closer ----------
+
+const DRILL_HERO = 2 // the lower hydrogen atom
+const DRILL_SPEED = 150 // the scene's one speed for light (the stream's)
+const HERO_NM = 656.3 // hydrogen's red: the color it catches
+/** the hero trio: two colors hydrogen lets past, and its own red */
+const DRILL_TRIO = [
+  { nm: 530, at: 2.6 },
+  { nm: HERO_NM, at: 2.8 },
+  { nm: 460, at: 3.0 },
+]
+
+/** a point `d` px along a polyline */
+function along(pts: Array<{ x: number; y: number }>, d: number) {
+  for (let i = 1; i < pts.length; i++) {
+    const L = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y)
+    if (d <= L) {
+      const q = d / L
+      return { x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * q, y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * q, done: false }
+    }
+    d -= L
+  }
+  return { ...pts[pts.length - 1], done: true }
+}
+const pathLen = (pts: Array<{ x: number; y: number }>) =>
+  pts.slice(1).reduce((s, p, i) => s + Math.hypot(p.x - pts[i].x, p.y - pts[i].y), 0)
+
+// holds at 0, 2.5, 5, 7.5. The opener is said over the catch as it was
+// left (still streaming, on the idle clock); a rewind sweep wipes it to
+// the start: no dark lines yet, the stream faded back, the hero atom's
+// lane clear. "First, look at one atom…" → ① a callout circle opens on
+// it; a green, a red and a blue photon fly in (the scene's one speed,
+// launched on story time, flown on the idle clock): green and blue fly
+// past, on to their places in the rainbow; the red is caught, the
+// electron jumps up. "Then that color is gone…" → ② the way the red would
+// have gone draws itself to its place in the rainbow: nothing arrives.
+// "So what do we see…? … A dark line!" → ③ the dark line forms there,
+// then the star's other dark lines follow.
+function drawCatchDrill(ctx: CanvasRenderingContext2D, W: number, UH: number, t: number, idle: number) {
+  const b = { W, UH, H: UH + 86 }
+  sky(ctx, W, UH + 86)
+  const sweep = clamp01((t - 0.1) / 0.9)
+  const open = clamp01((t - 0.9) / 0.5)
+  const pre = 1 - clamp01((t - 0.45) / 0.5)
+  // the stream keeps flowing from where the catch left it (idle clock)
+  const flowT = DETECTIVE_T.catch + Math.max(0, sinceLaunch('cd:flow', t, 0, idle))
+  if (pre > 0) {
+    ctx.save()
+    ctx.globalAlpha *= pre
+    drawCatch(ctx, W, UH, flowT, idle)
+    ctx.restore()
+  }
+  const g = catchGeo(W, UH)
+  const hero = g.atoms[DRILL_HERO]
+  ctx.save()
+  ctx.globalAlpha *= open
+  catchStar(ctx, g, 1)
+  ctx.save()
+  ctx.globalAlpha *= 0.3
+  catchStream(ctx, W, g, flowT, DRILL_HERO)
+  ctx.restore()
+  // the hero trio's ways: from the star's edge along the hero's lane, past
+  // the atom, then down to each color's place in the rainbow
+  const edgeX = g.cx + Math.sqrt(Math.max(0, g.R * g.R - (hero.y - g.cy) ** 2)) - 6
+  const slot = (nm: number) => ({ x: xOf(g.strip, nm), y: g.strip.sy + 4 })
+  const way = (nm: number) =>
+    nm === HERO_NM
+      ? [{ x: edgeX, y: hero.y }, { x: hero.x - 13, y: hero.y }]
+      : [{ x: edgeX, y: hero.y }, { x: hero.x + 26, y: hero.y }, slot(nm)]
+  let caughtAt = -1
+  const landed: Array<{ nm: number; s: number }> = []
+  const flights: Array<{ x: number; y: number; nm: number }> = []
+  for (const p of DRILL_TRIO) {
+    const since = sinceLaunch(`cd:${p.nm}`, t, p.at, idle)
+    if (since < 0) continue
+    const pts = way(p.nm)
+    const L = pathLen(pts)
+    const d = since * DRILL_SPEED
+    if (d >= L) {
+      if (p.nm === HERO_NM) caughtAt = since - L / DRILL_SPEED
+      else landed.push({ nm: p.nm, s: since - L / DRILL_SPEED })
+      continue
+    }
+    flights.push({ ...along(pts, d), nm: p.nm })
+  }
+  const heroJump = caughtAt >= 0 ? catchJump(caughtAt, 1.4) : 0
+  // the strip: before ③ no dark line; ③ the red one forms, then the others
+  const redDark = clamp01((t - 7.6) / 0.8)
+  const othersDark = clamp01((t - 8.6) / 1)
+  catchStrip(ctx, g, 0, (nm) => (nm === HERO_NM ? redDark : othersDark))
+  // a photon that arrived: a soft glint on its color's place
+  for (const { nm, s } of landed) {
+    if (s > 1.2) continue
+    const at = slot(nm)
+    ctx.save()
+    ctx.globalAlpha *= 1 - s / 1.2
+    ctx.strokeStyle = wavelengthToCss(nm, 0.9)
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(at.x, at.y + 16, 8 + s * 14, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.restore()
+  }
+  // the other atoms stay (same picture), faded back and quiet
+  for (const [i, a] of g.atoms.entries()) {
+    if (i === DRILL_HERO) continue
+    ctx.save()
+    ctx.globalAlpha *= 0.45
+    catchAtom(ctx, a, i, 0, idle)
+    ctx.restore()
+  }
+  catchAtom(ctx, hero, DRILL_HERO, heroJump, idle)
+  const dots = (k = 1) => {
+    for (const f of flights) {
+      ctx.fillStyle = wavelengthToCss(f.nm, 0.95)
+      ctx.beginPath()
+      ctx.arc(f.x, f.y, 3.2 * k, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  dots()
+  // ② the way the red would have gone: drawn to its place, nothing on it
+  const red = slot(HERO_NM)
+  const draw2 = clamp01((t - 5.1) / 1.2)
+  if (draw2 > 0) {
+    const pts = [{ x: hero.x + 26, y: hero.y }, red]
+    const p = along(pts, pathLen(pts) * easeInOut(draw2))
+    ctx.save()
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.8)'
+    ctx.lineWidth = 2
+    ctx.setLineDash([5, 6])
+    ctx.beginPath()
+    ctx.moveTo(pts[0].x, pts[0].y)
+    ctx.lineTo(p.x, p.y)
+    ctx.stroke()
+    ctx.restore()
+  }
+  stepRing(ctx, red.x, red.y + 16, 24, 2, idle, clamp01((t - 6.2) / 0.4) * (1 - clamp01((t - 7.5) / 0.3)))
+  stepRing(ctx, red.x, red.y + 16, 24, 3, idle, clamp01((t - 7.6) / 0.4))
+  // ① the callout: the hero atom seen close, the trio flying through it
+  const cr = Math.min(W, UH) * 0.14
+  const cc = { x: W * 0.78, y: UH * 0.33 }
+  const pop = bounce(t - 2.6, 0.4, 999, 0.1)
+  const inset = pop > 0 ? 0.6 + 0.4 * Math.min(1.1, pop) : 0
+  callout(ctx, hero, cc, cr * inset, clamp01(pop * 2), () => {
+    const k = 3
+    ctx.save()
+    ctx.translate(cc.x, cc.y)
+    ctx.scale(k, k)
+    ctx.translate(-hero.x, -hero.y)
+    catchAtom(ctx, hero, DRILL_HERO, heroJump, idle, false)
+    dots()
+    ctx.restore()
+  })
+  if (pop > 0) stepRing(ctx, cc.x, cc.y, cr + 8, 1, idle, clamp01((t - 2.6) / 0.4) * (1 - clamp01((t - 5) / 0.4)))
+  ctx.restore()
+  rewindSweep(ctx, b, sweep)
+  replayFrame(ctx, b, open)
 }
 
 // ---------- the discovery: helium, found in the Sun ----------
@@ -616,6 +833,7 @@ export function drawDetective(
   idle: number,
 ) {
   if (phase === 'catch') return drawCatch(ctx, W, UH, t, idle)
+  if (phase === 'catchDrill') return drawCatchDrill(ctx, W, UH, t, idle)
   if (phase === 'discovery') return drawDiscovery(ctx, W, UH, t, idle)
   sky(ctx, W, UH + 86)
   if (phase === 'star') {

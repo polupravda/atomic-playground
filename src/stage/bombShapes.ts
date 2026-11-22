@@ -239,6 +239,7 @@ const CARD_GAP = 14
 const CARD_PAD = 18 // inner side padding
 const NAME_H = 48 // the name line + the history line inside the card
 const FOOT_H = 24 // room under the ground line (person caption, scale bar)
+const BACK_CLEAR = 30 // the name starts right of the canvas ← button
 
 /** where each bomb lies in the lineup: one framed card per bomb (the
  *  chooser look shared with R02/R04), the bombs themselves on ONE shared
@@ -298,6 +299,28 @@ export function drawFuel(ctx: CanvasRenderingContext2D, mode: BombDesignId, x0: 
   text(ctx, `one ball: ${Math.round(r.fuel.ballCm)} cm`, lx, axisY + 9, AMBER_SOFT, 11, 'left')
 }
 
+/** one bomb for its stories-menu card: the lineup look (outline + the
+ *  fuel ball at real size) on the scale ALL three cards share, so Tsar
+ *  Bomba still dwarfs Little Boy */
+export function drawBombThumb(ctx: CanvasRenderingContext2D, mode: BombDesignId, w: number, h: number) {
+  const maxL = Math.max(...LINEUP.map((m) => REAL_BOMBS[m].lengthM))
+  const maxH = Math.max(...LINEUP.map((m) => 2 * HALF_HEIGHT_M[m]))
+  const ppm = Math.min((w * 0.84) / maxL, (h * 0.72) / maxH)
+  const x0 = (w - REAL_BOMBS[mode].lengthM * ppm) / 2
+  const axisY = h / 2
+  fillBomb(ctx, mode, x0, axisY, ppm)
+  strokeBomb(ctx, mode, x0, axisY, ppm)
+  const r = REAL_BOMBS[mode]
+  const fx = FUEL_X_M[mode]
+  if (r.fuel && fx !== undefined) {
+    const rad = Math.max(2, (r.fuel.ballCm / 100 / 2) * ppm)
+    ctx.fillStyle = '#f59e0b'
+    ctx.beginPath()
+    ctx.arc(x0 + fx * ppm, axisY, rad, 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
 /** All three bombs on ONE scale, a grown-up beside the biggest, and the
  *  nuclear fuel inside each. \`hide\`: leave out that bomb's outline + fuel
  *  (the caller draws it while it zooms to its own view); \`only\`: draw
@@ -329,7 +352,8 @@ export function drawLineup(
     ctx.fill()
     ctx.stroke()
     const name = BOMB_NAMES[m]
-    const nameX = card.left + CARD_PAD
+    // clear of the canvas ← back to the stories menu (DemoControls)
+    const nameX = card.left + CARD_PAD + BACK_CLEAR
     text(ctx, name, nameX, nameY, m === current ? AMBER : '#e2e8f0', 17, 'left', '600')
     ctx.font = '600 17px ui-sans-serif, system-ui, sans-serif'
     const nameW = ctx.measureText(name).width

@@ -25,6 +25,10 @@ export const SUN_NARRATION: Record<string, string> = {
     'Then another proton joins in. | Now the nucleus is a light kind of helium. A flash of energy flies out.',
   closeup3:
     'Two of these light heliums crash together. They make one real helium nucleus. | Two protons are set free, to try again. | Joining nuclei like this is called fusion. ... Fusion.',
+  // 🔁 the drill-in (playbook 25): the chain once more, counted in plain
+  // words over a look-back replay — ① ② ③, nothing new
+  fusionDrill:
+    "Let's count it once more, step by step. | First, two protons crash and stick. Now we have heavy hydrogen. | Then one more proton joins in. Now it is a light helium. | Last, two light heliums crash and join. They make one helium, and two protons fly free. What is this joining called? ... Fusion!",
   scale:
     'Now let us weigh it. Four hydrogens go in. One helium comes out. | And the helium is a little lighter! | The missing bit has turned into light. That is why the Sun shines.',
   walk: 'The newborn light is trapped. It bounces around inside the Sun for about a hundred thousand years. | Then it reaches the surface. From there, it flies to Earth in just eight minutes.',
@@ -46,6 +50,8 @@ export const SUN_NARRATION_DE = translated(SUN_NARRATION, {
     'Dann kommt noch ein Proton dazu. | Jetzt ist der Kern eine leichte Art von Helium. Ein Energieblitz fliegt hinaus.',
   closeup3:
     'Zwei dieser leichten Heliumkerne prallen zusammen. Sie bilden einen echten Heliumkern. | Zwei Protonen werden frei und versuchen es noch einmal. | Wenn Kerne so verschmelzen, nennt man das Kernfusion. ... Kern. Fusion.',
+  fusionDrill:
+    'Zählen wir noch einmal mit, Schritt für Schritt. | Zuerst prallen zwei Protonen zusammen und bleiben kleben. Jetzt haben wir schweren Wasserstoff. | Dann kommt noch ein Proton dazu. Jetzt ist es leichtes Helium. | Zum Schluss prallen zwei leichte Heliumkerne zusammen und verbinden sich. Sie bilden einen Heliumkern, und zwei Protonen fliegen frei. Wie heißt dieses Verbinden? ... Kernfusion!',
   scale:
     'Jetzt wiegen wir nach. Vier Wasserstoffkerne gehen hinein. Ein Heliumkern kommt heraus. | Und das Helium ist ein kleines bisschen leichter! | Das fehlende Stückchen ist zu Licht geworden. Darum scheint die Sonne.',
   walk: 'Das neugeborene Licht ist gefangen. Es prallt etwa hunderttausend Jahre lang im Inneren der Sonne hin und her. | Dann erreicht es die Oberfläche. Von dort fliegt es in nur acht Minuten zur Erde.',
@@ -69,6 +75,8 @@ export const SUN_NARRATION_RU = translated(SUN_NARRATION, {
     'Потом к ним присоединяется ещё один протон. | Теперь это ядро лёгкого гелия. Наружу вылетает вспышка энергии.',
   closeup3:
     'Одно такое лёгкое ядро гелия врезается в другое. Вместе они дают одно настоящее ядро гелия. | Два протона освобождаются и пробуют снова. | Такое слияние ядер называют си́нтезом. ... Си́нтез.',
+  fusionDrill:
+    'Давай посчитаем ещё раз, шаг за шагом. | Сначала два протона сталкиваются и слипаются. Получается тяжёлый водород. | Потом к ним присоединяется ещё один протон. Теперь это лёгкий гелий. | Наконец, одно ядро лёгкого гелия врезается в другое. Получается одно ядро гелия, и два протона улетают на свободу. Как называют такое слияние? ... Си́нтез!',
   scale:
     'А теперь давай взвесим. На входе четыре протона. На выходе одно ядро гелия. | И гелий оказывается чуть-чуть легче! | Недостающий кусочек превратился в свет. Вот почему Солнце светит.',
   walk: 'Новорождённый свет оказывается в ловушке. Около ста тысяч лет он мечется внутри Солнца. | Потом он добирается до поверхности. Оттуда всего за восемь минут он долетает к нам, на Землю.',

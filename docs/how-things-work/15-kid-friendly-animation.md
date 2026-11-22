@@ -1,8 +1,11 @@
 # Kid-friendly animation — the playbook
 
 > Status: **written 2026-11-20**, **updated 2026-11-21** with the lessons
-> of the 🔬 microscope and 🔦 laser feedback rounds and the new rule for
-> narration and animation together (section E). Written from an analysis
+> of the 🔬 microscope and the two 🔦 laser stories' feedback rounds: the
+> rule for narration and animation together (section E), the 🔁 drill-in
+> (section G), naming with a bounce, saying where we travel, light that
+> starts and ends at real surfaces, one speed for light, true size ratios
+> and anatomy. **The short version** below is the one-page summary. Written from an analysis
 > of the two scenes Elena holds up as the model — the 🧊 Crystal lab's 🗜️🔥 squeeze & heat
 > (`stage/CarbonStage.tsx`) and the ⚡ power plant story
 > (`stage/plantScenes.ts`) — and of the feedback rounds that shaped them.
@@ -21,6 +24,66 @@ transcript (Elena, 2026-11-20). So the picture has to *explain itself*:
 every cause is visibly connected to its effect, every invisible thing is
 given a body, and every action of the child's hand gets an answer at once.
 The voice names things; the animation proves them; text is for grown-ups.
+
+## The short version
+
+Everything below, as twenty questions to ask of every scene (rule
+numbers in brackets). Elena's words in quotes.
+
+**Know what you see**
+1. **The voice names every thing, one per sentence, and the thing
+   bounces while it is named** — kids don't read labels (1, 1d, 22).
+2. **The voice says where we travel before the camera goes there**, and
+   the camera really zooms; the little "we are here" map is for grown-ups
+   (2).
+3. **One explanation, not two**: no side diagram that repeats what the
+   main animation already shows (1c). No canvas word a child would need.
+4. **The subject sits in the middle**; side by side, things keep their
+   real size ratio and real anatomy (3, 4c, 13c).
+5. **The same thing looks the same everywhere**: atoms are the app's
+   atoms, light is the photon packet, the eye is THE eye (3, 3b).
+
+**Cause and effect you can see**
+6. **The cause touches the effect, and arrives first** — the lens is in
+   place, THEN the rays bend (6, 6b).
+7. **Light starts at its source's edge and ends where it lands**; at a
+   mirror it bumps and folds back (8b).
+8. **A flow is born from its pieces** — show one batch of photons
+   escaping before the steady beam (8c).
+9. **Say why and how, with a picture from a child's life**; say the
+   outcome concretely ("the melting makes a hole in the steel sheet")
+   (1b).
+
+**Time and motion**
+10. **Nothing ever freezes; light never hangs still** — flights are
+    launched on story time and flown on the idle clock (19, 19e).
+11. **The animation keeps going while the voice speaks** — between key
+    events the scene is in a living rest (19a, 19b).
+12. **Say it → show it → explain it**: an action sentence, then the
+    action, then its explanation; never the key event under its own
+    sentence (19b, 19c).
+13. **Science in short chunks**: 1–2 sentences, then the event; two
+    linked events may play together if the next sentence looks back
+    ("Have you seen…?") (19c, 19d).
+14. **One speed for light** in a scene; save time with a shorter path,
+    never a faster photon (19f).
+15. **A hero to follow, set off alone** — its own lane, the crowd dimmed
+    (21).
+
+**Make it stick**
+16. **🔁 Drill in after the hard part**: the same idea in new words, a
+    replay that looks like a look back — keep the main picture, zoom in
+    with a callout circle (25).
+17. **When order matters, say it and show it** ("from the weakest to the
+    strongest…", bars growing left to right) (1d, 10).
+
+**Gentle and honest**
+18. **Exaggerate the signal, never the mechanism**; every exaggeration in
+    ⚖️ Honest notes (12–14).
+19. **Danger is said in words**, never shown as harm (23).
+20. **Write for the ear**: pauses between listed words, whole words
+    repeated (never letter-by-letter), stresses the voice gets right
+    (doc 10).
 
 ## Why the two model scenes work
 
@@ -59,7 +122,9 @@ Each technique: what it is, why, where it lives in code.
    with a picture from a child's life: "It swallows one green photon. The
    photon's energy gives the electron a push. The push lifts it to a
    bigger ring, farther from the middle. Like a ball lifted onto a high
-   shelf."
+   shelf." And say the outcome in words a child can picture: not only
+   "the steel will melt" but "the melting makes a hole in the steel
+   sheet" (Elena, 2026-11-21).
 1c. **One explanation, not two** (Elena, 2026-11-21: "remove the
    staircase… as the main animation is self-explanatory"). When the main
    animation already shows what happens (the electron visibly moving out
@@ -68,16 +133,36 @@ Each technique: what it is, why, where it lives in code.
    linking them, and the eye pulled away from the hero. Add a diagram
    only when the main picture can't show the idea by itself — and then
    the voice must tie it to the action.
+1d. **Name every thing in turn, and make it bounce** (Elena, 2026-11-21,
+   on the laser lineup: "Kids don't read labels. Name every laser in
+   turn, with bouncy zoom-in and out"). A lineup or a machine's parts are
+   named by the voice ONE per piece, and the named thing jumps out while
+   it is said — a card flies to the middle, big, with an overshoot, and
+   goes back; a part of a machine swells and wobbles (`bounce` in
+   `stage/laserCutScenes.ts`, launched just before its piece on the idle
+   clock, so it plays while the voice speaks). When the order means
+   something, the words say so ("from the weakest to the strongest… a bit
+   stronger… stronger still…") and the picture repeats it (bars growing
+   left to right under an arrow).
 2. **"🔍 We are here."** A close-up carries a tiny picture of the whole
    thing in a corner with an amber box around the part being shown
    (`youAreHere` in `plantScenes.ts`). A zoom without a locator is a new,
-   unexplained world.
+   unexplained world. But kids can't read the little map either (Elena,
+   2026-11-21): **the voice says where we travel** ("Let's fly into the
+   steel, right under the bright spot."), then the camera really zooms —
+   the old scene grows past the screen around that point while the new
+   one grows in out of it. A magnifier circle popping open is not a
+   journey; the corner map is for grown-ups.
 3. **One look per thing.** An atom always looks like an atom — nucleus,
    blue rings, electrons (`shellAtom`, `miniAtom` in `stage/storyDraw.ts`,
    `stage/shellAtom.ts`) — never a bare dot. No extra glow or halo that
    other atoms in the app don't have. Different substances side by side
    share ONE style and ONE scale (uranium next to water) — otherwise the
-   picture teaches a size that isn't true.
+   picture teaches a size that isn't true. The same for everyday things
+   side by side: **a laser pointer next to an eye is drawn about half as
+   thick as the eyeball** (Elena, 2026-11-21: "draw the laser pointer
+   bigger in relation to the eye"), and its beam leaves the small opening
+   at its tip.
 3b. **The same thing looks the same in every scene** (Elena, 2026-11-20,
    on the microscope: "hard for a kid to comprehend that both demos
    display the same light waves, since they look so different"). Light
@@ -113,6 +198,11 @@ Each technique: what it is, why, where it lives in code.
    to the press; a wire runs from the generator to the town. If two things
    act on each other, they touch, or something visibly travels between
    them.
+6b. **The cause arrives before its effect starts** (2026-11-21, the
+   replay: "first comes the lens, then the rays focus"). If a thing
+   changes the light (a lens, a mirror), it is in place first, THEN the
+   light bends — never both on one slider, or the rays bend toward a lens
+   that isn't there yet.
 7. **Nearest first.** Effects spread outward in order: the water next to
    the rod shakes before the far water (`dist` delay in `drawHeat`), heat
    waves roll out from the rod's surface. Order in space and time IS the
@@ -124,7 +214,13 @@ Each technique: what it is, why, where it lives in code.
    visually goes through the wall, should end at the dot"). A beam or a
    packet stops at the surface it hits (clip it there); what lands there
    is the dot, the shimmer or the shadow. Light that passes through a
-   wall teaches that walls are see-through. **At a mirror, light bumps
+   wall teaches that walls are see-through. **Light also starts at its
+   source's edge** (2026-11-21: the beams overlapped the lasers, and the
+   pointer's beam went through the steel): a stream is clipped between
+   the opening it leaves and the surface it lands on (`stream(…, { clip })`).
+   And **light the voice talks about travels the whole way**: the lamp's
+   green rain falls to the bottom of the screen, not fading out a third of
+   the way down (Elena, 2026-11-21). **At a mirror, light bumps
    and turns back at the mirror's face** (laser, 2026-11-21: "beams
    visually collide with mirrors… expected: they bump and reflect from
    the mirror edge"): the packet is clipped at the face and the part
@@ -170,6 +266,11 @@ Each technique: what it is, why, where it lives in code.
     windows lighting one by one is not how a grid works (all houses get
     power at once); rods never shrink — the whole assembly is lifted.
     Mechanical things move as ONE piece.
+13c. **Cartoon, but anatomically right** (Elena, 2026-11-21: "the upper
+    eyelid slightly covers the pupil, which is wrong in real life"). A
+    friendly drawing may simplify, never misplace: an open eye's lid sits
+    above the pupil (`drawEye`, shared by every eye in the app, so one
+    fix fixes all).
 13b. **Too small to draw? Squeeze, never clamp** (Elena, 2026-11-20, on
     the microscope: light and electron waves looked the same size beside
     the hair, and electron waves looked the same beside the bacterium and
@@ -365,6 +466,14 @@ pure story beats, data (show first already lingers) or spectacles.
 Vary the opener so repeats don't sound like a formula — see doc 10
 "Drill-in beats" for the openers in EN · DE · RU.
 
+**Keep the main picture; zoom in with a callout** (Elena, 2026-11-21).
+The replay keeps the big scene the child already knows (the whole
+laser), and the close look opens as a **callout**: a circle beside the
+point it looks at, two dashed lines from that point to the circle's
+edges, the zoomed-in world inside (`callout` in `stage/laserCutScenes.ts`).
+A full-screen zoom in a replay loses the link the replay is there to
+make.
+
 **In the story** a drill-in is its own beat right after the event it
 repeats (`flash` → `flashDrill`), with its own line and its own
 transcript entry (🔁 icon, "Once more, closer"), so a grown-up can
@@ -374,8 +483,18 @@ jump back to it.
 
 Before calling a scene done, play it with the sound off and ask:
 
-- [ ] Could a child who can't read tell what each thing is? (voice names
-      it; the drawing is recognizable; "we are here" on close-ups)
+- [ ] Could a child who can't read tell what each thing is? (the voice
+      names it, one per sentence, and it bounces while named; the drawing
+      is recognizable; no canvas word is needed)
+- [ ] Before every zoom, does the voice say where we are going — and
+      does the camera really travel there?
+- [ ] Is there a second diagram repeating what the main animation shows?
+      (remove it)
+- [ ] Side by side, are sizes in their real ratio and the anatomy right?
+- [ ] Does every light stream start at its source's edge, end where it
+      lands, and — when the voice talks about it — travel the whole way?
+- [ ] Is every changer of light (lens, mirror) in place before the light
+      changes?
 - [ ] Does every cause touch its effect, and does the effect start next
       to the cause?
 - [ ] Is every invisible thing drawn with the app's existing symbol?
@@ -398,9 +517,13 @@ Before calling a scene done, play it with the sound off and ask:
 - [ ] Are atoms drawn as atoms, all at one scale?
 - [ ] Does the voice explain the result the moment it shows?
 - [ ] After each chapter's science-heavy key event: is there a 🔁
-      drill-in — new words, a replay that looks like a look back (closer,
-      slower, steps marked), the same things drawn the same way, nothing
-      new taught?
+      drill-in — new words, a replay that looks like a look back (the
+      main picture kept, a callout circle for the close look, steps
+      marked), the same things drawn the same way, nothing new taught?
+- [ ] When the order of things matters, do the words say it and the
+      picture show it?
+- [ ] Listen once: are listed words paused apart, terms repeated whole,
+      every stress right?
 
 ## The kit (reuse before drawing anew)
 
@@ -420,6 +543,13 @@ Before calling a scene done, play it with the sound off and ask:
 | a wave drawn across the screen | `drawWave` | `stage/WaveStage.tsx` |
 | a flight launched on story time, flown on the idle clock | `sinceLaunch` | `stage/laserScenes.ts` |
 | one photon speed for a scene | `PHOTON_SPEED` | `stage/laserScenes.ts` |
+| a stream of photons along a path, clipped to source and target | `stream` | `stage/laserCutScenes.ts` |
+| the "look, this one!" bounce for a named thing | `bounce`, `scaledAbout` | `stage/laserCutScenes.ts` |
+| a zoomed-in callout circle with lines to its point | `callout` | `stage/laserCutScenes.ts` |
+| the replay look: frame, vignette, 🔁 badge; numbered steps | `replayFrame`, `stepRing` | `stage/laserCutScenes.ts` |
+| THE eye (side view) | `drawEye` | `stage/lightPacket.ts` |
+| invisible light (X-ray, infrared, ultraviolet) | `ghostCss` | `stage/lightPacket.ts` |
+| sparks off a hot point | `sparks` | `stage/laserCutScenes.ts` |
 
 ## Applied to the next scenes
 
@@ -457,3 +587,19 @@ Each new design names the techniques it uses, so a review can check them:
   the twins join the column in step and bounce with it (8b); every photon at one
   speed, launched on story time and flown on the idle clock (19e, 19f);
   twins and the bouncing column as flow beats (20).
+- **✂️ Light that cuts** (story, built 2026-11-21): every science beat
+  said → shown → explained (19c) — the lens slides in only after "A lens
+  squeezes…"; the cutter beside a pointer (the familiar thing next to the
+  new one); heat = the app's iron atoms shaking + marks + the 🔥 track
+  (9, 10); the first 🔁 drill-in (25): rewind sweep, replay frame, ①②③;
+  the cut as a spectacle from above, the star born from the kerf (8c);
+  invisible light drawn ghost-pale, then faded to what an eye sees (9);
+  THE eye shared with the Light lab (3b, `drawEye`); the danger said in
+  words only (23). Feedback round 1 (2026-11-21): every laser of the
+  lineup named in turn, weakest to strongest, flying to the middle with a
+  bounce (1d); the cutter's parts named one per sentence with a bounce;
+  beams clipped from the lasers' edges to the steel (8b); "Let's fly into
+  the steel…" then a real camera zoom (2); "the melting makes a hole"
+  (1b); the replay keeps the big laser and zooms in with a callout (25);
+  the lens arrives before the rays focus (6b); the eyelid clear of the
+  pupil (13c); the pointer at the eye's true scale (3).

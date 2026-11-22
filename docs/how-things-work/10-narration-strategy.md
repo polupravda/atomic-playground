@@ -27,6 +27,7 @@ it was verified with (`singleShort`, see "Short pieces" below).
 | 🌟 Star stuff | 🧒 You are star stuff | `stage/stardustNarration.ts` | story (the reference) | EN · DE · RU |
 | 🌟 Star stuff | 💍 Where gold comes from | `stage/goldNarration.ts` | science; show first for the ring, the two dead stars and the teaspoon scale; flow for the rewind, the crash, the neutron stuffing and the way forward | EN · DE · RU |
 | 🔦 Lasers | 🔦 How a laser makes its light | `stage/laserNarration.ts` | show first for the wall, the opened laser and the flash; flow for the zoom and the mirrors | EN · DE · RU |
+| 🔦 Lasers | ✂️ Light that cuts | `stage/laserCutNarration.ts` | show first for the lineup, the zoom to the atoms, the eye and the safety panels; the first 🔁 drill-in beat (`drill`); run for the cut | EN · DE · RU |
 | ⚡ Power plant | 📖 How a power plant works | `stage/plantNarration.ts` | science; show first for the dot tree and the side-by-side charts; flow for the kettle | EN · DE · RU |
 | 💡 Light lab | 🔬 Microscopes: a short intro + spoken **results** (`microscope-blur` light meets a thing smaller than its wave · `microscope-electrons` electrons show it · `microscope-atoms`), each said once; the other scenes' intros are step 40c | `stage/lightIntros.ts` (`LIGHT_INTROS`, key `light-lab`) | playground: nothing is held | EN · DE · RU |
 | 🧊 Crystal lab | a short intro per scene + a spoken **result** when a scene's outcome shows (`<scene>-<material>`, said once each) | `stage/crystalIntros.ts` (`CRYSTAL_INTROS`, `CRYSTAL_RESULTS`) | playground: nothing is held | EN · DE · RU |
@@ -107,7 +108,13 @@ storyteller's voice, under these rules:
    picture appears, the line says what each part IS before what it does:
    "This is a fuel rod, seen very, very close. Inside are uranium atoms.
    All around the rod is water." The on-canvas names stay small, for the
-   grown-ups.
+   grown-ups. **One name per piece** when several things are named (a
+   lineup, a machine's parts — 2026-11-21): each piece names one thing,
+   and the stage makes that thing bounce while it is said (playbook 1d).
+   **Say where we travel** before a zoom ("Let's fly into the steel, right
+   under the bright spot."), then the camera goes there (playbook 2).
+   **When the order matters, say it** ("Let's go from the weakest to the
+   strongest… A bit stronger… Stronger still…").
 3c. **The picture must explain itself** (same day). A cause and its effect
    must be visibly connected — the hot rod stands IN the water, heat waves
    roll out of it, the water next to it shakes first, bubbles are born on
@@ -120,6 +127,11 @@ storyteller's voice, under these rules:
    four, ... eight, ... many." — commas alone run the words together
    (Elena, 2026-11-21, laser mirrors). Keep the commas before the
    pause marks so the transcript still reads "Two, four, eight, many."
+   **Never spell a term as letter-words**: "Ret. I. Na." was read
+   "ret, EYE, nah" (Kokoro reads "I" as the word); repeat the whole word
+   instead ("This is the retina. ... Retina."). Russian stress the voice
+   gets wrong goes into the generator's `RU_RESPELL` (2026-11-21:
+   «в твоём глазу́» was said гла́зу; the voice now gets «глазуу»).
 5. **Length follows the thought, not the beat.** The animation waits for
    the voice (below), so a line may be longer than its beat — but every
    extra sentence stretches the whole story; say only what the beat needs.
@@ -351,6 +363,18 @@ its own line. Writing rules:
    (`| `) only when the replay opens on a diagram.
 5. **No new information.** If the line needs a fact the event didn't
    show, it belongs in the next beat.
+
+Where (2026-11-21): 🔦 `flashDrill` · `twinDrill`, ✂️ `drill`, 🌕 `drill`,
+⚡ `heatDrill`, 🎆 `closeupDrill`, ☀️ `fusionDrill`, 🔭 `catchDrill`,
+💍 `stuffDrill`, ☢️ `closeupDrill` (all three bombs). Each is a plain
+science line (never `~ ` flow, never `> ` run) of 3–4 pieces. In the 📖
+column a drill sits in its own chapter (🔁 Once more, closer), so the
+chapter it interrupts shows its heading again after it — on purpose:
+"back to the kettle".
+
+⚠️ Rendering: `generate.ts` works in one fixed temp folder — two renders at
+the same time overwrite each other's chunks. Render one at a time, or give
+each its own short `TMPDIR`.
 
 ## Show first: data, numbers and complex visuals
 

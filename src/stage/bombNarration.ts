@@ -43,6 +43,10 @@ interface BombText {
   closeup3: string
   closeup4: string
   closeup5: string
+  /** 🔁 the drill-in after the close-up (science paced, NOT flow): the
+   *  chain once more in new plain words, over a look-back replay
+   *  (fissionCloseup.ts drawCloseupDrill) — opener, then ① ② ③ */
+  closeupDrill: (metal: string) => string
   chainAfter: string
   xray: string
   fusion: string
@@ -101,6 +105,8 @@ const EN: BombText = {
   closeup3: 'One of the new neutrons flies to the next atom. ... And it hits!',
   closeup4: 'The second atom splits too. | One of its neutrons flies on to a third atom.',
   closeup5: 'The third atom splits as well. | Every split frees more neutrons. So the chain keeps growing.',
+  closeupDrill: (metal) =>
+    `Did you catch it? Let's see it again. | First, a neutron flies into the ${metal} nucleus. | Then the nucleus wobbles, and it splits in two. That is fission! | And what flies out? ... New neutrons! One of them flies on to the next atom. So the chain keeps going.`,
   chainAfter: 'Back to the whole bomb. The chain reaction races through the rest of the metal.',
   xray: 'The trigger blasts out invisible rays. They are called X-rays. ... X-rays. | They squeeze the hydrogen fuel, and heat it up enormously.',
   fusion:
@@ -169,6 +175,8 @@ const DE: BombText = {
   closeup3: 'Eines der neuen Neutronen fliegt zum nächsten Atom. ... Und es trifft!',
   closeup4: 'Das zweite Atom zerbricht auch. | Eines seiner Neutronen fliegt weiter zu einem dritten Atom.',
   closeup5: 'Auch das dritte Atom zerbricht. | Jede Spaltung setzt weitere Neutronen frei. So wächst die Kette immer weiter.',
+  closeupDrill: (metal) =>
+    `Hast du es gesehen? Schauen wir es noch einmal an. | Zuerst fliegt ein Neutron in den ${metal}kern. | Dann wackelt der Kern, und er zerbricht in zwei Teile. Das ist Kernspaltung! | Und was fliegt heraus? ... Neue Neutronen! Eines davon fliegt weiter zum nächsten Atom. So geht die Kette immer weiter.`,
   chainAfter: 'Zurück zur ganzen Bombe. Die Kettenreaktion rast durch den Rest des Metalls.',
   xray: 'Der Zünder schleudert unsichtbare Strahlen hinaus. Man nennt sie Röntgenstrahlen. ... Röntgen. Strahlen. | Sie pressen den Wasserstoff zusammen und heizen ihn ungeheuer auf.',
   fusion:
@@ -242,6 +250,8 @@ const RU: BombText = {
   closeup3: 'Один из новых нейтронов летит к соседнему атому. ... И попадает!',
   closeup4: 'Второй атом тоже раскалывается. | Один из его нейтронов летит дальше, к третьему атому.',
   closeup5: 'Третий атом тоже раскалывается. | Каждый раскол освобождает новые нейтроны. Так цепочка растёт всё дальше.',
+  closeupDrill: (metal) =>
+    `Ты заметил? Давай посмотрим ещё раз. | Сначала нейтрон влетает в ядро ${metal}. | Потом ядро начинает дрожать и раскалывается на две части. Это и есть деле́ние! | А что вылетает наружу? ... Новые нейтроны! Один из них летит дальше, к соседнему атому. Так цепочка растёт дальше.`,
   chainAfter: 'Вернёмся ко всей бомбе. Цепная реакция проносится через весь остальной металл.',
   xray: 'Запал испускает невидимые лучи. Их называют рентге́новскими луча́ми. ... Рентге́новские. Лучи́. | Они сжимают водородное топливо и невероятно сильно его нагревают.',
   fusion:
@@ -284,6 +294,7 @@ export function bombNarration(mode: BombDesignId, lang: Lang = 'en'): Record<str
     closeup3: T.closeup3,
     closeup4: T.closeup4,
     closeup5: T.closeup5,
+    closeupDrill: T.closeupDrill(metal),
     chainAfter: T.chainAfter,
   }
   if (mode === 'tsar') {
@@ -291,8 +302,10 @@ export function bombNarration(mode: BombDesignId, lang: Lang = 'en'): Record<str
     lines.fusion = T.fusion
   }
   lines.chainDone = mode === 'tsar' ? T.chainDone.fusion : T.chainDone.fission
-  // the chain reaction flows: from the fuel coming together to the last split
+  // the chain reaction flows: from the fuel coming together to the last
+  // split — all but the 🔁 drill-in, a look back told in science pieces
   for (const id of Object.keys(lines)) {
+    if (id === 'closeupDrill') continue
     if (id === 'chain' || id.startsWith('closeup') || ['chainAfter', 'xray', 'fusion', 'chainDone'].includes(id))
       lines[id] = flow(lines[id])
   }

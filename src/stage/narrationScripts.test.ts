@@ -9,6 +9,14 @@ import { CRYSTAL_INTRO_SCRIPTS } from './crystalIntros'
 import { LIGHT_INTRO_SCRIPTS } from './lightIntros'
 import { LASER_SCRIPTS, LASER_STORY_KEY } from './laserNarration'
 import { LASER_ORDER } from './laserScenes'
+import { CUT_SCRIPTS, CUT_STORY_KEY } from './laserCutNarration'
+import { CUT_ORDER } from './laserCutScenes'
+import { MOON_SCRIPTS, MOON_STORY_KEY } from './laserMoonNarration'
+import { MOON_ORDER } from './laserMoonScenes'
+import { DIGITAL_SCRIPTS, DIGITAL_STORY_KEY } from './digitalNarration'
+import { DIGITAL_ORDER } from './digitalScenes'
+import { WIFI_SCRIPTS, WIFI_STORY_KEY } from './wifiNarration'
+import { WIFI_ORDER } from './wifiScenes'
 import { STARDUST_SCRIPTS } from './stardustNarration'
 import { WATCH_BREAK_S, lineMarks, parseNarrationLine } from './narrationScript'
 
@@ -20,14 +28,14 @@ import { WATCH_BREAK_S, lineMarks, parseNarrationLine } from './narrationScript'
 const n = (prefix: string, count: number) => Array.from({ length: count }, (_, i) => `${prefix}${i}`)
 
 const ORDERS: Record<string, string[]> = {
-  'bomb-gun': ['intro', 'armed', 'countdown', 'assembling', 'chain', ...n('closeup', 6), 'chainAfter', 'chainDone', ...n('explosion', 5)],
-  'bomb-implosion': ['intro', 'armed', 'countdown', 'assembling', 'chain', ...n('closeup', 6), 'chainAfter', 'chainDone', ...n('explosion', 5)],
-  'bomb-tsar': ['intro', 'armed', 'countdown', 'assembling', 'chain', ...n('closeup', 6), 'chainAfter', 'xray', 'fusion', 'chainDone', ...n('explosion', 5)],
-  firework: ['scene', 'zoom', ...n('closeup', 5), 'barcode', 'payoff'],
-  sun: ['sun', 'recipe', 'zoom', ...n('closeup', 4), 'scale', 'walk', 'valley'],
-  detective: ['star', 'prism', 'catch', 'hydrogen', 'oxygen', 'helium', 'discovery'],
-  gold: ['ring', 'zoom', 'rewind', 'stars', 'teaspoon', 'crash', 'stuff', 'forward', 'older'],
-  plant: ['remember', 'rods', 'steady', 'heat', 'kettle', 'lights', 'safe', 'waste'],
+  'bomb-gun': ['intro', 'armed', 'countdown', 'assembling', 'chain', ...n('closeup', 6), 'closeupDrill', 'chainAfter', 'chainDone', ...n('explosion', 5)],
+  'bomb-implosion': ['intro', 'armed', 'countdown', 'assembling', 'chain', ...n('closeup', 6), 'closeupDrill', 'chainAfter', 'chainDone', ...n('explosion', 5)],
+  'bomb-tsar': ['intro', 'armed', 'countdown', 'assembling', 'chain', ...n('closeup', 6), 'closeupDrill', 'chainAfter', 'xray', 'fusion', 'chainDone', ...n('explosion', 5)],
+  firework: ['scene', 'zoom', ...n('closeup', 5), 'closeupDrill', 'barcode', 'payoff'],
+  sun: ['sun', 'recipe', 'zoom', ...n('closeup', 4), 'fusionDrill', 'scale', 'walk', 'valley'],
+  detective: ['star', 'prism', 'catch', 'catchDrill', 'hydrogen', 'oxygen', 'helium', 'discovery'],
+  gold: ['ring', 'zoom', 'rewind', 'stars', 'teaspoon', 'crash', 'stuff', 'stuffDrill', 'forward', 'older'],
+  plant: ['remember', 'rods', 'steady', 'heat', 'heatDrill', 'kettle', 'lights', 'safe', 'waste'],
   'crystal-lab': [
     ...['look', 'write', 'push', 'light', 'power', 'squeeze'],
     // the spoken results (CRYSTAL_RESULTS)
@@ -37,6 +45,10 @@ const ORDERS: Record<string, string[]> = {
   // 💡 Light lab: 🔬 Microscopes' intro, then its spoken results
   'light-lab': ['microscope', 'microscope-blur', 'microscope-electrons', 'microscope-atoms'],
   [LASER_STORY_KEY]: [...LASER_ORDER],
+  [CUT_STORY_KEY]: [...CUT_ORDER],
+  [MOON_STORY_KEY]: [...MOON_ORDER],
+  [DIGITAL_STORY_KEY]: [...DIGITAL_ORDER],
+  [WIFI_STORY_KEY]: [...WIFI_ORDER],
 }
 
 const SCRIPTS: Record<string, Record<string, string>> = {
@@ -49,6 +61,10 @@ const SCRIPTS: Record<string, Record<string, string>> = {
   'crystal-lab': CRYSTAL_INTRO_SCRIPTS.en,
   'light-lab': LIGHT_INTRO_SCRIPTS.en,
   [LASER_STORY_KEY]: LASER_SCRIPTS.en,
+  [CUT_STORY_KEY]: CUT_SCRIPTS.en,
+  [MOON_STORY_KEY]: MOON_SCRIPTS.en,
+  [DIGITAL_STORY_KEY]: DIGITAL_SCRIPTS.en,
+  [WIFI_STORY_KEY]: WIFI_SCRIPTS.en,
 }
 
 /** every story's scripts in every language (EN is SCRIPTS above) */
@@ -62,6 +78,10 @@ const ALL_LANGS: Record<string, Partial<Record<'en' | 'de' | 'ru', Record<string
   'crystal-lab': CRYSTAL_INTRO_SCRIPTS,
   'light-lab': LIGHT_INTRO_SCRIPTS,
   [LASER_STORY_KEY]: LASER_SCRIPTS,
+  [CUT_STORY_KEY]: CUT_SCRIPTS,
+  [MOON_STORY_KEY]: MOON_SCRIPTS,
+  [DIGITAL_STORY_KEY]: DIGITAL_SCRIPTS,
+  [WIFI_STORY_KEY]: WIFI_SCRIPTS,
 }
 
 describe('the DE and RU translations (bombs, firework, Sun)', () => {
@@ -223,6 +243,22 @@ describe('the narration scripts (bombs, firework, Sun)', () => {
     for (const id of ['ring', 'stars', 'teaspoon']) expect(parseNarrationLine(GOLD_NARRATION[id]).watchFirst, id).toBeGreaterThan(0)
   })
 
+  it('☀️ 🔭 💍 a 🔁 drill-in right after the hard part: a science line, opener + three steps, nothing taught twice', () => {
+    const drills = { sun: ['closeup3', 'fusionDrill'], detective: ['catch', 'catchDrill'], gold: ['stuff', 'stuffDrill'] } as const
+    const openers = new Set<string>()
+    for (const [key, [after, drill]] of Object.entries(drills)) {
+      expect(ORDERS[key].indexOf(drill), key).toBe(ORDERS[key].indexOf(after) + 1)
+      for (const [lang, lines] of Object.entries(ALL_LANGS[key])) {
+        const line = parseNarrationLine(lines![drill])
+        expect(line.flow || line.run || line.watchFirst > 0, `${key}:${lang}`).toBe(false)
+        expect(line.pieces, `${key}:${lang}`).toHaveLength(4)
+        if (lang === 'en') openers.add(line.pieces[0])
+      }
+    }
+    expect(openers.size).toBe(3) // three different openers
+    expect(SUN_NARRATION.fusionDrill.match(/fusion/gi)).toHaveLength(1)
+  })
+
   it('💍 gold: one new term, taught slowly; the question and the aha are said', () => {
     const all = Object.values(GOLD_NARRATION).join(' ')
     expect(all).toContain('neutron star. ... Neutron. Star.')
@@ -274,12 +310,35 @@ describe('the narration scripts (bombs, firework, Sun)', () => {
       const lines = SCRIPTS[bombStoryKey(m)]
       const flowing = Object.keys(lines).filter((id) => parseNarrationLine(lines[id]).flow)
       const order = ORDERS[bombStoryKey(m)]
-      // one unbroken stretch: chain … chainDone
-      expect(flowing, m).toEqual(order.slice(order.indexOf('chain'), order.indexOf('chainDone') + 1))
+      // one stretch: chain … chainDone — except the 🔁 drill-in, a look
+      // back while the chain stands frozen (science paced)
+      const stretch = order.slice(order.indexOf('chain'), order.indexOf('chainDone') + 1)
+      expect(flowing, m).toEqual(stretch.filter((id) => id !== 'closeupDrill'))
       // the assembling line ends as the fuel comes together: nothing to say
       // about the finished lump that would hold it still
       expect(parseNarrationLine(lines.assembling).pieces, m).toHaveLength(1)
       expect(parseNarrationLine(lines.chain).pieces[0], m).toContain('critical mass')
+    }
+  })
+
+  it('☢️ drills in after the close-up: once more, in new words, in every language', () => {
+    for (const m of BOMB_MODES) {
+      const order = ORDERS[bombStoryKey(m)]
+      // right after the close-up's last step, before the chain goes on
+      expect(order.indexOf('closeupDrill'), m).toBe(order.indexOf('closeup5') + 1)
+      for (const [lang, lines] of Object.entries(bombScripts(m))) {
+        const drill = parseNarrationLine(lines.closeupDrill)
+        // science paced: opener + ① ② ③, each piece then its replay step
+        expect(drill.flow || drill.run || drill.watchFirst > 0, `${m}:${lang}`).toBe(false)
+        expect(drill.pieces, `${m}:${lang}`).toHaveLength(4)
+        // a question with a pause to think, then the answer
+        expect(drill.pieces[3], `${m}:${lang}`).toMatch(/\? \.\.\. /)
+      }
+      // the fuel the close-up showed: uranium for Little Boy, plutonium for the others
+      const fuel = m === 'gun' ? 'uranium' : 'plutonium'
+      expect(SCRIPTS[bombStoryKey(m)].closeupDrill, m).toContain(`the ${fuel} nucleus`)
+      expect(bombScripts(m).de.closeupDrill, m).toContain(m === 'gun' ? 'Urankern' : 'Plutoniumkern')
+      expect(bombScripts(m).ru.closeupDrill, m).toContain(m === 'gun' ? 'ядро урана' : 'ядро плутония')
     }
   })
 

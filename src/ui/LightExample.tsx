@@ -3,7 +3,6 @@ import { useSpaceToPause } from './useSpaceToPause'
 import { PageNav } from './PageNav'
 import {
   LightStage,
-  lightChooserRows,
   lightStoryOrder,
   type LightReport,
   type LightStoryId,
@@ -15,13 +14,12 @@ import { TimelineColumn, type StoryBeat } from './TimelineColumn'
 import { transcriptScript } from './storyChapters'
 import type { StorySeek } from '../stage/flowPacing'
 import { ColorsTable, LightParticleLegend, PhotonStats } from './LightLegend'
-import { LightIcon } from './LightIcon'
 import { FIREWORK_SCRIPTS } from '../stage/fireworkNarration'
 import { useVoiceStore, type NarrationLang } from '../state/voiceStore'
-import { cancelNarration, useDemoNarration } from './useNarration'
+import { useDemoNarration } from './useNarration'
 import { NarrationNotice } from './NarrationNotice'
-import { DemoControls, INFO_PANEL } from './DemoControls'
-import { KEY, TRAY } from './surfaces'
+import { BackToStories, INFO_PANEL, LiveOverlay, StoryTabs, backToMenu, type StoryTab } from './DemoControls'
+import { KEY } from './surfaces'
 
 /** each light story's narration scripts, per language */
 const NARRATION: Partial<Record<LightStoryId, Partial<Record<NarrationLang, Record<string, string>>>>> = {
@@ -147,17 +145,13 @@ const TRUE_STORY: Para[] = [
   },
 ]
 
-const STORY_NAMES: Record<LightStoryId, string> = {
-  firework: 'Firework',
-  neon: 'Neon sign',
-  aurora: 'Aurora',
-}
-
 // 📖 the story column: each beat's chapter and icon — its words are the
 // narration script itself (TimelineColumn)
 const FIREWORK_BEATS: Record<string, StoryBeat> = {
   scene: { id: 'scene', group: '🎆 The firework', icon: '🎆' },
   zoom: { id: 'zoom', group: '🎆 The firework', icon: '🔍' },
+  // 🔁 the drill-in after the close-up (playbook rule 25)
+  closeupDrill: { id: 'closeupDrill', group: '🔁 Once more, closer', icon: '🔁' },
   barcode: { id: 'barcode', group: '🌈 The barcode', icon: '🌈' },
   payoff: { id: 'payoff', group: '🎇 The payoff', icon: '🎇' },
 }
@@ -165,9 +159,8 @@ const FIREWORK_BEATS: Record<string, StoryBeat> = {
 function storyBeats(story: LightStoryId): StoryBeat[] {
   const close = lightCloseupStory()
   return lightStoryOrder(story).map((id) =>
-    id.startsWith('closeup')
-      ? { id, group: '🔍 Close-up: one atom making light', icon: close[Number(id.slice(7))].icon }
-      : FIREWORK_BEATS[id],
+    FIREWORK_BEATS[id] ??
+      { id, group: '🔍 Close-up: one atom making light', icon: close[Number(id.slice(7))].icon },
   )
 }
 
@@ -179,22 +172,16 @@ const initialReport: LightReport = {
   naCaught: 0,
 }
 
-export function LightExample({ active }: { active: boolean }) {
-  // null = the lineup chooser
-  const [story, setStory] = useState<LightStoryId | null>(null)
+export function LightExample({ active, story }: { active: boolean; story: LightStoryId | null }) {
   const [paused, setPaused] = useState(false)
-  const choose = (id: LightStoryId | null) => {
-    cancelNarration() // navigating is a deliberate interruption
-    setStory(id)
+  // a new story (or none) starts unpaused
+  const [prev, setPrev] = useState(story)
+  if (prev !== story) {
+    setPrev(story)
     setPaused(false)
   }
-  // the auto-return to the chooser does NOT cancel: the payoff line may finish
-  const onFinished = useCallback(() => {
-    setStory(null)
-    setPaused(false)
-  }, [])
   const [seek, setSeek] = useState<StorySeek | null>(null)
-  const [rightTab, setRightTab] = useState<'story' | 'photos'>('story')
+  const [rightTab, setRightTab] = useState<StoryTab>('story')
   const [report, setReport] = useState<LightReport>(initialReport)
   const running = story !== null
   // ⎵ Space = ⏸ Pause / ▶ Resume while a story plays
@@ -223,51 +210,9 @@ export function LightExample({ active }: { active: boolean }) {
 
   return (
     <div className="grid h-full min-h-0 grid-cols-[16rem_minmax(0,1fr)_18rem] grid-rows-[minmax(0,1fr)] gap-x-6">
-      {/* left: nav + info panel */}
+      {/* left: the menu + the voice card */}
       <div className="col-start-1 row-start-1 flex min-h-0 flex-col gap-3">
         <PageNav />
-        <DemoControls
-          chooser={
-            <button
-              type="button"
-              onClick={() => choose(null)}
-              disabled={!running}
-              aria-current={running ? undefined : 'page'}
-              title="Go to the light selection screen"
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm font-medium ${
-                running ? `text-slate-100 ${KEY}` : 'cursor-default rounded-lg bg-sky-600 text-white'
-              }`}
-            >
-              <LightIcon className="h-6 w-9 shrink-0" />
-              {running ? 'Choose another light' : 'Choose a light'}
-            </button>
-          }
-        />
-        {/* the info panel belongs to a story: none on the chooser */}
-        {running && (
-          <div className={INFO_PANEL}>
-            {story !== null && (
-              <>
-                {(report.phase === 'barcode' || report.phase === 'payoff') && (
-                  <>
-                    <SectionHeader type="live" />
-                    <PhotonStats r={report} />
-                  </>
-                )}
-                <SectionHeader type="legend" />
-                <LightParticleLegend />
-              </>
-            )}
-            <SectionHeader type="facts">The colors themselves</SectionHeader>
-            <ColorsTable current={story === 'firework' ? ['li', 'na'] : undefined} />
-            <SectionHeader type="how" />
-            <Paras max={SECTION_MAX} items={HOW_IT_WORKS} />
-            <SectionHeader type="honest" />
-            <Paras max={SECTION_MAX} items={HONEST} className="text-slate-400" />
-            <SectionHeader type="true" />
-            <Paras max={SECTION_MAX} items={TRUE_STORY} />
-          </div>
-        )}
       </div>
 
       {/* middle: the demo canvas */}
@@ -282,9 +227,14 @@ export function LightExample({ active }: { active: boolean }) {
             holdBeat={narration.holdBeat}
             fit={narration.fit}
             onReport={setReport}
-            onFinished={onFinished}
+            onFinished={backToMenu}
           />
-          {story === null && <Chooser onChoose={choose} />}
+          {running && <BackToStories />}
+          {running && (report.phase === 'barcode' || report.phase === 'payoff') && (
+            <LiveOverlay>
+              <PhotonStats r={report} />
+            </LiveOverlay>
+          )}
           <NarrationNotice failed={narration.failed} missingLang={narration.missingLang} />
           {running && (
             <button
@@ -304,40 +254,15 @@ export function LightExample({ active }: { active: boolean }) {
         </div>
       </div>
 
-      {/* right: the story timeline, or the real photos */}
+      {/* right: the story timeline, the real photos, or the notes */}
       <div className="col-start-3 row-start-1 flex min-h-0 flex-col gap-2">
-        <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
-          {(
-            [
-              ['story', '📖 Story'],
-              ['photos', '📷 Photos'],
-            ] as const
-          ).map(([id, text]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setRightTab(id)}
-              aria-pressed={rightTab === id}
-              className={`flex-1 rounded-lg px-3 py-1 transition ${
-                rightTab === id
-                  ? 'bg-sky-600 font-medium text-white'
-                  : 'text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              {text}
-            </button>
-          ))}
-        </div>
-        {/* both stay mounted (scroll positions survive tab switches) */}
+        <StoryTabs tab={rightTab} onTab={setRightTab} />
+        {/* all stay mounted (scroll positions survive tab switches) */}
         <div
           data-story-scroll
           className={`min-h-0 flex-1 overflow-y-auto pr-1 ${rightTab === 'story' ? '' : 'hidden'}`}
         >
-          {story === null ? (
-            <p className="px-1 pt-2 text-sm text-slate-400">
-              👈 Pick a light — its story will appear here, step by step.
-            </p>
-          ) : (
+          {story !== null && (
             <TimelineColumn
               beats={storyBeats(story)}
               script={transcript.script}
@@ -358,6 +283,24 @@ export function LightExample({ active }: { active: boolean }) {
         >
           <LightPhotoPanel story={story} />
         </div>
+        {running && (
+          <div className={`${INFO_PANEL} ${rightTab === 'notes' ? '' : 'hidden'}`}>
+            {story !== null && (
+              <>
+                <SectionHeader type="legend" />
+                <LightParticleLegend />
+              </>
+            )}
+            <SectionHeader type="facts">The colors themselves</SectionHeader>
+            <ColorsTable current={story === 'firework' ? ['li', 'na'] : undefined} />
+            <SectionHeader type="how" />
+            <Paras max={SECTION_MAX} items={HOW_IT_WORKS} />
+            <SectionHeader type="honest" />
+            <Paras max={SECTION_MAX} items={HONEST} className="text-slate-400" />
+            <SectionHeader type="true" />
+            <Paras max={SECTION_MAX} items={TRUE_STORY} />
+          </div>
+        )}
       </div>
     </div>
   )
@@ -411,40 +354,3 @@ const LightPhotoPanel = memo(function LightPhotoPanel({ story }: { story: LightS
     </>
   )
 })
-
-/** Click targets over the canvas lineup: each ready story is one big button
- *  ("▶ Watch it"); the rest are dimmed "coming soon" rows. */
-function Chooser({ onChoose }: { onChoose: (id: LightStoryId) => void }) {
-  const rows = lightChooserRows()
-  return (
-    <>
-      {rows.map((r) =>
-        r.ready ? (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() => onChoose(r.id)}
-            aria-label={`Watch ${STORY_NAMES[r.id]}`}
-            className="group absolute rounded-xl border border-slate-700/0 transition hover:border-sky-400/70 hover:bg-sky-400/10 focus-visible:border-sky-400 focus-visible:outline-none"
-            style={{ left: r.left, top: r.top, width: r.right - r.left, height: r.bottom - r.top }}
-          >
-            <span className="absolute right-3 top-1.5 rounded-full bg-sky-600 px-3 py-1 text-sm font-semibold text-white shadow-md shadow-black/40 transition group-hover:scale-105 group-hover:bg-sky-500">
-              ▶ Watch it
-            </span>
-          </button>
-        ) : (
-          <div
-            key={r.id}
-            aria-hidden
-            className="absolute rounded-xl"
-            style={{ left: r.left, top: r.top, width: r.right - r.left, height: r.bottom - r.top }}
-          >
-            <span className="absolute right-3 top-1.5 rounded-full bg-slate-800/80 px-3 py-1 text-sm text-slate-400">
-              🔜 coming soon
-            </span>
-          </div>
-        ),
-      )}
-    </>
-  )
-}

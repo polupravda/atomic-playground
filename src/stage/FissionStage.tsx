@@ -10,6 +10,9 @@ import {
   closeupCamera,
   closeupStep,
   drawCloseup,
+  drawCloseupDrill,
+  drillCamera,
+  DRILL_T,
 } from './fissionCloseup'
 import { blit, clamp01, easeIn, easeInOut, makeCanvasSprite, type Sprite } from './canvasUtil'
 import {
@@ -693,10 +696,13 @@ function step(sim: Sim, dt: number) {
       }
       break
     case 'closeup':
-      // the nuclear sim is frozen while the camera is zoomed in
+      // the nuclear sim is frozen while the camera is zoomed in — and
+      // through the 🔁 drill-in after it (closeup.t past CLOSEUP_TOTAL: the
+      // close-up replayed once more), so the chain goes on afterwards
+      // exactly as it would have (same state, same random numbers)
       if (sim.closeup) {
         sim.closeup.t += dt
-        if (sim.closeup.t >= CLOSEUP_TOTAL) {
+        if (sim.closeup.t >= CLOSEUP_TOTAL + DRILL_T) {
           sim.closeup = null
           sim.phase = 'chain'
         }
@@ -1885,15 +1891,6 @@ function outsideAmount(sim: Sim): number {
   return 1 - easeInOut(clamp01((sim.introT - ZOOM_IN_AT) / ZOOM_IN_T))
 }
 
-/** the lineup chooser rows in canvas px (for the click targets over it):
- *  exactly the card frames, like the R02/R04 choosers */
-export function chooserRows() {
-  const L = lineupLayout(W, H - BUTTON_ZONE)
-  return (Object.keys(L.cards) as BombDesignId[]).map((m) => ({
-    mode: m,
-    ...L.cards[m],
-  }))
-}
 
 function drawIntro(ctx: CanvasRenderingContext2D, sim: Sim, now: number) {
   const mode = sim.mode
@@ -1960,6 +1957,8 @@ export function storyOrder(mode: BombDesignId): string[] {
     'assembling',
     'chain',
     ...close,
+    // 🔁 the close-up once more, closer (science paced, not flow)
+    'closeupDrill',
     'chainAfter',
     ...(mode === 'tsar' ? ['xray', 'fusion'] : []),
     'chainDone',
@@ -1973,6 +1972,7 @@ function storyId(sim: Sim): string {
     case 'chain':
       return sim.closeupDone ? 'chainAfter' : 'chain'
     case 'closeup':
+      if (sim.closeup && sim.closeup.t >= CLOSEUP_TOTAL) return 'closeupDrill'
       return `closeup${sim.closeup ? closeupStep(sim.closeup.t) : 0}`
     case 'explosion':
       return `explosion${explosionStep(sim.phaseT)}`
@@ -2304,7 +2304,9 @@ export const FissionStage = memo(function FissionStage({
             else if (s.phase === 'explosion') drawExplosion(ctx, s.phaseT, s.mode, performance.now() / 1000)
             else if (s.phase === 'closeup' && s.closeup) {
               // camera zooms into the hit nucleus, then the close view fades in
-              const cam = closeupCamera(s.closeup.t)
+              const idle = performance.now() / 1000
+              const drill = s.closeup.t >= CLOSEUP_TOTAL ? s.closeup.t - CLOSEUP_TOTAL : null
+              const cam = drill === null ? closeupCamera(s.closeup.t) : drillCamera(drill, idle)
               const { fx, fy } = s.closeup
               // the focus point glides from where it is to the canvas centre
               // as the zoom grows, so zoom 1 is exactly the normal view (no
@@ -2329,7 +2331,9 @@ export const FissionStage = memo(function FissionStage({
               }
               // idle motion (electron spin, γ wave) on the wall clock: it keeps
               // moving while the narrator holds the story still
-              drawCloseup(ctx, s.closeup.t, W, H, cam.sceneAlpha, BOMB_DESIGNS[s.mode].fuel, performance.now() / 1000)
+              if (drill === null) drawCloseup(ctx, s.closeup.t, W, H, cam.sceneAlpha, BOMB_DESIGNS[s.mode].fuel, idle)
+              // 🔁 the drill-in: the same close-up, replayed in a frame
+              else drawCloseupDrill(ctx, drill, W, H, H - BUTTON_ZONE, BOMB_DESIGNS[s.mode].fuel, idle)
             } else drawBombView(ctx, s, performance.now(), outsideAmount(s))
             ctx.restore()
           }}

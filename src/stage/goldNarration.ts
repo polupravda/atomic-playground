@@ -30,6 +30,10 @@ export const GOLD_NARRATION: Record<string, string> = {
     '~ The two stars spiral closer and closer. Faster and faster. | Then they crash! A blinding spray of hot star stuff flies out. | The spray is full of free neutrons.',
   stuff:
     '~ In the spray, small atoms get stuffed with neutrons, very fast. | Some neutrons turn into protons. So the atoms grow heavier and heavier. | They become new, heavy elements, like platinum and uranium. | And one atom ends up with seventy nine protons. Seventy nine protons is gold. Our hero is born!',
+  // 🔁 the drill-in (playbook 25): our hero alone, slower — stuffed,
+  // turned, gold, ① ② ③, nothing new
+  stuffDrill:
+    'Did you see how our hero was made? Let us see it again. | First, the small atom swallows neutron after neutron. It grows bigger and bigger. | Then some of its neutrons turn into protons. With every new proton, it becomes a new element. | How many protons make gold? ... Seventy nine! Now our hero is gold.',
   forward:
     '~ Our gold atom flies off into space. It drifts for millions of years. | It gets mixed into a new cloud of dust. The cloud becomes the Sun and the Earth. | Our atom ends up deep inside a rock. One day, a river washes it out, in a nugget. | And the nugget becomes a ring.',
   older:
@@ -51,6 +55,8 @@ export const GOLD_NARRATION_DE = translated(GOLD_NARRATION, {
     'Die beiden Sterne kreisen immer enger. Immer schneller. | Dann prallen sie zusammen! Eine blendende Fontäne aus heißem Sternenstoff spritzt hinaus. | Die Fontäne ist voller freier Neutronen.',
   stuff:
     'In der Fontäne werden kleine Atome mit Neutronen vollgestopft, ganz schnell. | Manche Neutronen verwandeln sich in Protonen. So werden die Atome schwerer und schwerer. | Sie werden zu neuen, schweren Elementen, wie Platin und Uran. | Und ein Atom bekommt neunundsiebzig Protonen. Neunundsiebzig Protonen sind Gold. Unser Held ist geboren!',
+  stuffDrill:
+    'Hast du gesehen, wie unser Held entstanden ist? Schauen wir es noch einmal an. | Zuerst schluckt das kleine Atom ein Neutron nach dem anderen. Es wird größer und größer. | Dann verwandeln sich manche seiner Neutronen in Protonen. Mit jedem neuen Proton wird es ein neues Element. | Wie viele Protonen machen Gold? ... Neunundsiebzig! Jetzt ist unser Held Gold.',
   forward:
     'Unser Goldatom fliegt hinaus ins All. Millionen Jahre lang treibt es dahin. | Es wird in eine neue Staubwolke gemischt. Aus der Wolke werden die Sonne und die Erde. | Unser Atom landet tief in einem Felsen. Eines Tages spült ein Fluss es heraus, in einem Goldklumpen. | Und aus dem Goldklumpen wird ein Ring.',
   older:
@@ -75,6 +81,8 @@ export const GOLD_NARRATION_RU = translated(GOLD_NARRATION, {
     'Звёзды кружат всё ближе и ближе. Всё быстрее и быстрее. | И вот они сталкиваются! Наружу вылетает ослепительный фонтан горячего звёздного вещества. | В этом фонтане полно свободных нейтронов.',
   stuff:
     'В фонтане маленькие атомы очень быстро набиваются нейтронами. | Некоторые нейтроны превращаются в протоны. Так атомы становятся всё тяжелее и тяжелее. | Они становятся новыми тяжёлыми элементами, например платиной и ураном. | А у одного атома становится семьдесят девять протонов. Семьдесят девять протонов это золото. Так рождается наш герой!',
+  stuffDrill:
+    'Ты заметил, как появился наш герой? Давай посмотрим ещё раз. | Сначала маленький атом глотает нейтрон за нейтроном. Он становится всё больше и больше. | Потом некоторые его нейтроны превращаются в протоны. С каждым новым протоном он становится новым элементом. | Сколько протонов у золота? ... Семьдесят девять! Теперь наш герой золото.',
   forward:
     'Наш атом золота улетает в космос. Миллионы лет он плывёт среди звёзд. | Он попадает в новое облако пыли. Это облако становится Солнцем и Землёй. | Наш атом оказывается глубоко внутри камня. Однажды река вымывает его наружу, в самородке. | И из самородка делают кольцо.',
   older:

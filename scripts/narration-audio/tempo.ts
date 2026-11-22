@@ -15,6 +15,8 @@ import { DETECTIVE_SCRIPTS } from '../../src/stage/detectiveNarration'
 import { GOLD_SCRIPTS } from '../../src/stage/goldNarration'
 import { PLANT_SCRIPTS } from '../../src/stage/plantNarration'
 import { LASER_SCRIPTS, LASER_STORY_KEY } from '../../src/stage/laserNarration'
+import { CUT_SCRIPTS, CUT_STORY_KEY } from '../../src/stage/laserCutNarration'
+import { MOON_SCRIPTS, MOON_STORY_KEY } from '../../src/stage/laserMoonNarration'
 import { FIREWORK_SCRIPTS } from '../../src/stage/fireworkNarration'
 import { CRYSTAL_INTRO_KEY, CRYSTAL_INTRO_SCRIPTS } from '../../src/stage/crystalIntros'
 import { LIGHT_INTRO_KEY, LIGHT_INTRO_SCRIPTS } from '../../src/stage/lightIntros'
@@ -143,6 +145,8 @@ export const TEMPO_STORIES: Array<[string, Partial<Record<Lang, Record<string, s
   ['gold', GOLD_SCRIPTS],
   ['plant', PLANT_SCRIPTS],
   [LASER_STORY_KEY, LASER_SCRIPTS],
+  [CUT_STORY_KEY, CUT_SCRIPTS],
+  [MOON_STORY_KEY, MOON_SCRIPTS],
   ['sun', SUN_SCRIPTS],
   ['firework', FIREWORK_SCRIPTS],
   ...BOMB_MODES.map((m) => [bombStoryKey(m), bombScripts(m)] as [string, Partial<Record<Lang, Record<string, string>>>]),

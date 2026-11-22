@@ -100,7 +100,8 @@ an example is a whole process that spans many atoms.
 | R06     | *Proposed 2026-11-19* ([proposal](11-proposal-new-demos.md)) — **💎 Crystals** | Chooser: 💎 From pencil to diamond · ❄️ How a snowflake is born | The same carbon atoms as sheets (graphite) or a 3D grid (diamond); a bent water molecule building hexagons, six arms growing alike | 2D views of 3D crystals; growth hugely sped up; independent of the 🧊 Crystal lab playground (K01–K08) |
 | R07     | *Proposed 2026-11-19* ([proposal](11-proposal-new-demos.md)) — **🌳 A tree is made of air** | ▶ Watch it — a plot: the mystery of the heavy tree, a hero carbon atom from the air | van Helmont's willow; CO₂ + water + light → sugar → wood; the same atom ledger | The leaf's oxygen comes from water, not CO₂; "made of air" = the tree's dry mass |
 | R08     | *Approved 2026-11-20* ([proposal](16-proposal-laser-stories.md)) — **🔦 Lasers** | Chooser: 🔦 How a laser makes its light · ✂️ Light that cuts · 🌕 Lasers to the Moon | Stimulated emission (twins), two mirrors, the beam; laser types, cutting power, why eyes are at risk; the Moon reflectors, timing light, the drifting Moon | Billions of photons shown as a few; chromium's inner electrons drawn as one outer electron; real output mirrors pass a few % |
-| R09+    | *Candidates* | — | Smoke detector (Am-241 alpha), carbon dating (C-14 decay) | — |
+| R09     | *Proposed 2026-11-22* ([proposal](18-proposal-digital-information.md)) — **📶 Digital information: Wi-Fi, internet, screens** | Chooser: 🔢 What "digital" means · 📶 How Wi-Fi works · 🌊 Internet under the ocean · 📺 How a screen works · 💾 Where a photo is stored · 🔐 Keeping messages secret · 📡 How Morse code works · 🛰️ How GPS finds you | The full loop thing → digits → signal → digits → thing for a message (ASCII), a photo (camera cups, pixels) and a song (microphone, 48,000 samples/s); shaken antenna electrons and a two-bits-per-wave code; the router's job; packets, fibres, routers, resending; RGB LEDs; flash memory; key mixing; the telegraph; GPS atomic clocks | Real codes and numbers kept; Wi-Fi's 4,096 wave kinds, LCD vs OLED, tunnelling, relativity in ⚖️ / ⚙️ |
+| R10+    | *Candidates* | — | Smoke detector (Am-241 alpha), carbon dating (C-14 decay) | — |
 
 ## 💡 Light lab — light, waves & photons (L01–L13, added 2026-11-09)
 
@@ -122,7 +123,10 @@ ordinary light proves only X-rays get through), L14 🔬 microscopes (built
 2026-11-20, [proposal 11](11-proposal-new-demos.md): a zoom ladder hair →
 atoms; light's waves cast a shadow or flow round the thing; the eyepiece
 picture blurs below ~200 nm; electrons, far shorter waves, see down to
-atoms). L16 lasers moved to the stories (R08, below). Scenes share the lab's
+atoms). L16 lasers moved to the stories (R08, below). L17 🖼️ Pixel
+painter (proposed 2026-11-22, [proposal 18](18-proposal-digital-information.md)):
+paint an 8 × 8 screen lamp by lamp, see each pixel's numbers and bits, send
+it as blinks to a second screen. Scenes share the lab's
 wavelength /
 brightness / view controls wherever they make sense. Status per step in
 [04-roadmap.md](04-roadmap.md) Milestone 10.

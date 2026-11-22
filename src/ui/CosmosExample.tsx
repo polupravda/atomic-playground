@@ -3,7 +3,6 @@ import { useSpaceToPause } from './useSpaceToPause'
 import { PageNav } from './PageNav'
 import {
   CosmosStage,
-  cosmosChooserRows,
   cosmosStoryOrder,
   type CosmosJourneyId,
   type CosmosReport,
@@ -14,9 +13,9 @@ import { STARDUST_SCRIPTS } from '../stage/stardustNarration'
 import { SUN_SCRIPTS } from '../stage/sunNarration'
 import { DETECTIVE_SCRIPTS } from '../stage/detectiveNarration'
 import { GOLD_SCRIPTS } from '../stage/goldNarration'
-import { cancelNarration, useDemoNarration } from './useNarration'
+import { useDemoNarration } from './useNarration'
 import { NarrationNotice } from './NarrationNotice'
-import { DemoControls, INFO_PANEL } from './DemoControls'
+import { BackToStories, INFO_PANEL, StoryTabs, backToMenu, type StoryTab } from './DemoControls'
 import { useVoiceStore, type NarrationLang } from '../state/voiceStore'
 import { sunMassDefectFraction } from '../core/cosmos'
 import {
@@ -29,7 +28,7 @@ import { Paras, SectionHeader, para, type Para, SECTION_MAX } from './Paras'
 import { Eq, TimelineColumn, type StoryBeat } from './TimelineColumn'
 import { transcriptScript } from './storyChapters'
 import type { StorySeek } from '../stage/flowPacing'
-import { FLAT, KEY, TRAY } from './surfaces'
+import { FLAT, KEY } from './surfaces'
 
 // R04 — 🌟 Cosmic origins: the third "Atoms in action" example. Same page
 // anatomy as the bomb and light demos. Four journeys: 🔭 Star detective,
@@ -142,19 +141,13 @@ const TRUE_STARDUST: Para[] = [
   para('👀', '1054, a "guest star"', ' blazed for weeks over China and Japan; its wreck is the Crab Nebula (📷 panel).'),
 ]
 
-const JOURNEY_NAMES: Record<CosmosJourneyId, string> = {
-  detective: 'Star detective',
-  sun: 'Why the Sun shines',
-  stardust: 'You are star stuff',
-  gold: 'Where gold comes from',
-}
-
 // 📖 the story column: each beat's chapter, icon and non-spoken extras —
 // its words are the narration script itself (TimelineColumn)
 const DETECTIVE_BEATS: Record<string, StoryBeat> = {
   star: { id: 'star', group: '🔭 Looking up', icon: '⭐' },
   prism: { id: 'prism', group: '🔭 Looking up', icon: '🌈' },
   catch: { id: 'catch', group: '🫧 Why the gaps', icon: '🫧' },
+  catchDrill: { id: 'catchDrill', group: '🔁 Once more, closer', icon: '🔁' },
   hydrogen: { id: 'hydrogen', group: '🔍 Detective work', icon: '✅' },
   oxygen: { id: 'oxygen', group: '🔍 Detective work', icon: '❌' },
   helium: { id: 'helium', group: '🔍 Detective work', icon: '✅' },
@@ -169,6 +162,7 @@ const GOLD_BEATS: Record<string, StoryBeat> = {
   teaspoon: { id: 'teaspoon', group: '⚫ Two dead stars', icon: '🥄' },
   crash: { id: 'crash', group: '💥 The crash', icon: '💥' },
   stuff: { id: 'stuff', group: '💥 The crash', icon: '⚛️', extra: <Eq>iron (26 protons) → gold (79 protons)</Eq> },
+  stuffDrill: { id: 'stuffDrill', group: '🔁 Once more, closer', icon: '🔁' },
   forward: { id: 'forward', group: '⏩ Forward again', icon: '⏩' },
   older: { id: 'older', group: '💍 The payoff', icon: '🌟' },
 }
@@ -187,6 +181,7 @@ const SUN_BEATS: Record<string, StoryBeat> = {
   sun: { id: 'sun', group: '☀️ Our star', icon: '☀️' },
   recipe: { id: 'recipe', group: '☀️ Our star', icon: '🥣' },
   zoom: { id: 'zoom', group: '🔍 Into the core', icon: '🔍' },
+  fusionDrill: { id: 'fusionDrill', group: '🔁 Once more, closer', icon: '🔁' },
   scale: { id: 'scale', group: '⚖️ The missing mass', icon: '⚖️' },
   walk: { id: 'walk', group: '🥾 The long way out', icon: '🥾' },
   valley: { id: 'valley', group: '⛰️ The payoff', icon: '⛰️' },
@@ -214,22 +209,16 @@ function storyBeats(journey: CosmosJourneyId): StoryBeat[] {
 
 const initialReport: CosmosReport = { phase: 'sun', storyId: 'sun', closeupStep: 0 }
 
-export function CosmosExample({ active }: { active: boolean }) {
-  // null = the lineup chooser
-  const [journey, setJourney] = useState<CosmosJourneyId | null>(null)
+export function CosmosExample({ active, journey }: { active: boolean; journey: CosmosJourneyId | null }) {
   const [paused, setPaused] = useState(false)
-  const choose = (id: CosmosJourneyId | null) => {
-    cancelNarration() // navigating is a deliberate interruption
-    setJourney(id)
+  // a new story (or none) starts unpaused
+  const [prev, setPrev] = useState(journey)
+  if (prev !== journey) {
+    setPrev(journey)
     setPaused(false)
   }
-  // the auto-return to the chooser does NOT cancel: the payoff line may finish
-  const onFinished = useCallback(() => {
-    setJourney(null)
-    setPaused(false)
-  }, [])
   const [seek, setSeek] = useState<StorySeek | null>(null)
-  const [rightTab, setRightTab] = useState<'story' | 'photos'>('story')
+  const [rightTab, setRightTab] = useState<StoryTab>('story')
   const [report, setReport] = useState<CosmosReport>(initialReport)
   const running = journey !== null
   // ⎵ Space = ⏸ Pause / ▶ Resume while a story plays
@@ -260,42 +249,9 @@ export function CosmosExample({ active }: { active: boolean }) {
 
   return (
     <div className="grid h-full min-h-0 grid-cols-[16rem_minmax(0,1fr)_18rem] grid-rows-[minmax(0,1fr)] gap-x-6">
-      {/* left: nav + info panel */}
+      {/* left: the menu + the voice card */}
       <div className="col-start-1 row-start-1 flex min-h-0 flex-col gap-3">
         <PageNav />
-        <DemoControls
-          chooser={
-            <button
-              type="button"
-              onClick={() => choose(null)}
-              disabled={!running}
-              aria-current={running ? undefined : 'page'}
-              title="Go to the journey selection screen"
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm font-medium ${
-                running ? `text-slate-100 ${KEY}` : 'cursor-default rounded-lg bg-sky-600 text-white'
-              }`}
-            >
-              <span aria-hidden>🌟</span>
-              {running ? 'Choose another journey' : 'Choose a journey'}
-            </button>
-          }
-        />
-        {/* the info panel belongs to a story: none on the chooser */}
-        {running && (
-          <div className={INFO_PANEL}>
-            <SectionHeader type="how" />
-            <Paras max={SECTION_MAX} key={journey ?? ''} items={journey === 'stardust' ? HOW_STARDUST : journey === 'detective' ? HOW_DETECTIVE : journey === 'gold' ? HOW_GOLD : HOW_IT_WORKS} />
-            <SectionHeader type="honest" />
-            <Paras max={SECTION_MAX} key={journey ?? ''}
-              items={
-                journey === 'stardust' ? HONEST_STARDUST : journey === 'detective' ? HONEST_DETECTIVE : journey === 'gold' ? HONEST_GOLD : HONEST
-              }
-              className="text-slate-400"
-            />
-            <SectionHeader type="true" />
-            <Paras max={SECTION_MAX} key={journey ?? ''} items={journey === 'stardust' ? TRUE_STARDUST : journey === 'detective' ? TRUE_DETECTIVE : journey === 'gold' ? TRUE_GOLD : TRUE_STORY} />
-          </div>
-        )}
       </div>
 
       {/* middle: the demo canvas */}
@@ -310,9 +266,9 @@ export function CosmosExample({ active }: { active: boolean }) {
             holdBeat={narration.holdBeat}
             fit={narration.fit}
             onReport={setReport}
-            onFinished={onFinished}
+            onFinished={backToMenu}
           />
-          {journey === null && <Chooser onChoose={choose} />}
+          {running && <BackToStories />}
           <NarrationNotice failed={narration.failed} missingLang={narration.missingLang} />
           {running && (
             <button
@@ -332,40 +288,15 @@ export function CosmosExample({ active }: { active: boolean }) {
         </div>
       </div>
 
-      {/* right: the story timeline, or the real photos */}
+      {/* right: the story timeline, the real photos, or the notes */}
       <div className="col-start-3 row-start-1 flex min-h-0 flex-col gap-2">
-        <div className={`flex gap-1 p-1 text-sm ${TRAY}`}>
-          {(
-            [
-              ['story', '📖 Story'],
-              ['photos', '📷 Photos'],
-            ] as const
-          ).map(([id, text]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setRightTab(id)}
-              aria-pressed={rightTab === id}
-              className={`flex-1 rounded-lg px-3 py-1 transition ${
-                rightTab === id
-                  ? 'bg-sky-600 font-medium text-white'
-                  : 'text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              {text}
-            </button>
-          ))}
-        </div>
-        {/* both stay mounted (scroll positions survive tab switches) */}
+        <StoryTabs tab={rightTab} onTab={setRightTab} />
+        {/* all stay mounted (scroll positions survive tab switches) */}
         <div
           data-story-scroll
           className={`min-h-0 flex-1 overflow-y-auto pr-1 ${rightTab === 'story' ? '' : 'hidden'}`}
         >
-          {journey === null ? (
-            <p className="px-1 pt-2 text-sm text-slate-400">
-              👈 Pick a journey — its story will appear here, step by step.
-            </p>
-          ) : (
+          {journey !== null && (
             <TimelineColumn
               beats={storyBeats(journey)}
               script={transcript.script}
@@ -386,6 +317,21 @@ export function CosmosExample({ active }: { active: boolean }) {
         >
           <CosmosPhotoPanel journey={journey} />
         </div>
+        {running && (
+          <div className={`${INFO_PANEL} ${rightTab === 'notes' ? '' : 'hidden'}`}>
+            <SectionHeader type="how" />
+            <Paras max={SECTION_MAX} key={`how-${journey}`} items={journey === 'stardust' ? HOW_STARDUST : journey === 'detective' ? HOW_DETECTIVE : journey === 'gold' ? HOW_GOLD : HOW_IT_WORKS} />
+            <SectionHeader type="honest" />
+            <Paras max={SECTION_MAX} key={`honest-${journey}`}
+              items={
+                journey === 'stardust' ? HONEST_STARDUST : journey === 'detective' ? HONEST_DETECTIVE : journey === 'gold' ? HONEST_GOLD : HONEST
+              }
+              className="text-slate-400"
+            />
+            <SectionHeader type="true" />
+            <Paras max={SECTION_MAX} key={`true-${journey}`} items={journey === 'stardust' ? TRUE_STARDUST : journey === 'detective' ? TRUE_DETECTIVE : journey === 'gold' ? TRUE_GOLD : TRUE_STORY} />
+          </div>
+        )}
       </div>
     </div>
   )
@@ -445,40 +391,3 @@ const CosmosPhotoPanel = memo(function CosmosPhotoPanel({
     </>
   )
 })
-
-/** Click targets over the canvas lineup: each ready journey is one big
- *  button ("▶ Watch it"); the rest are dimmed "coming soon" rows. */
-function Chooser({ onChoose }: { onChoose: (id: CosmosJourneyId) => void }) {
-  const rows = cosmosChooserRows()
-  return (
-    <>
-      {rows.map((r) =>
-        r.ready ? (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() => onChoose(r.id)}
-            aria-label={`Watch ${JOURNEY_NAMES[r.id]}`}
-            className="group absolute rounded-xl border border-slate-700/0 transition hover:border-sky-400/70 hover:bg-sky-400/10 focus-visible:border-sky-400 focus-visible:outline-none"
-            style={{ left: r.left, top: r.top, width: r.right - r.left, height: r.bottom - r.top }}
-          >
-            <span className="absolute right-3 top-1.5 rounded-full bg-sky-600 px-3 py-1 text-sm font-semibold text-white shadow-md shadow-black/40 transition group-hover:scale-105 group-hover:bg-sky-500">
-              ▶ Watch it
-            </span>
-          </button>
-        ) : (
-          <div
-            key={r.id}
-            aria-hidden
-            className="absolute rounded-xl"
-            style={{ left: r.left, top: r.top, width: r.right - r.left, height: r.bottom - r.top }}
-          >
-            <span className="absolute right-3 top-1.5 rounded-full bg-slate-800/80 px-3 py-1 text-sm text-slate-400">
-              🔜 coming soon
-            </span>
-          </div>
-        ),
-      )}
-    </>
-  )
-}

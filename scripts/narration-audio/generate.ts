@@ -35,6 +35,10 @@ import { DETECTIVE_SCRIPTS } from '../../src/stage/detectiveNarration'
 import { GOLD_SCRIPTS } from '../../src/stage/goldNarration'
 import { PLANT_SCRIPTS } from '../../src/stage/plantNarration'
 import { LASER_SCRIPTS, LASER_STORY_KEY } from '../../src/stage/laserNarration'
+import { CUT_SCRIPTS, CUT_STORY_KEY } from '../../src/stage/laserCutNarration'
+import { MOON_SCRIPTS, MOON_STORY_KEY } from '../../src/stage/laserMoonNarration'
+import { DIGITAL_SCRIPTS, DIGITAL_STORY_KEY } from '../../src/stage/digitalNarration'
+import { WIFI_SCRIPTS, WIFI_STORY_KEY } from '../../src/stage/wifiNarration'
 import { CRYSTAL_INTRO_KEY, CRYSTAL_INTRO_SCRIPTS } from '../../src/stage/crystalIntros'
 import { LIGHT_INTRO_KEY, LIGHT_INTRO_SCRIPTS } from '../../src/stage/lightIntros'
 import { FIREWORK_SCRIPTS } from '../../src/stage/fireworkNarration'
@@ -455,7 +459,12 @@ const stripStress = (t: string) => t.replace(/́/g, '')
 //   this «о», and Svetlana misplaced it (first «нейтро́нная», then «следи за
 //   нашим нейтро́ном», 2026-11-20). A doubled «оо» pulls the stress onto it
 //   ("the best, not ideal"). Not нейтри́но (another root).
-const RU_RESPELL: Array<[RegExp, string]> = [[/([Нн]ейтр)о(н)/g, '$1оо$2']]
+//   глазу́ — "в твоём глазу́": Svetlana said гла́зу (Elena, 2026-11-21); the
+//   doubled «уу» pulls the stress to the end the same way.
+const RU_RESPELL: Array<[RegExp, string]> = [
+  [/([Нн]ейтр)о(н)/g, '$1оо$2'],
+  [/(?<!\p{L})глазу(?!\p{L})/gu, 'глазуу'],
+]
 const ruVoiceText = (t: string) => RU_RESPELL.reduce((acc, [re, to]) => acc.replace(re, to), t)
 
 // ---------- main ----------
@@ -500,6 +509,10 @@ const STORIES: Story[] = [
   { key: 'gold', scripts: GOLD_SCRIPTS },
   { key: 'plant', scripts: PLANT_SCRIPTS },
   { key: LASER_STORY_KEY, scripts: LASER_SCRIPTS },
+  { key: CUT_STORY_KEY, scripts: CUT_SCRIPTS },
+  { key: MOON_STORY_KEY, scripts: MOON_SCRIPTS },
+  { key: DIGITAL_STORY_KEY, scripts: DIGITAL_SCRIPTS },
+  { key: WIFI_STORY_KEY, scripts: WIFI_SCRIPTS },
   // 🧊 Crystal lab: one short intro per scene (not a story)
   { key: CRYSTAL_INTRO_KEY, scripts: CRYSTAL_INTRO_SCRIPTS },
   // 💡 Light lab: a scene's intro + its spoken results (🔬 microscopes)

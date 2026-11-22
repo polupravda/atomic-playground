@@ -95,8 +95,13 @@ voice are theirs).
   themselves.
 - **Honest notes are shortened, never dropped**: every simplification
   stays disclosed (behind "＋ more" if needed).
-- **No info panel on a story-selection screen** — the panel belongs to a
-  running story; the chooser shows only the menu and the demo controls.
+- **📝 Notes** (2026-11-21, Elena): the grown-ups' panel is called 📝 Notes
+  everywhere. In a story it is the third tab of the right column (📖 Story ·
+  📷 Photos · 📝 Notes); in the Light and
+  Bonding labs it shares the left tabs with 📷 Photos. The kid-facing 📊 Live
+  counts are not in Notes: they sit over the canvas's top-right corner
+  (`LiveOverlay`) while they are live. See
+  [17-stories-menu.md](17-stories-menu.md).
 - The four persistence rules above still apply.
 
 ## Visual language
@@ -141,7 +146,7 @@ in `src/ui/surfaces.ts` — use them instead of hand-written box styles:
 
 - `KEY` — a pressable button: lit top edge, short shadow, 1 px lift on
   hover, 1 px press. Drawer buttons (🧪 Periodic table, 🌡️ States of
-  matter, Light lab scenes), "Choose another …", ⏸ Pause, ↺ Reset (one name everywhere: the bonding lab's "Clear table" and the charge playground's "Clear field" became ↺ Reset, 2026-11-20).
+  matter, Light lab scenes), a story's ← back, ⏸ Pause, ↺ Reset (one name everywhere: the bonding lab's "Clear table" and the charge playground's "Clear field" became ↺ Reset, 2026-11-20).
 - `CHIP_KEY` — the same key as a small pill (lamp colors, quick jumps).
 - `FLAT` — panels you read and a control's home card: no border, no
   shadow, a faint fill (info panels, readouts, photo cards, the menu).
@@ -162,8 +167,8 @@ Labels stay concise: a heading names the control ("🌈 Wavelength",
 "💡 Brightness"), never with an aside after a dash.
 
 Color keeps one meaning each: sky blue = your current choice; amber = look
-here, happening now; the chooser's ▶ Watch it stays the one solid call to
-action. Every signal is visible at rest (tablets have no hover).
+here, happening now; the stories menu's ▶ on each card stays the one solid
+call to action. Every signal is visible at rest (tablets have no hover).
 
 ## Current status
 

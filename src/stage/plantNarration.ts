@@ -12,6 +12,10 @@ import { translated } from './narrationScript'
 // - steady, kettle: FLOW ('~ ') — the growing chains, and heat, steam and
 //   the spinning turbine, never stop (Elena: no freeze while narrating);
 // - rods, lights, safe, waste: science pacing (a watch break per piece).
+// - heatDrill: the 🔁 drill-in after the key event (playbook rule 25) —
+//   the heat chain again in new, plainer words (split → crash → shaking is
+//   heat → the water boils), a question to answer, while a look-back
+//   replay of the close-up plays; no new facts.
 // Name what is on screen (Elena, 2026-11-20: kids don't read labels —
 // the voice does what labels do for adults): "This is a fuel rod… Inside
 // are uranium atoms… All around the rod is water."
@@ -27,6 +31,8 @@ export const PLANT_NARRATION: Record<string, string> = {
   steady:
     '~ | Here they are, side by side. The bomb doubles and doubles. | In the power plant, every split makes just one more split. One, then one, then one. | Not faster. Not slower. Just steady.',
   heat: '| Now we look into one fuel rod, very, very close. Inside are uranium atoms. All around the rod is water. | Watch one uranium atom split. Its two pieces fly apart very fast. They crash into the atoms next to them, and those atoms start to shake. | More splits, more shaking. When atoms shake fast, we feel it as heat. The fire on the side shows how hot the rod gets. | The shaking rod bumps into the water all around it. The water starts to shake too, faster and faster. Then it boils, and bubbles of steam rise up.',
+  heatDrill:
+    "Let's watch that once more, closer. | First, one uranium atom splits. Its two pieces fly apart fast and crash into the atoms next to them. | Then those atoms shake. What do we feel when atoms shake fast? ... Heat! The rod gets hot. | So the hot rod shakes the water around it. The water boils, and it turns into steam.",
   kettle:
     '~ Now let us zoom out. The steady splits make the fuel hot. The heat boils water into steam. | The steam rushes through a pipe and blows on a big fan. This fan is called a turbine. ... Turbine. | The steam makes it spin, round and round. A power plant is really a very big kettle.',
   lights:
@@ -44,6 +50,8 @@ export const PLANT_NARRATION_DE = translated(PLANT_NARRATION, {
   steady:
     'Hier sind sie nebeneinander. Die Bombe verdoppelt sich immer wieder. | Im Kraftwerk macht jede Spaltung nur eine einzige neue Spaltung. Eine, dann eine, dann eine. | Nicht schneller. Nicht langsamer. Einfach gleichmäßig.',
   heat: 'Jetzt schauen wir in einen Brennstab hinein, ganz, ganz nah. Darin sind Uranatome. Rund um den Stab ist Wasser. | Schau, wie sich ein Uranatom spaltet. Seine zwei Stücke fliegen sehr schnell auseinander. Sie prallen auf die Atome daneben, und diese Atome fangen an zu zittern. | Mehr Spaltungen, mehr Zittern. Wenn Atome schnell zittern, spüren wir das als Hitze. Das Feuer an der Seite zeigt, wie heiß der Stab wird. | Der zitternde Stab stößt an das Wasser ringsum. Jetzt zittert auch das Wasser, immer schneller. Dann kocht es, und Dampfblasen steigen auf.',
+  heatDrill:
+    'Schauen wir uns das noch einmal ganz nah an. | Zuerst spaltet sich ein Uranatom. Seine zwei Stücke fliegen schnell auseinander und prallen auf die Atome daneben. | Dann zittern diese Atome. Was spüren wir, wenn Atome schnell zittern? ... Hitze! Der Stab wird heiß. | Also stößt der heiße Stab das Wasser ringsum an. Das Wasser kocht, und es wird zu Dampf.',
   kettle:
     'Jetzt zoomen wir heraus. Die gleichmäßigen Spaltungen machen den Brennstoff heiß. Die Hitze kocht Wasser zu Dampf. | Der Dampf rauscht durch ein Rohr und bläst auf ein großes Rad. Dieses Rad nennt man Turbine. ... Turbine. | Der Dampf dreht sie, immer rundherum. Ein Kraftwerk ist eigentlich ein riesiger Wasserkocher.',
   lights:
@@ -64,6 +72,8 @@ export const PLANT_NARRATION_RU = translated(PLANT_NARRATION, {
   steady:
     'Вот они рядом. Бомба удваивается снова и снова. | В электростанции каждое деление даёт только одно новое деление. Одно, потом одно, потом одно. | Не быстрее. Не медленнее. Просто ровно.',
   heat: 'Теперь заглянем в один топливный стержень, совсем-совсем близко. Внутри атомы урана. Вокруг стержня вода. | Смотри, как делится один атом урана. Его два осколка разлетаются очень быстро. Они врезаются в соседние атомы, и те начинают дрожать. | Больше делений, больше дрожи. Когда атомы быстро дрожат, мы чувствуем это как жар. Огонёк сбоку показывает, как сильно нагрелся стержень. | Дрожащий стержень толкает воду вокруг. Теперь и вода дрожит, всё быстрее и быстрее. Потом она закипает, и поднимаются пузырьки пара.',
+  heatDrill:
+    'Посмотрим на это ещё раз, поближе. | Сначала делится один атом урана. Его два осколка быстро разлетаются и врезаются в соседние атомы. | Потом эти атомы дрожат. Что мы чувствуем, когда атомы быстро дрожат? ... Жар! Стержень нагревается. | Поэтому горячий стержень толкает воду вокруг. Вода закипает и превращается в пар.',
   kettle:
     'А теперь посмотрим издалека. Ровные деления нагревают топливо. Жар превращает воду в пар. | Пар мчится по трубе и дует на большое колесо. Это колесо называют турби́ной. ... Турби́на. | Пар крутит её, круг за кругом. Электростанция на самом деле огромный чайник.',
   lights:
