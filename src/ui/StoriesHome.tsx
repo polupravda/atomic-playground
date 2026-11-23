@@ -33,6 +33,10 @@ interface Topic {
   stories: StoryCard[]
 }
 
+/** a card shows a story's name without its icon — the picture is the icon
+ *  (the labels keep theirs for the story pages) */
+const plainName = (label: string) => label.replace(/^[^\p{L}\p{N}"'«„]+/u, '')
+
 const thumb = (id: ThumbId): Draw => (ctx, w, h) => drawThumb(ctx, id, w, h)
 
 // built topics first, then the planned ones; the drawings are made once
@@ -245,6 +249,7 @@ function Chevron() {
 }
 
 function Card({ story, onStart }: { story: StoryCard; onStart?: () => void }) {
+  const name = plainName(story.label)
   const body = (
     <>
       <Thumb draw={story.draw} w={CARD_W} h={PIC_H} />
@@ -252,15 +257,15 @@ function Card({ story, onStart }: { story: StoryCard; onStart?: () => void }) {
         className="block truncate px-1.5 text-[13px] font-semibold leading-[26px] text-slate-100"
         style={{ height: LABEL_H }}
       >
-        {story.label}
+        {name}
       </span>
     </>
   )
   if (!onStart)
     return (
       <div
-        aria-label={`${story.label} — coming soon`}
-        title={story.label}
+        aria-label={`${name} — coming soon`}
+        title={name}
         className="relative shrink-0 overflow-hidden rounded-xl border border-slate-700/90 bg-[#0b1226] opacity-45"
         style={{ width: CARD_W, height: CARD_H }}
       >
@@ -272,8 +277,8 @@ function Card({ story, onStart }: { story: StoryCard; onStart?: () => void }) {
     <button
       type="button"
       onClick={onStart}
-      aria-label={`Watch ${story.label}`}
-      title={story.label}
+      aria-label={`Watch ${name}`}
+      title={name}
       className="group relative shrink-0 overflow-hidden rounded-xl border border-slate-700/90 bg-[#0b1226] text-left transition hover:-translate-y-px hover:border-sky-400/70 hover:bg-[#0e1a33] focus-visible:border-sky-400 focus-visible:outline-none"
       style={{ width: CARD_W, height: CARD_H }}
     >

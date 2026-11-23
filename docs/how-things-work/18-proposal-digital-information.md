@@ -459,12 +459,16 @@ one bit of the photo.
 >   story);
 > - **42 science pieces**; the neighbours' house is ringed as named, the
 >   key bounces as named; "where the key has a one, the bit flips" — the
->   key's ones glow and those bits turn over as they pass; "where a zero,
+>   key's ones glow, an amber arrow (with a ↻ turn-over sign) grows from
+>   each key one up to the message bit it flips (Elena, 2026-11-23), its
+>   tip rides the bit down until it has turned over, then fades; the same
+>   arrows on the first letter of I MISS YOU; "where a zero,
 >   it stays" — the zeros glow;
 > - for small kids the mix is broken down further (Elena, 2026-11-23):
 >   "So the letter H has turned into the letter R!", then I → G; and a new
 >   **gibberish** beat — a funny, exaggerated example read aloud: "I miss
->   you" → **BLOB ZONKY** through the very same machine as H → R (Elena,
+>   you" → "something that sounds really funny. Blob zonky!" →
+>   **BLOB ZONKY** through the very same machine as H → R (Elena,
 >   2026-11-23: "kids must see it goes through the same encryption
 >   process"): each letter leaves the message bubble (ringed, then pale),
 >   enters the machine, shows its 8 bits, its own key byte slides in under

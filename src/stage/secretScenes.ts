@@ -310,9 +310,48 @@ function drawKey(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number)
 
 // ---------- 🔀 the mix ----------
 
+/** an amber arrow from a key bit (x, y0) up to the message bit it flips
+ *  (x, y1), with a little turn-over sign beside its tip */
+function flipArrow(ctx: CanvasRenderingContext2D, x: number, y0: number, y1: number, k: number, alpha: number) {
+  if (alpha <= 0) return
+  faded(ctx, alpha, () => {
+    ctx.strokeStyle = AMBER
+    ctx.fillStyle = AMBER
+    ctx.lineWidth = 3
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(x, y0)
+    ctx.lineTo(x, y1 + 9 * k)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(x, y1)
+    ctx.lineTo(x - 7 * k, y1 + 11 * k)
+    ctx.lineTo(x + 7 * k, y1 + 11 * k)
+    ctx.closePath()
+    ctx.fill()
+    // ↻ — "turn over"
+    const cx = x + 19 * k
+    const cy = (y0 + y1) / 2
+    const rr = 8 * k
+    ctx.lineWidth = 2.5
+    ctx.beginPath()
+    ctx.arc(cx, cy, rr, -Math.PI * 0.35, Math.PI * 1.25)
+    ctx.stroke()
+    // its arrowhead
+    const ex = cx + rr * Math.cos(-Math.PI * 0.35)
+    const ey = cy + rr * Math.sin(-Math.PI * 0.35)
+    ctx.beginPath()
+    ctx.moveTo(ex + 4 * k, ey + 4 * k)
+    ctx.lineTo(ex - 4 * k, ey - 1 * k)
+    ctx.lineTo(ex + 5 * k, ey - 4 * k)
+    ctx.closePath()
+    ctx.fill()
+  })
+}
+
 /** three rows: the message's bits, the key, what comes out; `flipAt`,
  *  `keepAt` = when the flips and the keeps happen */
-function mixRows(ctx: CanvasRenderingContext2D, b: Box, t: number, top: string, key: string, out: string, o: { topLetter: string; outLetter: string; flipAt: number; keepAt: number; rowsAt: number; flipGlow?: number; keepGlow?: number }) {
+function mixRows(ctx: CanvasRenderingContext2D, b: Box, t: number, top: string, key: string, out: string, o: { topLetter: string; outLetter: string; flipAt: number; keepAt: number; rowsAt: number; flipGlow?: number; keepGlow?: number; links?: number }) {
   const k = K(b)
   const gap = 56 * k
   const cx = b.W * 0.56
@@ -329,6 +368,9 @@ function mixRows(ctx: CanvasRenderingContext2D, b: Box, t: number, top: string, 
     const x = lampX(cx, 8, gap, i)
     const flip = key[i] === '1'
     const q = tween(t, (flip ? o.flipAt : o.keepAt) + i * 0.12, 0.45)
+    // "where the key has a one, the bit flips": an arrow from each key one
+    // up to its message bit, until that bit has passed and turned over
+    if (flip && o.links) flipArrow(ctx, x, ys[1] - 12 * k * 1.7, lerp(ys[0], ys[1], easeInOut(Math.min(q, 0.5) * 2) * 0.6) + 12 * k * 1.4, k, o.links * (1 - clamp01((q - 0.3) / 0.2)))
     if (q <= 0) continue
     // the bit travels down past the key — turning over where the key is one
     const y = lerp(ys[0], ys[2], easeInOut(q))
@@ -353,6 +395,8 @@ function drawMix(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number)
   // pieces 2 and 3 bind the rule to the columns while it is said
   const flipGlow = bounce(sinceLaunch('xm:flip', t, 2.35, idle) - 0.4, 0.35, 2.2, 0.4)
   const keepGlow = bounce(sinceLaunch('xm:keep', t, 4.85, idle) - 0.4, 0.35, 1.6, 0.4)
+  // the arrows grow in while the rule is said
+  const links = clamp01((sinceLaunch('xm:links', t, 2.4, idle) - 0.5) / 0.5)
   mixRows(ctx, b, t, MESSAGE_BITS[0], SECRET_KEY[0], JUMBLE_BITS[0], {
     topLetter: SECRET_MESSAGE[0],
     outLetter: JUMBLE_TEXT[0],
@@ -361,6 +405,7 @@ function drawMix(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: number)
     keepAt: 5.2,
     flipGlow,
     keepGlow,
+    links,
   })
   // piece 4's event: "So the letter H has turned into the letter R!" —
   // the two letters bounce, an arrow between them
@@ -496,6 +541,10 @@ function drawGibberish(ctx: CanvasRenderingContext2D, b: Box, t: number, idle: n
   const keyA = run >= 0 ? ph(T.keyIn[0], T.keyIn[1]) : 0
   keyIcon(ctx, b.W * 0.05 + 4 * k, ys[1], 14 * k, run >= 0 ? 1 : 0)
   if (keyA > 0) lampRow(ctx, cx + (1 - keyA) * 120 * k, ys[1], key, { r, gap, alpha: keyA, grow: (i) => (key[i] === '1' && pass > 0.15 && pass < 0.85 ? 0.6 : 0) })
+  // the first (slow) letter: arrows from the key's ones up to their bits
+  if (first && keyA > 0)
+    for (let i = 0; i < 8; i++)
+      if (key[i] === '1') flipArrow(ctx, lampX(cx, 8, gap, i), ys[1] - r * 1.7, ys[0] + r * 1.4 + (ys[1] - ys[0]) * 0.6 * easeInOut(Math.min(1, pass * 2)), k, keyA * (1 - clamp01((pass - 0.3) / 0.2)))
   // the bits travel down past the key, turning over where it has a one
   if (pass > 0) {
     if (pass < 1) lampRow(ctx, cx, ys[0], msgBits, { r, gap, alpha: 0.25 })

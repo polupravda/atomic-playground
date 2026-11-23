@@ -38,7 +38,7 @@ export const SECRET_NARRATION: Record<string, string> = {
   mix:
     'Here are the bits of the letter H, and the key under them. | Where the key has a one, the bit flips. A zero becomes a one, and a one becomes a zero. | Where the key has a zero, the bit stays the same. | So the letter H has turned into the letter R! | The letter I turns into the letter G, the same way. Hi has become R G. A jumble!',
   gibberish:
-    "Here is a funnier one. Imagine the boy writes to Grandma, I miss you. | Encryption turns it into blob zonky! | Now imagine a sneaky hacker. A hacker breaks into other people's computers to steal their messages. ... Hacker. | The hacker grabs a copy of the message, and grins. | But all the hacker can read is blob zonky. Without the key, it means nothing at all. Bad luck, hacker!",
+    "Here is a funnier one. Imagine the boy writes to Grandma, I miss you. | Encryption turns it into something that sounds really funny. Blob zonky! | Now imagine a sneaky hacker. A hacker breaks into other people's computers to steal their messages. ... Hacker. | The hacker grabs a copy of the message, and grins. | But all the hacker can read is blob zonky. Without the key, it means nothing at all. Bad luck, hacker!",
   fly:
     "The jumble flies through the air as radio waves. | The neighbours' antenna catches every bit of it. | But all they get is R and G. Without the key, it is just a jumble.",
   unmix:
@@ -64,7 +64,7 @@ export const SECRET_NARRATION_DE = translated(SECRET_NARRATION, {
   mix:
     'Hier sind die Bits des Buchstabens H, und darunter der Schlüssel. | Wo der Schlüssel eine Eins hat, kippt das Bit um. Aus einer Null wird eine Eins, und aus einer Eins eine Null. | Wo der Schlüssel eine Null hat, bleibt das Bit, wie es ist. | So ist aus dem Buchstaben H der Buchstabe R geworden! | Aus dem Buchstaben I wird genauso ein G. Aus Hi ist R G geworden. Ein Durcheinander!',
   gibberish:
-    'Jetzt ein lustigeres Beispiel. Stell dir vor, der Junge schreibt Oma, ich vermisse dich. | Die Verschlüsselung macht daraus blob zonky! | Jetzt stell dir einen fiesen Hacker vor. Ein Hacker bricht in fremde Computer ein, um Nachrichten zu stehlen. ... Hacker. | Der Hacker schnappt sich eine Kopie der Nachricht und grinst. | Aber der Hacker kann nur blob zonky lesen. Ohne den Schlüssel bedeutet es überhaupt nichts. Pech gehabt, Hacker!',
+    'Jetzt ein lustigeres Beispiel. Stell dir vor, der Junge schreibt Oma, ich vermisse dich. | Die Verschlüsselung macht daraus etwas, das wirklich lustig klingt. Blob zonky! | Jetzt stell dir einen fiesen Hacker vor. Ein Hacker bricht in fremde Computer ein, um Nachrichten zu stehlen. ... Hacker. | Der Hacker schnappt sich eine Kopie der Nachricht und grinst. | Aber der Hacker kann nur blob zonky lesen. Ohne den Schlüssel bedeutet es überhaupt nichts. Pech gehabt, Hacker!',
   fly:
     'Das Durcheinander fliegt als Funkwellen durch die Luft. | Die Antenne der Nachbarn fängt jedes einzelne Bit auf. | Aber sie bekommen nur R und G. Ohne den Schlüssel ist es bloß ein Durcheinander.',
   unmix:
@@ -92,7 +92,7 @@ export const SECRET_NARRATION_RU = translated(SECRET_NARRATION, {
   mix:
     'Вот биты буквы эйч, а под ними ключ. | Где в ключе единица, бит переворачивается. Ноль становится единицей, а единица нулём. | Где в ключе ноль, бит остаётся таким же. | Так буква эйч превратилась в букву ар! | Буква ай точно так же превращается в джи. Слово хай стало ар джи. Путаница!',
   gibberish:
-    'А вот пример посмешнее. Представь, мальчик пишет бабушке, я скучаю. | Шифрование превращает это в блоб зонки! | А теперь представь хитрого ха́кера. Ха́кер забирается в чужие компьютеры, чтобы красть сообщения. ... Ха́кер. | Хакер хватает копию сообщения и ухмыляется. | Но хакер может прочитать только блоб зонки. Без ключа это вообще ничего не значит. Не повезло, хакер!',
+    'А вот пример посмешнее. Представь, мальчик пишет бабушке, я скучаю. | Шифрование превращает это во что-то, что звучит очень смешно. Блоб зонки! | А теперь представь хитрого ха́кера. Ха́кер забирается в чужие компьютеры, чтобы красть сообщения. ... Ха́кер. | Хакер хватает копию сообщения и ухмыляется. | Но хакер может прочитать только блоб зонки. Без ключа это вообще ничего не значит. Не повезло, хакер!',
   fly:
     'Путаница летит по воздуху радиоволнами. | Антенна соседей ловит её всю, бит за битом. | Но у них только ар и джи. Без ключа это просто путаница.',
   unmix:
