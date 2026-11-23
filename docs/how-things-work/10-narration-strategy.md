@@ -708,6 +708,14 @@ stays silent. Words Kokoro says wrong are fixed in the generator's
 Formulas are read letter by letter with digits as words; a formula with
 an "A" is spelled with commas ("N, A, C, L") or the "A" comes out as "uh".
 
+**The 🧪 bonding lab speaks in the voice's language** (Elena, 2026-11-22):
+its molecules' name lines, a one-sentence description of each (said
+automatically the first time a molecule is built; the Voice switch
+silences it) and its five tray elements have DE · RU clips too
+(`SPOKEN_WORDS_DE`, `SPOKEN_WORDS_RU`, Edge voices); `sayWord(id, lang)`
+falls back to English where a language has no clip. Everywhere else the
+buttons stay English (they pronounce the English label next to them).
+
 ## The pipeline
 
 ```

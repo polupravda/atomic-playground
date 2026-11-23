@@ -1,4 +1,5 @@
 import { sayWord } from './wordAudio'
+import type { NarrationLang } from '../state/voiceStore'
 
 // 🔊 pronunciation button, styled like the amber 💡 affordance. Plays a
 // pre-rendered clip in the stories' voice (core/spokenWords.ts, ui/
@@ -37,17 +38,20 @@ export function SpeakButton({
   word,
   text,
   className,
+  lang = 'en',
 }: {
   /** the clip to play (core/spokenWords.ts: elementWord(z), bondWord(id)) */
   word: string
   /** what it says, for the tooltip and screen readers */
   text: string
   className?: string
+  /** the language to say it in (a clip it lacks falls back to English) */
+  lang?: NarrationLang
 }) {
   const speak = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation()
     e.preventDefault()
-    sayWord(word)
+    sayWord(word, lang)
   }
   return (
     <span

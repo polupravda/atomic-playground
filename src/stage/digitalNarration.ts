@@ -17,6 +17,9 @@ import { translated } from './narrationScript'
 //   numbers → ons and offs, no new facts;
 // - the hand never shows the middle finger alone (a rude sign): thumb = 1,
 //   thumb + pointer = 3, all five = 31;
+// - the narration says bits, ones and zeros — a lamp is only the picture
+//   of a bit ("Like a lamp that shines" is a comparison) (Elena,
+//   2026-11-22);
 // - Kokoro says "lives" as in "long lives" (Elena, 2026-11-22): rephrased
 //   ("Grandma's house is far away");
 // - Kokoro reads a lone "I" as the word: the letters are always "the
@@ -30,9 +33,9 @@ export const DIGITAL_NARRATION: Record<string, string> = {
   bits:
     'A computer has only two digits. One and zero. | The one means on. Like a lamp that shines. | The zero means off. Like a lamp that is dark. | Each of them is called a bit. ... Bit. | With bits, you can count on one hand. Each finger is worth double the one before. | The thumb alone is one. Thumb and pointer finger make three. | All five fingers make thirty one. And eight bits count all the way to two hundred fifty five.',
   message:
-    'Now the message. It says hi! It has two letters, the letter H and the letter I. | Every computer in the world uses the same code table. In it, every letter has a number. | The letter H is number seventy two. | Seventy two is sixty four plus eight. So those two lamps go on. | The letter I is seventy three. One more lamp goes on.',
+    'Now the message. It says hi! It has two letters, the letter H and the letter I. | Every computer in the world uses the same code table. In it, every letter has a number. | The letter H is number seventy two. | Seventy two is sixty four plus eight. So those two bits are ones. | The letter I is seventy three. One more bit is a one.',
   decode:
-    "At Grandma's end, everything goes backwards. Add up the lamps that are on. | Sixty four plus eight is seventy two. In the same table, seventy two is the letter H. | That is why every computer must use the very same table.",
+    "At Grandma's end, everything goes backwards. Add up the bits that are ones. | Sixty four plus eight is seventy two. In the same table, seventy two is the letter H. | That is why every computer must use the very same table.",
   photo:
     "Now the drawing. The phone takes a photo. Let's look inside the camera. | Inside are millions of tiny cups. Each wears a red, green or blue glass hat. | Light falls in. Each photon knocks an electron loose, and it stays in the cup. | Bright light gives many electrons, dark light only a few. Every cup becomes one little square. This is a pixel. ... Pixel. | Each pixel is three numbers. How much red, how much green, and how much blue.",
   sound:
@@ -52,9 +55,9 @@ export const DIGITAL_NARRATION_DE = translated(DIGITAL_NARRATION, {
   bits:
     'Ein Computer hat nur zwei Ziffern. Eins und null. | Die Eins heißt an. Wie ein Lämpchen, das leuchtet. | Die Null heißt aus. Wie ein Lämpchen, das dunkel ist. | Jede davon nennt man ein Bit. ... Bit. | Mit Bits kannst du an einer Hand zählen. Jeder Finger ist doppelt so viel wert wie der vorige. | Der Daumen allein ist eins. Daumen und Zeigefinger machen drei. | Alle fünf Finger machen einunddreißig. Und acht Bits zählen bis zweihundertfünfundfünfzig.',
   message:
-    'Jetzt die Nachricht. Darin steht Hi! Sie hat zwei Buchstaben, den Buchstaben H und den Buchstaben I. | Jeder Computer auf der Welt benutzt dieselbe Codetabelle. Darin hat jeder Buchstabe eine Zahl. | Der Buchstabe H hat die Nummer zweiundsiebzig. | Zweiundsiebzig ist vierundsechzig plus acht. Also gehen diese zwei Lämpchen an. | Der Buchstabe I hat die Nummer dreiundsiebzig. Ein Lämpchen mehr geht an.',
+    'Jetzt die Nachricht. Darin steht Hi! Sie hat zwei Buchstaben, den Buchstaben H und den Buchstaben I. | Jeder Computer auf der Welt benutzt dieselbe Codetabelle. Darin hat jeder Buchstabe eine Zahl. | Der Buchstabe H hat die Nummer zweiundsiebzig. | Zweiundsiebzig ist vierundsechzig plus acht. Also sind diese zwei Bits Einsen. | Der Buchstabe I hat die Nummer dreiundsiebzig. Ein Bit mehr ist eine Eins.',
   decode:
-    'Bei Oma läuft alles rückwärts. Zähl die Lämpchen zusammen, die leuchten. | Vierundsechzig plus acht ist zweiundsiebzig. In derselben Tabelle ist zweiundsiebzig der Buchstabe H. | Darum muss jeder Computer genau dieselbe Tabelle benutzen.',
+    'Bei Oma läuft alles rückwärts. Zähl die Bits zusammen, die Einsen sind. | Vierundsechzig plus acht ist zweiundsiebzig. In derselben Tabelle ist zweiundsiebzig der Buchstabe H. | Darum muss jeder Computer genau dieselbe Tabelle benutzen.',
   photo:
     'Jetzt das Bild. Das Handy macht ein Foto. Schauen wir in die Kamera hinein. | Darin sind Millionen winziger Becher. Jeder trägt einen roten, grünen oder blauen Hut aus Glas. | Licht fällt hinein. Jedes Photon schlägt ein Elektron los, und es bleibt im Becher. | Helles Licht gibt viele Elektronen, dunkles nur wenige. Jeder Becher wird ein kleines Quadrat. Das ist ein Pixel. ... Pixel. | Jedes Pixel sind drei Zahlen. Wie viel Rot, wie viel Grün und wie viel Blau.',
   sound:
@@ -76,9 +79,9 @@ export const DIGITAL_NARRATION_RU = translated(DIGITAL_NARRATION, {
   bits:
     'У компьютера всего две цифры. Единица и ноль. | Единица значит включено. Как лампочка, которая светит. | Ноль значит выключено. Как тёмная лампочка. | Каждая такая цифра называется бит. ... Би́т. | С битами можно считать на одной руке. Каждый палец стоит вдвое больше предыдущего. | Один большой палец означает один. Большой и указательный вместе дают три. | Все пять пальцев дают тридцать один. А восемь битов считают до двухсот пятидесяти пяти.',
   message:
-    'Теперь сообщение. В нём написано хай, это по-английски привет. В нём две буквы, буква эйч и буква ай. | Все компьютеры в мире пользуются одной и той же кодовой таблицей. В ней у каждой буквы свой номер. | У буквы эйч номер семьдесят два. | Семьдесят два получается из шестидесяти четырёх и восьми. Поэтому загораются эти две лампочки. | У буквы ай номер семьдесят три. Загорается ещё одна лампочка.',
+    'Теперь сообщение. В нём написано хай, это по-английски привет. В нём две буквы, буква эйч и буква ай. | Все компьютеры в мире пользуются одной и той же кодовой таблицей. В ней у каждой буквы свой номер. | У буквы эйч номер семьдесят два. | Семьдесят два получается из шестидесяти четырёх и восьми. Поэтому эти два бита становятся единицами. | У буквы ай номер семьдесят три. Ещё один бит становится единицей.',
   decode:
-    'У бабушки всё идёт в обратную сторону. Сложи лампочки, которые горят. | Шестьдесят четыре и восемь дают семьдесят два. В той же таблице семьдесят два означает букву эйч. | Вот почему все компьютеры должны пользоваться одной и той же таблицей.',
+    'У бабушки всё идёт в обратную сторону. Сложи биты, в которых стоят единицы. | Шестьдесят четыре и восемь дают семьдесят два. В той же таблице семьдесят два означает букву эйч. | Вот почему все компьютеры должны пользоваться одной и той же таблицей.',
   photo:
     'Теперь рисунок. Телефон делает снимок. Давай заглянем внутрь камеры. | Внутри миллионы крошечных чашечек. На каждой красная, зелёная или синяя стеклянная шапочка. | Свет падает внутрь. Каждый фотон выбивает электрон, и тот остаётся в чашечке. | Яркий свет даёт много электронов, тёмный совсем мало. Каждая чашечка становится маленьким квадратиком. Это пи́ксель. ... Пи́ксель. | Каждый пиксель состоит из трёх чисел. Сколько красного, сколько зелёного и сколько синего.',
   sound:

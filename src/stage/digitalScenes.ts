@@ -141,6 +141,8 @@ interface RowOpts {
   on?: (i: number) => number
   /** each lamp's pop-in (0…1); default: all there */
   pop?: (i: number) => number
+  /** each lamp's extra bounce (0 = none, 1 = big) — "look, this one!" */
+  grow?: (i: number) => number
 }
 
 export const lampX = (cx: number, n: number, gap: number, i: number) => cx - ((n - 1) * gap) / 2 + i * gap
@@ -155,7 +157,9 @@ export function lampRow(ctx: CanvasRenderingContext2D, cx: number, y: number, bi
     if (p <= 0) continue
     const x = lampX(cx, n, gap, i)
     const on = o.on ? o.on(i) : bits[i] === '1' ? 1 : 0
-    scaledAbout(ctx, x, y, Math.min(1.15, p), () => lamp(ctx, x, y, r, on, (o.alpha ?? 1) * Math.min(1, p * 1.5)))
+    const g = o.grow ? o.grow(i) : 0
+    scaledAbout(ctx, x, y, Math.min(1.15, p) * (1 + 0.55 * g), () => lamp(ctx, x, y, r, on, (o.alpha ?? 1) * Math.min(1, p * 1.5)))
+    if (g > 0.05) marker(ctx, x, y, r * 1.9, 0, Math.min(1, g))
     if (o.worths)
       faded(ctx, o.worths * (o.alpha ?? 1) * Math.min(1, p), () =>
         text(ctx, String(2 ** (n - 1 - i)), x, y + r + 11, HINT, Math.max(9, Math.min(13, gap * 0.42))),

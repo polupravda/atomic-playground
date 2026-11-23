@@ -36,9 +36,9 @@ export const PLANNED: Record<PlannedExampleId, Array<{ thumb: ThumbId; label: st
 export const SIGNALS_STORIES: Array<{ id: string; thumb: ThumbId; label: string; ready: boolean }> = [
   { id: 'digital', thumb: 'signals-digital', label: '🔢 What "digital" means', ready: true },
   { id: 'wifi', thumb: 'signals-wifi', label: '📶 How Wi-Fi works', ready: true },
-  { id: 'internet', thumb: 'signals-fibre', label: '🌊 Internet under the ocean', ready: false },
-  { id: 'screen', thumb: 'signals-screen', label: '📺 How a screen works', ready: false },
-  { id: 'memory', thumb: 'signals-memory', label: '💾 Where a photo is stored', ready: false },
+  { id: 'internet', thumb: 'signals-fibre', label: '🌊 Internet under the ocean', ready: true },
+  { id: 'screen', thumb: 'signals-screen', label: '📺 How a screen works', ready: true },
+  { id: 'memory', thumb: 'signals-memory', label: '💾 Where a photo is stored', ready: true },
   { id: 'secret', thumb: 'signals-secret', label: '🔐 Keeping messages secret', ready: false },
   { id: 'morse', thumb: 'signals-morse', label: '📡 How Morse code works', ready: false },
   { id: 'gps', thumb: 'signals-gps', label: '🛰️ How GPS finds you', ready: false },

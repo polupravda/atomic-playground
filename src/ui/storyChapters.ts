@@ -80,6 +80,24 @@ const CHAPTER_TEXT = {
   'Bits on a wave': { de: 'Bits auf einer Welle', ru: 'Биты на волне' },
   'The wall': { de: 'Die Wand', ru: 'Стенка' },
   'The answer': { de: 'Die Antwort', ru: 'Ответ' },
+  // 🌊 internet under the ocean
+  Packets: { de: 'Pakete', ru: 'Пакеты' },
+  'The big picture': { de: 'Das große Bild', ru: 'Вся картина' },
+  'Inside the cable': { de: 'Im Kabel', ru: 'Внутри кабеля' },
+  'The light trick': { de: 'Der Lichttrick', ru: 'Фокус со светом' },
+  'Routers on the way': { de: 'Router unterwegs', ru: 'Роутеры по пути' },
+  'A broken packet': { de: 'Ein kaputtes Paket', ru: 'Испорченный пакет' },
+  // 📺 how a screen works
+  Pixels: { de: 'Pixel', ru: 'Пиксели' },
+  'The LED': { de: 'Die LED', ru: 'Светодиод' },
+  'The numbers arrive': { de: 'Die Zahlen kommen an', ru: 'Приходят числа' },
+  'Your eye mixes': { de: 'Dein Auge mischt', ru: 'Глаз смешивает' },
+  'A film': { de: 'Ein Film', ru: 'Фильм' },
+  // 💾 where a photo is stored
+  'The memory chip': { de: 'Der Speicherchip', ru: 'Чип памяти' },
+  'Locking electrons in': { de: 'Elektronen einsperren', ru: 'Запираем электроны' },
+  'Reading a bit': { de: 'Ein Bit lesen', ru: 'Читаем бит' },
+  'A flash': { de: 'Ein Blitz', ru: 'Вспышка' },
   // every story's ending
   'The payoff': { de: 'Die Auflösung', ru: 'Разгадка' },
 } as const satisfies Record<string, Record<Exclude<NarrationLang, 'en'>, string>>

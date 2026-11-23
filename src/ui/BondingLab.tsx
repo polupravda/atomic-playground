@@ -9,8 +9,10 @@ import { motion } from 'motion/react'
 import { MOLECULE_PHOTOS } from '../core/moleculePhotos'
 import { PageNav } from './PageNav'
 import { Paras, SECTION_MAX, SectionHeader, para, type Para } from './Paras'
-import { sayWord } from './wordAudio'
-import { bondWord, elementWord } from '../core/spokenWords'
+import { sayWord, sayWords } from './wordAudio'
+import { bondInfoWord, bondWord, elementWord } from '../core/spokenWords'
+import { useVoiceStore, type NarrationLang } from '../state/voiceStore'
+import { SpeakButton } from './SpeakButton'
 import { FLAT, KEY, TRAY } from './surfaces'
 
 /** Canvas twin of the SpeakButton look: amber circle + a bright amber
@@ -337,12 +339,25 @@ function computeGroups(as: LabAtom[]): { matched: MatchedGroup[]; free: LabAtom[
 function BondingField({
   onState,
   onMoleculeClick,
+  onMoleculeFormed,
   clearSignal,
+  lang,
 }: {
   onState: (state: LabState) => void
   onMoleculeClick: (scenarioId: string) => void
+  /** a molecule has just been built (spoken, its photos shown) */
+  onMoleculeFormed: (scenarioId: string) => void
   clearSignal: number
+  /** the voice's language: the 🔊 zones speak in it */
+  lang: NarrationLang
 }) {
+  // the latest callbacks and language, for the animation loop (set up once)
+  const live = useRef({ onMoleculeFormed, lang })
+  live.current = { onMoleculeFormed, lang }
+  // how many of each molecule were on the table last frame: a count that
+  // grows = a molecule really built (a regrouping that only reshuffles
+  // atoms between molecules is not "new")
+  const prevCounts = useRef<Map<string, number>>(new Map())
   const shapeRef = useRef<Konva.Shape | null>(null)
   const atoms = useRef<LabAtom[]>([])
   const dragId = useRef<number | null>(null)
@@ -390,17 +405,22 @@ function BondingField({
       const matchedIds = new Set(matched.flatMap((g) => g.members.map((m) => m.id)))
       groupsRef.current = { matched, matchedIds }
       // a group key that wasn't matched last frame = a molecule just formed
+      // (its celebration burst)
       const keys = new Set<string>()
       for (const g of matched) {
         keys.add(g.key)
         if (!prevGroupKeys.current.has(g.key)) {
           const c = clusterCenter(g.members)
           bursts.current.push({ x: c.x, y: c.y, start: performance.now() })
-          // a fresh molecule also opens its real-life photos
-          onMoleculeClick(g.scenario.id)
         }
       }
       prevGroupKeys.current = keys
+      // a molecule whose count grew was really built: it is spoken and its
+      // real-life photos open
+      const counts = new Map<string, number>()
+      for (const g of matched) counts.set(g.scenario.id, (counts.get(g.scenario.id) ?? 0) + 1)
+      for (const [id, n] of counts) if (n > (prevCounts.current.get(id) ?? 0)) live.current.onMoleculeFormed(id)
+      prevCounts.current = counts
       // B04: H₂ electron-sharing progress — 0→1 once the pair has formed,
       // driving the electrons' journey from their own rings to a SHARED
       // orbit around both nuclei
@@ -603,7 +623,7 @@ function BondingField({
     for (const rect of labelRects.current) {
       if (pos.x >= rect.x0 && pos.x <= rect.x1 && pos.y >= rect.y0 && pos.y <= rect.y1) {
         const s = BOND_SCENARIOS.find((sc) => sc.id === rect.id)
-        if (pos.x <= rect.speakX && s) sayWord(bondWord(s.id)) // the formula, then the name: "H two O … water"
+        if (pos.x <= rect.speakX && s) sayWord(bondWord(s.id), live.current.lang) // the formula, then the name: "H two O … water"
         else onMoleculeClick(rect.id)
         return
       }
@@ -647,7 +667,7 @@ function BondingField({
         pos.y >= TRAY_TOKEN_Y - 20 &&
         pos.y <= TRAY_TOKEN_Y + 2
       ) {
-        sayWord(elementWord(SPECIES[i].protons))
+        sayWord(elementWord(SPECIES[i].protons), live.current.lang)
         return
       }
     }
@@ -972,76 +992,87 @@ const missingText = (missing: Record<string, number>) =>
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-/** 📷 Photos tab: the real-life photos of every molecule built so far, in
- *  recipe order — the same cards as every other photo column (flat card,
- *  uncropped image, caption + credit); the current molecule's two are lit
- *  amber ("look here") and scrolled into view. */
-function MoleculePhotos({
-  discovered,
-  current,
-  visible,
-}: {
-  discovered: Set<string>
-  current: string | null
-  visible: boolean
-}) {
-  const refs = useRef(new Map<string, HTMLElement>())
-  useEffect(() => {
-    if (visible && current) refs.current.get(current)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [visible, current])
-  const groups = BOND_SCENARIOS.filter((s) => discovered.has(s.id) && MOLECULE_PHOTOS[s.id])
+/** the five tray atoms in real life (public/elements/{z}.jpg, from
+ *  images-of-elements.com, CC BY 3.0) — what the 📷 column shows before
+ *  the first molecule is built */
+const TRAY_PHOTOS: Array<{ z: number; title: string; caption: string }> = [
+  { z: 1, title: 'H · hydrogen', caption: 'Hydrogen gas glows violet in a glass tube when electricity runs through it.' },
+  { z: 8, title: 'O · oxygen', caption: 'Oxygen gas glowing in a glass tube with electricity — on its own it is invisible.' },
+  { z: 6, title: 'C · carbon', caption: 'A piece of carbon: black and crumbly, like the lead of a pencil.' },
+  { z: 11, title: 'Na · sodium', caption: 'Sodium is a soft, silvery metal. It is kept under oil, because air and water make it burn.' },
+  { z: 17, title: 'Cl · chlorine', caption: 'Chlorine squeezed into a yellow liquid, sealed in a glass tube.' },
+]
+
+/** a photo card, the Light lab's look: the title inside, the photo at its
+ *  natural height (never cropped), caption and credit */
+function PhotoCard({ title, src, caption, credit, href, license, lit }: { title: string; src: string; caption: string; credit: string; href: string; license: string; lit: boolean }) {
   return (
-    <>
-      {groups.map((s, gi) => {
-        const photo = MOLECULE_PHOTOS[s.id]
-        const lit = s.id === current
-        return (
-          <section
-            key={s.id}
-            ref={(el) => {
-              if (el) refs.current.set(s.id, el)
-              else refs.current.delete(s.id)
-            }}
-            className={gi === 0 ? '' : 'mt-4'}
-          >
-            <h2
-              className={`mb-2 text-xs font-semibold uppercase tracking-wide ${lit ? 'text-amber-200' : 'text-slate-400'}`}
-            >
-              {s.formula} · {s.name}
-            </h2>
-            <div className="space-y-3">
-              {(['pure', 'use'] as const).map((kind) => {
-                const shot = photo[kind]
-                return (
-                  <figure
-                    key={kind}
-                    className={`rounded-xl p-2 transition ${
-                      lit ? 'border border-amber-500/60 bg-amber-500/10' : 'bg-slate-800/40'
-                    }`}
-                  >
-                    <img
-                      src={`${import.meta.env.BASE_URL}molecules/${s.id}-${kind}.jpg`}
-                      alt={shot.caption}
-                      loading="lazy"
-                      className="w-full rounded-lg border border-slate-700 bg-black"
-                    />
-                    <figcaption className="mt-1">
-                      <div className="text-sm leading-snug text-slate-200">{capitalize(shot.caption)}</div>
-                      <div className="text-[9px] text-slate-500">
-                        <a href={shot.source} target="_blank" rel="noreferrer" className="underline hover:text-slate-300">
-                          {shot.creator}
-                        </a>{' '}
-                        (CC {shot.license})
-                      </div>
-                    </figcaption>
-                  </figure>
-                )
-              })}
-            </div>
-          </section>
-        )
+    <figure className={`rounded-xl p-2 transition ${lit ? 'border border-amber-500/60 bg-amber-500/10' : 'border border-slate-700/70 bg-slate-800/40'}`}>
+      <div className={`mb-1 text-xs font-semibold uppercase tracking-wide ${lit ? 'text-amber-200' : 'text-slate-400'}`}>{title}</div>
+      <img src={src} alt={caption} loading="lazy" className="w-full rounded-lg border border-slate-700 bg-black" />
+      <figcaption className="mt-1">
+        <div className="text-sm leading-snug text-slate-200">{caption}</div>
+        <div className="text-[9px] text-slate-500">
+          <a href={href} target="_blank" rel="noreferrer" className="underline hover:text-slate-300">
+            {credit}
+          </a>{' '}
+          ({license})
+        </div>
+      </figcaption>
+    </figure>
+  )
+}
+
+/** 📷 Photos tab: the newest molecule's two real-life photos on top, lit
+ *  amber; the molecules built before it below, newest first. Before the
+ *  first molecule: the five tray atoms in real life. The column scrolls
+ *  back to the top when a new molecule comes first. */
+function MoleculePhotos({ recent }: { recent: string[] }) {
+  const top = useRef<HTMLDivElement | null>(null)
+  const first = recent[0]
+  useEffect(() => {
+    top.current?.parentElement?.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [first])
+  const ids = recent.filter((id) => MOLECULE_PHOTOS[id])
+  if (ids.length === 0)
+    return (
+      <div ref={top} className="space-y-3">
+        {TRAY_PHOTOS.map((p) => (
+          <PhotoCard
+            key={p.z}
+            title={`${p.title}, in real life`}
+            src={`${import.meta.env.BASE_URL}elements/${p.z}.jpg`}
+            caption={p.caption}
+            credit="images-of-elements.com"
+            href="https://images-of-elements.com"
+            license="CC BY 3.0"
+            lit={false}
+          />
+        ))}
+      </div>
+    )
+  return (
+    <div ref={top} className="space-y-3">
+      {ids.flatMap((id, gi) => {
+        const s = BOND_SCENARIOS.find((x) => x.id === id)!
+        const photo = MOLECULE_PHOTOS[id]
+        return (['pure', 'use'] as const).map((kind) => {
+          const shot = photo[kind]
+          return (
+            <PhotoCard
+              key={`${id}-${kind}`}
+              title={`${s.formula} · ${s.name}`}
+              src={`${import.meta.env.BASE_URL}molecules/${id}-${kind}.jpg`}
+              caption={capitalize(shot.caption)}
+              credit={shot.creator}
+              href={shot.source}
+              license={`CC ${shot.license}`}
+              lit={gi === 0}
+            />
+          )
+        })
       })}
-    </>
+    </div>
   )
 }
 
@@ -1050,14 +1081,29 @@ export function BondingLab() {
   const [clearSignal, setClearSignal] = useState(0)
   // recipes turn into DISCOVERIES: dimmed until first built, then they pop
   const [discovered, setDiscovered] = useState<Set<string>>(new Set())
-  // molecule whose real-life photos are lit (a fresh molecule, or a click)
-  const [photoId, setPhotoId] = useState<string | null>(null)
+  // the molecules whose photos the 📷 column shows, newest first: the
+  // first is lit (a fresh molecule, or a click)
+  const [recent, setRecent] = useState<string[]>([])
   // left column: 📝 notes or 📷 photos — the Light lab's tray, same rules
   const [leftTab, setLeftTab] = useState<'info' | 'photo'>('info')
   const showPhotos = (id: string) => {
     if (!MOLECULE_PHOTOS[id]) return
-    setPhotoId(id)
+    setRecent((r) => [id, ...r.filter((x) => x !== id)])
     setLeftTab('photo')
+  }
+  // 🔊 a molecule just built is spoken in the voice's language: its
+  // formula and name, and — the first time it is built — one sentence on
+  // what it looks like and what it is used for (Elena, 2026-11-22). The
+  // global Voice switch silences it (the 🔊 buttons still work).
+  const lang = useVoiceStore((st) => st.lang)
+  const described = useRef(new Set<string>())
+  const onMoleculeFormed = (id: string) => {
+    showPhotos(id)
+    const { voiceOn: on, lang: l } = useVoiceStore.getState()
+    if (!on) return
+    const first = !described.current.has(id)
+    described.current.add(id)
+    sayWords(first ? [bondWord(id), bondInfoWord(id)] : [bondWord(id)], l)
   }
 
   const freeTotal = Object.values(lab.free).reduce((a, b) => a + b, 0)
@@ -1116,7 +1162,10 @@ export function BondingLab() {
                     <div className="whitespace-nowrap text-sm text-slate-100">
                       {s.bondType === 'ionic' ? '🧲' : '🤝'} {schema}
                     </div>
-                    <div className="text-xs text-amber-300">{s.name}</div>
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-amber-300">
+                      <SpeakButton word={bondWord(s.id)} text={`${s.formula}, ${s.name}`} lang={lang} className="!h-6 !w-6" />
+                      {s.name}
+                    </div>
                   </motion.div>
                 ) : (
                   <div
@@ -1131,7 +1180,10 @@ export function BondingLab() {
                       </span>{' '}
                       {schema}
                     </div>
-                    <div className="text-xs text-slate-500">{s.name}</div>
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-slate-500">
+                      <SpeakButton word={bondWord(s.id)} text={`${s.formula}, ${s.name}`} lang={lang} className="!h-6 !w-6 opacity-80" />
+                      {s.name}
+                    </div>
                   </div>
                 )
               })}
@@ -1158,8 +1210,6 @@ export function BondingLab() {
                   type="button"
                   onClick={() => setLeftTab(id)}
                   aria-pressed={leftTab === id}
-                  // no molecule built yet = no photos to show
-                  disabled={id === 'photo' && photoId === null}
                   className={`flex-1 rounded-lg px-3 py-1 transition disabled:opacity-40 ${
                     leftTab === id
                       ? 'bg-sky-600 font-medium text-white'
@@ -1175,7 +1225,7 @@ export function BondingLab() {
             <div
               className={`absolute inset-0 overflow-y-auto pr-1 ${leftTab === 'photo' ? '' : 'hidden'}`}
             >
-              <MoleculePhotos discovered={discovered} current={photoId} visible={leftTab === 'photo'} />
+              <MoleculePhotos recent={recent} />
             </div>
             <div
               className={`absolute inset-0 overflow-y-auto p-3 text-sm leading-relaxed text-slate-300 ${FLAT} ${
@@ -1234,6 +1284,8 @@ export function BondingLab() {
                   })
                 }}
                 onMoleculeClick={showPhotos}
+                onMoleculeFormed={onMoleculeFormed}
+                lang={lang}
               />
             </div>
           </div>

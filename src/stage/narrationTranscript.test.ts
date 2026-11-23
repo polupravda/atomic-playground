@@ -10,6 +10,9 @@ import { CUT_SCRIPTS, CUT_STORY_KEY } from './laserCutNarration'
 import { MOON_SCRIPTS, MOON_STORY_KEY } from './laserMoonNarration'
 import { DIGITAL_SCRIPTS, DIGITAL_STORY_KEY } from './digitalNarration'
 import { WIFI_SCRIPTS, WIFI_STORY_KEY } from './wifiNarration'
+import { INTERNET_SCRIPTS, INTERNET_STORY_KEY } from './internetNarration'
+import { SCREEN_SCRIPTS, SCREEN_STORY_KEY } from './screenNarration'
+import { MEMORY_SCRIPTS, MEMORY_STORY_KEY } from './memoryNarration'
 import { STARDUST_SCRIPTS } from './stardustNarration'
 import { BOMB_MODES as MODES, bombStoryKey } from './bombNarration'
 import { LINE_GAP_S, WATCH_BREAK_S, displayPiece, parseNarrationLine, pieceLanding, splitSentences } from './narrationScript'
@@ -120,6 +123,9 @@ const STORIES: Array<[string, Partial<Record<'en' | 'de' | 'ru', Record<string, 
   [MOON_STORY_KEY, MOON_SCRIPTS],
   [DIGITAL_STORY_KEY, DIGITAL_SCRIPTS],
   [WIFI_STORY_KEY, WIFI_SCRIPTS],
+  [INTERNET_STORY_KEY, INTERNET_SCRIPTS],
+  [SCREEN_STORY_KEY, SCREEN_SCRIPTS],
+  [MEMORY_STORY_KEY, MEMORY_SCRIPTS],
   ['stardust', STARDUST_SCRIPTS],
 ]
 

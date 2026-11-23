@@ -39,11 +39,14 @@ import { CUT_SCRIPTS, CUT_STORY_KEY } from '../../src/stage/laserCutNarration'
 import { MOON_SCRIPTS, MOON_STORY_KEY } from '../../src/stage/laserMoonNarration'
 import { DIGITAL_SCRIPTS, DIGITAL_STORY_KEY } from '../../src/stage/digitalNarration'
 import { WIFI_SCRIPTS, WIFI_STORY_KEY } from '../../src/stage/wifiNarration'
+import { INTERNET_SCRIPTS, INTERNET_STORY_KEY } from '../../src/stage/internetNarration'
+import { SCREEN_SCRIPTS, SCREEN_STORY_KEY } from '../../src/stage/screenNarration'
+import { MEMORY_SCRIPTS, MEMORY_STORY_KEY } from '../../src/stage/memoryNarration'
 import { CRYSTAL_INTRO_KEY, CRYSTAL_INTRO_SCRIPTS } from '../../src/stage/crystalIntros'
 import { LIGHT_INTRO_KEY, LIGHT_INTRO_SCRIPTS } from '../../src/stage/lightIntros'
 import { FIREWORK_SCRIPTS } from '../../src/stage/fireworkNarration'
 import { BOMB_MODES, bombScripts, bombStoryKey } from '../../src/stage/bombNarration'
-import { SPOKEN_WORDS, WORDS_KEY } from '../../src/core/spokenWords'
+import { SPOKEN_WORDS, SPOKEN_WORDS_DE, SPOKEN_WORDS_RU, WORDS_KEY } from '../../src/core/spokenWords'
 
 const SR = 24000
 const EN_VOICE = 'af_heart'
@@ -513,6 +516,9 @@ const STORIES: Story[] = [
   { key: MOON_STORY_KEY, scripts: MOON_SCRIPTS },
   { key: DIGITAL_STORY_KEY, scripts: DIGITAL_SCRIPTS },
   { key: WIFI_STORY_KEY, scripts: WIFI_SCRIPTS },
+  { key: INTERNET_STORY_KEY, scripts: INTERNET_SCRIPTS },
+  { key: SCREEN_STORY_KEY, scripts: SCREEN_SCRIPTS },
+  { key: MEMORY_STORY_KEY, scripts: MEMORY_SCRIPTS },
   // 🧊 Crystal lab: one short intro per scene (not a story)
   { key: CRYSTAL_INTRO_KEY, scripts: CRYSTAL_INTRO_SCRIPTS },
   // 💡 Light lab: a scene's intro + its spoken results (🔬 microscopes)
@@ -520,8 +526,10 @@ const STORIES: Story[] = [
   { key: 'sun', scripts: SUN_SCRIPTS },
   { key: 'firework', scripts: FIREWORK_SCRIPTS },
   ...BOMB_MODES.map((m) => ({ key: bombStoryKey(m), scripts: bombScripts(m) })),
-  // 🔊 the speak buttons: element names, bonding-lab molecules (EN only)
-  { key: WORDS_KEY, scripts: { en: SPOKEN_WORDS }, words: true },
+  // 🔊 the speak buttons: element names, bonding-lab molecules
+  // (DE · RU: the bonding lab's molecules, their descriptions and its five
+  // tray elements)
+  { key: WORDS_KEY, scripts: { en: SPOKEN_WORDS, de: SPOKEN_WORDS_DE, ru: SPOKEN_WORDS_RU }, words: true },
 ]
 
 async function main() {

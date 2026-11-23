@@ -249,6 +249,42 @@ letter H and its eight lamps; later the yellow pixel.
 
 ## Story 3 — 🌊 Internet under the ocean
 
+> **Built 2026-11-22** (roadmap 51c, awaiting manual test):
+> `stage/internetScenes.ts` (beats question · packets · map · cable · trick
+> · drill · routers · broken · blink), `stage/internetNarration.ts`
+> (EN · DE · RU, audio `public/narration/internet/`), `core/internet.ts`
+> (+ tests: 6,000 km ÷ 200,000 km/s = 0.03 s; a 0.3 s blink is ten times
+> longer; six packets = the drawing's first six bytes; packet 4 = 250 =
+> 11111010, check number 6, one flipped lamp → 7; arrival 1 2 4 5 3 6), 2
+> photos (a sea cable cut open; the 1871 cable landing at Port Darwin). As
+> built, changed from the table below:
+> - **33 science pieces**; houses and named things bounce or get the
+>   amber ring; a label's parts (to · from · number) pop in as they are
+>   said;
+> - **the check number is real and simple**: it counts the packet's lit
+>   lamps (real packets use a CRC — in 📝 Notes); a look after it;
+> - **numbers and ones are emphasised** (Elena, 2026-11-22): a packet's
+>   number bounces on an amber badge while "its number in the line" is
+>   said, again as it is stamped on, as it lands on Grandma's tablet and
+>   as the tablet sorts them; each one bounces (with a ring) as it is
+>   counted; the check number pops on an amber badge when the count is
+>   done; the counted total and "#4 ?" bounce too;
+> - the broken packet is **number 4** (one of the six on screen, not 37):
+>   seven counted ≠ six ✕ → "#4 ?" runs back → a fresh copy, six = six ✓;
+> - the internet is shown as a globe when named — the Atlantic in the
+>   middle, real (simplified) land shapes, routers, cables over land and
+>   bright ones across the ocean floor; the voice says "all the cables
+>   between all the routers in the world" (Elena: cables named, no oval
+>   continents);
+> - the narration says bits, ones and zeros, never "lamps" (the lamps are
+>   only how a bit is drawn — Elena);
+> - an extra **cable** beat (the camera dives into the sea cable: plastic,
+>   steel, copper, the glass threads; a fiber beside a hair) before the
+>   light trick, and the light trick has the pool picture;
+> - the payoff measures it: a stopwatch at 0.03 s, a blink bar ten times
+>   longer (the blink slowed), the drawing at Grandma's; it points onward
+>   ("Next, her screen must show it") and dims.
+
 **New words (3):** **optical fibre** · **packet** · **internet**
 (said as "the roads between all the routers in the world").
 **Hero:** packet number 1 of the drawing (amber ring).
@@ -292,6 +328,35 @@ letter H and its eight lamps; later the yellow pixel.
 
 ## Story 4 — 📺 How a screen works
 
+> **Built 2026-11-22** (roadmap 51d, awaiting manual test):
+> `stage/screenScenes.ts` (beats question · pixel · led · numbers · mix ·
+> drill · film · journey), `stage/screenNarration.ts` (EN · DE · RU, audio
+> `public/narration/screen/`), `core/screen.ts` (+ tests: 3 million pixels
+> = 9 million lamps; the sun pixel 250 · 204 · 21, the paper 241 · 245 ·
+> 249; a bigger step = green, the biggest = blue, E = hc/λ; 589 nm yellow
+> between the red and green lamps), 2 photos (a screen up close; a red, a
+> green and a blue LED). As built, changed from the table below:
+> - **28 science pieces**; the three lamps light one by one as they are
+>   named; a crossed-out yellow lamp for "no yellow lamp anywhere";
+> - **why red + green looks yellow** is told, not skipped: the eye has
+>   only three kinds of color catchers; two panels side by side — red +
+>   green light, and yellow light — light the same two catchers ("=");
+> - the LED shows **the firework's and the laser's picture** (Elena,
+>   2026-11-23: the "step" did not land and did not match the other
+>   stories): electricity lifts an electron to a bigger (dashed) ring,
+>   "like a ball onto a high shelf"; it falls back and a red photon flies
+>   out; then three atoms with a small, a bigger and the biggest fall —
+>   red, green, blue; then 4.5 s with no voice, the three atoms still
+>   falling, to look at each color;
+> - the numbers beat shows the sun pixel and the paper pixel (white: all
+>   three lamps full), with bars and their numbers; dashed lines join each
+>   to its little square in the drawing; under each, its three lamps as
+>   round lights overlapping (added like light) → the color the eye sees,
+>   yellow and white (Elena, 2026-11-23); a longer look after;
+> - the film keeps playing 4.5 s after the last line;
+> - the journey closes stories 1–4 (camera → radio waves → light under the
+>   sea → the screen); Grandma's window glows; it dims.
+
 **New words (2):** **pixel** (taught again — no story depends on another)
 · **LED**. **Hero:** the yellow pixel of the sun, on Grandma's screen.
 
@@ -323,6 +388,31 @@ letter H and its eight lamps; later the yellow pixel.
 ---
 
 ## Story 5 — 💾 Where a photo is stored
+
+> **Built 2026-11-23** (roadmap 51e, awaiting manual test):
+> `stage/memoryScenes.ts` (beats question · chip · push · read · drill ·
+> erase · years), `stage/memoryNarration.ts` (EN · DE · RU, audio
+> `public/narration/memory/`), `core/memory.ts` (+ tests: full = 0, empty
+> = 1; the sun pixel's red 250 = 11111010 kept in eight boxes, two of
+> them full; 128 GB ≈ a trillion bits in hundreds of billions of boxes), 2
+> photos (a phone's board, an opened USB stick). As built, changed from the
+> table below:
+> - **25 science pieces**; the chip bounces and is ringed as it is named;
+>   the glass wall glows as it is named; "zero" and "one" pop under the
+>   full and the empty box as they are said (a ✕ where the current stops,
+>   a lit lamp where it flows);
+> - the read beat ends on the stored byte: eight boxes, their bits, and
+>   the number they keep — the sun pixel's red, 250 (a look after);
+> - the test current is drawn as little lightning bolts running along a
+>   wire (a lightning flash at its start as it is named): they set off
+>   toward both boxes, pile up at the full one (0), run through the empty
+>   one (1) (Elena, 2026-11-23);
+> - an extra **erase** beat: the electrons pulled back out, a whole block
+>   at once in a flash — hence "flash memory"; the block flashes white
+>   again as the name is said (no camera: it could mislead — Elena);
+> - the end: ten years roll on a calendar, the electrons stay; the working
+>   memory leaks and is refilled, then forgets when switched off; the
+>   photo sleeps in the chip; it dims.
 
 **New words (2):** **memory chip** · **byte**. **Hero:** one box holding
 one bit of the photo.

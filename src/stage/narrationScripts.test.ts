@@ -17,6 +17,12 @@ import { DIGITAL_SCRIPTS, DIGITAL_STORY_KEY } from './digitalNarration'
 import { DIGITAL_ORDER } from './digitalScenes'
 import { WIFI_SCRIPTS, WIFI_STORY_KEY } from './wifiNarration'
 import { WIFI_ORDER } from './wifiScenes'
+import { INTERNET_SCRIPTS, INTERNET_STORY_KEY } from './internetNarration'
+import { INTERNET_ORDER } from './internetScenes'
+import { SCREEN_SCRIPTS, SCREEN_STORY_KEY } from './screenNarration'
+import { SCREEN_ORDER } from './screenScenes'
+import { MEMORY_SCRIPTS, MEMORY_STORY_KEY } from './memoryNarration'
+import { MEMORY_ORDER } from './memoryScenes'
 import { STARDUST_SCRIPTS } from './stardustNarration'
 import { WATCH_BREAK_S, lineMarks, parseNarrationLine } from './narrationScript'
 
@@ -49,6 +55,9 @@ const ORDERS: Record<string, string[]> = {
   [MOON_STORY_KEY]: [...MOON_ORDER],
   [DIGITAL_STORY_KEY]: [...DIGITAL_ORDER],
   [WIFI_STORY_KEY]: [...WIFI_ORDER],
+  [INTERNET_STORY_KEY]: [...INTERNET_ORDER],
+  [SCREEN_STORY_KEY]: [...SCREEN_ORDER],
+  [MEMORY_STORY_KEY]: [...MEMORY_ORDER],
 }
 
 const SCRIPTS: Record<string, Record<string, string>> = {
@@ -65,6 +74,9 @@ const SCRIPTS: Record<string, Record<string, string>> = {
   [MOON_STORY_KEY]: MOON_SCRIPTS.en,
   [DIGITAL_STORY_KEY]: DIGITAL_SCRIPTS.en,
   [WIFI_STORY_KEY]: WIFI_SCRIPTS.en,
+  [INTERNET_STORY_KEY]: INTERNET_SCRIPTS.en,
+  [SCREEN_STORY_KEY]: SCREEN_SCRIPTS.en,
+  [MEMORY_STORY_KEY]: MEMORY_SCRIPTS.en,
 }
 
 /** every story's scripts in every language (EN is SCRIPTS above) */
@@ -82,6 +94,9 @@ const ALL_LANGS: Record<string, Partial<Record<'en' | 'de' | 'ru', Record<string
   [MOON_STORY_KEY]: MOON_SCRIPTS,
   [DIGITAL_STORY_KEY]: DIGITAL_SCRIPTS,
   [WIFI_STORY_KEY]: WIFI_SCRIPTS,
+  [INTERNET_STORY_KEY]: INTERNET_SCRIPTS,
+  [SCREEN_STORY_KEY]: SCREEN_SCRIPTS,
+  [MEMORY_STORY_KEY]: MEMORY_SCRIPTS,
 }
 
 describe('the DE and RU translations (bombs, firework, Sun)', () => {

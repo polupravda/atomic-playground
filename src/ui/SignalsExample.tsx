@@ -16,17 +16,24 @@ import { DIGITAL_ORDER, DIGITAL_T, drawDigitalBeat } from '../stage/digitalScene
 import { DIGITAL_SCRIPTS, DIGITAL_STORY_KEY } from '../stage/digitalNarration'
 import { WIFI_ORDER, WIFI_T, drawWifiBeat } from '../stage/wifiScenes'
 import { WIFI_SCRIPTS, WIFI_STORY_KEY } from '../stage/wifiNarration'
-import { DIGITAL_PHOTO_GROUPS, WIFI_PHOTO_GROUPS } from '../core/digitalPhotos'
+import { INTERNET_ORDER, INTERNET_T, drawInternetBeat } from '../stage/internetScenes'
+import { INTERNET_SCRIPTS, INTERNET_STORY_KEY } from '../stage/internetNarration'
+import { SCREEN_ORDER, SCREEN_T, drawScreenBeat } from '../stage/screenScenes'
+import { SCREEN_SCRIPTS, SCREEN_STORY_KEY } from '../stage/screenNarration'
+import { MEMORY_ORDER, MEMORY_T, drawMemoryBeat } from '../stage/memoryScenes'
+import { MEMORY_SCRIPTS, MEMORY_STORY_KEY } from '../stage/memoryNarration'
+import { DIGITAL_PHOTO_GROUPS, INTERNET_PHOTO_GROUPS, MEMORY_PHOTOS, SCREEN_PHOTOS, WIFI_PHOTO_GROUPS } from '../core/digitalPhotos'
 import type { PlantPhotoGroup } from '../core/plantPhotos'
 
 // R09 — 📶 Digital information: Wi-Fi, internet, screens — a 🎬 story demo
 // with the page anatomy of the others (16rem menu · canvas · 18rem
 // story/photos/notes). Eight stories planned (proposal 18); built:
-// 🔢 What "digital" means, 📶 How Wi-Fi works (2026-11-22).
+// 🔢 What "digital" means, 📶 How Wi-Fi works, 🌊 Internet under the ocean,
+// 📺 How a screen works (2026-11-22), 💾 Where a photo is stored (2026-11-23).
 
 const BUTTON_ZONE = 86
 
-export type SignalsJourney = 'digital' | 'wifi'
+export type SignalsJourney = 'digital' | 'wifi' | 'internet' | 'screen' | 'memory'
 
 // the notes, for adults: one scannable sentence per item, key phrase in
 // bold (Paras.tsx)
@@ -100,6 +107,101 @@ const WIFI_BEATS: Record<string, StoryBeat> = {
   far: { id: 'far', group: '🎈 The payoff', icon: '🌳' },
 }
 
+// 🌊 Internet under the ocean
+const INTERNET_HOW: Para[] = [
+  para('🌍', 'Almost all the internet\'s traffic between continents runs through more than 500 cables on the ocean floor,', ' not through satellites (📷).'),
+  para('📦', 'A packet holds about 1,500 bytes,', ' so a phone photo travels as a few thousand packets; each carries the addresses, its number and a check number. A message usually passes 10–20 routers.'),
+  para('✔️', 'The story\'s check number counts the lit lamps;', ' real packets use a cleverer one (a CRC), worked out from every bit, so one wrong bit changes it. A packet that fails the check is asked for again.'),
+  para('🪞', 'Light stays in the glass by total internal reflection:', ' at a slant, the boundary to the slightly different outer glass works like a perfect mirror — the same reason the water\'s surface shines like a mirror seen from below.'),
+  para('🔦', 'The light fades on the way, so every 50–100 km a box on the cable makes it strong again', ' — with the laser\'s own trick: erbium atoms lifted by a pump laser make twin photons (🔦 How a laser makes its light).'),
+  para('⏱️', 'Light in glass travels about 200,000 km per second, two thirds of its speed in empty space;', ' 6,000 km of ocean take about 0.03 s; a blink takes 0.1–0.4 s.'),
+]
+
+const INTERNET_HONEST: Para[] = [
+  para('👻', 'The fibre\'s light is infrared, invisible:', ' it is drawn ghost-pale; a real fibre carries many colors at once, each blinking billions of times a second.'),
+  para('🔢', 'Six packets of one byte stand for thousands of 1,500-byte packets;', ' and the light is drawn hugely slowed.'),
+  para('🧵', 'The light-carrying core is about ten times thinner than a hair;', ' the whole glass thread (0.125 mm) is about a hair\'s width.'),
+  para('🗺️', 'The ocean, the coasts and the routers are drawn close together;', ' the real cable is thousands of kilometres long, and lies up to 8 km deep.'),
+]
+
+const INTERNET_TRUE: Para[] = [
+  para('👑', '1858: the first cable across the Atlantic carried a 98-word message from Queen Victoria to the American president.', ' It took about 16 hours. The cable broke three weeks later.'),
+  para('🦈', 'Most cable breaks today come from ship anchors and fishing nets;', ' sharks have bitten cables, but rarely. Special ships lift the cable and mend it.'),
+]
+
+const INTERNET_BEATS: Record<string, StoryBeat> = {
+  question: { id: 'question', group: '❓ A question', icon: '❓' },
+  packets: { id: 'packets', group: '📦 Packets', icon: '📦' },
+  map: { id: 'map', group: '🗺️ The big picture', icon: '🗺️' },
+  cable: { id: 'cable', group: '🧵 Inside the cable', icon: '🧵' },
+  trick: { id: 'trick', group: '🪞 The light trick', icon: '🪞' },
+  drill: { id: 'drill', group: '🔁 Once more, closer', icon: '🔁' },
+  routers: { id: 'routers', group: '🔀 Routers on the way', icon: '🔀' },
+  broken: { id: 'broken', group: '⚡ A broken packet', icon: '⚡' },
+  blink: { id: 'blink', group: '🎈 The payoff', icon: '👁️' },
+}
+
+// 📺 How a screen works
+const SCREEN_HOW: Para[] = [
+  para('🔲', 'A phone screen has about 3 million pixels, a big TV about 8 million', ' — three tiny lamps each; many screens paint 60 pictures a second, some 120.'),
+  para('💡', 'Two kinds of screens:', ' in OLED each tiny lamp shines by itself; in an LCD a white light shines from behind and tiny shutters in front decide how much passes each color filter.'),
+  para('🪜', 'In an LED, electrons fall across an energy gap in a crystal and give their energy away as photons;', ' the bigger the fall, the bluer the light (red ≈ 2.0, green ≈ 2.3, blue ≈ 2.7 electronvolts).'),
+  para('👁️', 'The eye has three kinds of color catchers (cones), most sensitive to reddish, greenish and bluish light;', ' every color you see is how strongly the three are tickled — so three lamps can fool them into almost any color (the Light lab\'s mixing lamps).'),
+]
+
+const SCREEN_HONEST: Para[] = [
+  para('🟡', 'The screen\'s yellow is red + green;', ' true yellow light (589 nm) is one wave — but it tickles the red and the green catchers the same way, so you can\'t tell them apart.'),
+  para('⚛️', 'The LED\'s fall is drawn like the firework\'s: one atom\'s electron, lifted to a bigger ring, falling back;', ' in a real LED the electron falls across a gap between two energy bands of the whole crystal, not inside one atom.'),
+  para('🐢', 'The repainting is drawn slowed;', ' 60 pictures a second are far too fast to see one by one — that is why films look smooth.'),
+  para('🔢', 'The story\'s screen has 24 × 24 pixels', ' so you can see them; a real one has thousands across.'),
+]
+
+const SCREEN_TRUE: Para[] = [
+  para('💙', 'Red and green LEDs were made in the 1960s; blue took thirty more years.', ' Its inventors — Akasaki, Amano and Nakamura — won the Nobel Prize in 2014: without blue there is no white and no bright screen.'),
+  para('📺', 'The first television pictures (1920s) had about 30 lines;', ' a phone screen today has more than 2,500.'),
+]
+
+const SCREEN_BEATS: Record<string, StoryBeat> = {
+  question: { id: 'question', group: '❓ A question', icon: '❓' },
+  pixel: { id: 'pixel', group: '🔲 Pixels', icon: '🔲' },
+  led: { id: 'led', group: '💡 The LED', icon: '💡' },
+  numbers: { id: 'numbers', group: '🔢 The numbers arrive', icon: '🔢' },
+  mix: { id: 'mix', group: '👁️ Your eye mixes', icon: '👁️' },
+  drill: { id: 'drill', group: '🔁 Once more, closer', icon: '🔁' },
+  film: { id: 'film', group: '🎞️ A film', icon: '🎞️' },
+  journey: { id: 'journey', group: '🎈 The payoff', icon: '💌' },
+}
+
+// 💾 Where a photo is stored
+const MEMORY_HOW: Para[] = [
+  para('🔲', 'This is flash memory: each box is a tiny switch (a transistor) with an extra island of silicon, wrapped in glass about 10 nanometres thick;', ' electrons locked on the island change how easily the switch lets the test current through.'),
+  para('🌀', 'The electrons get through the glass by tunnelling', ' — with a strong enough push, an electron can slip through a wall that is thin enough, one of the strange rules of tiny things.'),
+  para('🏢', 'A phone with 128 GB holds about a trillion bits;', ' today\'s chips stack their boxes in more than 200 floors, and most boxes keep 3 or 4 bits each, by being a quarter, half or three quarters full.'),
+  para('⚡', 'Flash memory is erased block by block, all at once', ' — that is where its name comes from (Masuoka\'s colleague said it reminded him of a camera flash).'),
+  para('💧', 'The fast working memory (RAM) keeps each bit as a tiny charge that leaks away;', ' the phone refills every one of them about every 64 thousandths of a second, and everything is gone when the power goes.'),
+]
+
+const MEMORY_HONEST: Para[] = [
+  para('🔍', 'The boxes are drawn huge and few;', ' a real box holds a few dozen to a few hundred electrons, and is far smaller than a bacterium.'),
+  para('🔄', 'Full = 0 and empty = 1 is how flash memory reads its cells;', ' many boxes hold several bits by how full they are, drawn here as just full or empty.'),
+  para('⏳', 'Ten years is the usual promise, not a hard limit;', ' and a box wears out after thousands of rewrites, so phones spread their writing over all the boxes.'),
+]
+
+const MEMORY_TRUE: Para[] = [
+  para('📸', 'Fujio Masuoka invented flash memory at Toshiba in the 1980s;', ' it was named "flash" because a whole block is erased at once, like a camera flash.'),
+  para('💾', 'Before flash, photos were kept on magnetic tapes and disks', ' — and before that on film, as silver grains changed by light.'),
+]
+
+const MEMORY_BEATS: Record<string, StoryBeat> = {
+  question: { id: 'question', group: '❓ A question', icon: '❓' },
+  chip: { id: 'chip', group: '🔲 The memory chip', icon: '🔲' },
+  push: { id: 'push', group: '⬆️ Locking electrons in', icon: '⬆️' },
+  read: { id: 'read', group: '🔎 Reading a bit', icon: '🔎' },
+  drill: { id: 'drill', group: '🔁 Once more, closer', icon: '🔁' },
+  erase: { id: 'erase', group: '⚡ A flash', icon: '⚡' },
+  years: { id: 'years', group: '🎈 The payoff', icon: '📅' },
+}
+
 /** everything that differs between the stories */
 const JOURNEYS: Record<
   SignalsJourney,
@@ -136,6 +238,39 @@ const JOURNEYS: Record<
     how: WIFI_HOW,
     honest: WIFI_HONEST,
     trueStory: WIFI_TRUE,
+  },
+  internet: {
+    story: { order: INTERNET_ORDER, durations: INTERNET_T, draw: drawInternetBeat },
+    order: INTERNET_ORDER,
+    beats: INTERNET_BEATS,
+    scripts: INTERNET_SCRIPTS,
+    storyKey: INTERNET_STORY_KEY,
+    photos: INTERNET_PHOTO_GROUPS,
+    how: INTERNET_HOW,
+    honest: INTERNET_HONEST,
+    trueStory: INTERNET_TRUE,
+  },
+  screen: {
+    story: { order: SCREEN_ORDER, durations: SCREEN_T, draw: drawScreenBeat },
+    order: SCREEN_ORDER,
+    beats: SCREEN_BEATS,
+    scripts: SCREEN_SCRIPTS,
+    storyKey: SCREEN_STORY_KEY,
+    photos: SCREEN_PHOTOS,
+    how: SCREEN_HOW,
+    honest: SCREEN_HONEST,
+    trueStory: SCREEN_TRUE,
+  },
+  memory: {
+    story: { order: MEMORY_ORDER, durations: MEMORY_T, draw: drawMemoryBeat },
+    order: MEMORY_ORDER,
+    beats: MEMORY_BEATS,
+    scripts: MEMORY_SCRIPTS,
+    storyKey: MEMORY_STORY_KEY,
+    photos: MEMORY_PHOTOS,
+    how: MEMORY_HOW,
+    honest: MEMORY_HONEST,
+    trueStory: MEMORY_TRUE,
   },
 }
 

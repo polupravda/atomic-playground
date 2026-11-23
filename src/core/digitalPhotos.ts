@@ -78,3 +78,88 @@ export const WIFI_PHOTO_GROUPS: PlantPhotoGroup[] = [
     ],
   },
 ]
+
+/** 🌊 Internet under the ocean */
+export const INTERNET_PHOTO_GROUPS: PlantPhotoGroup[] = [
+  {
+    title: 'A sea cable',
+    photos: [
+      {
+        file: 'internet-cable-section.jpg',
+        caption:
+          'A sea cable cut open: plastic outside, steel wires for strength, a copper tube that carries power to the boxes along the way — and in the middle, a few glass threads in jelly. The whole cable is about as thick as a garden hose.',
+        creator: 'Mysid, Wikimedia Commons',
+        license: 'Public domain',
+        source: 'https://commons.wikimedia.org/wiki/File:Submarine_cable_cross-section.svg',
+      },
+    ],
+  },
+  {
+    title: 'The first long sea cables',
+    photos: [
+      {
+        file: 'internet-cable-1871.jpg',
+        caption:
+          'Port Darwin, Australia, 7 November 1871: the telegraph cable from London comes ashore, and the whole town has come to watch. Messages took hours then; today they take a fraction of a second.',
+        creator: 'State Government Photographer (South Australia)',
+        license: 'CC0',
+        source: 'https://commons.wikimedia.org/wiki/File:Landing_of_the_submarine_cable,_Port_Darwin,_7_November_1871(GN01968).jpg',
+      },
+    ],
+  },
+]
+
+/** 📺 How a screen works */
+export const SCREEN_PHOTOS: PlantPhotoGroup[] = [
+  {
+    title: 'A screen, up close',
+    photos: [
+      {
+        file: 'em-pixels.jpg',
+        caption:
+          'A screen photographed very close: every pixel is three tiny lamps — red, green and blue. Every color you have ever seen on a screen was mixed from just these three.',
+        creator: 'Politelyinsulting, Wikimedia Commons',
+        license: 'CC BY-SA 3.0',
+        source: 'https://commons.wikimedia.org/wiki/File:LCD_subpixels.jpg',
+      },
+    ],
+  },
+  {
+    title: 'LEDs',
+    photos: [
+      {
+        file: 'screen-rgb-led.jpg',
+        caption:
+          'A red, a green and a blue LED, big enough to hold. A screen has millions of tiny ones; the blue one was the hardest to invent.',
+        creator: 'PiccoloNamek, Wikimedia Commons',
+        license: 'CC BY-SA 3.0',
+        source: 'https://commons.wikimedia.org/wiki/File:RBG-LED.jpg',
+      },
+    ],
+  },
+]
+
+/** 💾 Where a photo is stored */
+export const MEMORY_PHOTOS: PlantPhotoGroup[] = [
+  {
+    title: 'Memory chips',
+    photos: [
+      {
+        file: 'memory-phone-board.jpg',
+        caption:
+          'Inside a phone, its covers off. The big black chip on the left keeps the photos (the memory chip) and also holds the fast working memory.',
+        creator: 'Raimond Spekking, Wikimedia Commons',
+        license: 'CC BY-SA 4.0',
+        source: 'https://commons.wikimedia.org/wiki/File:LG_E455_Optimus_L5_II_Dual_-_upper_printed_circuit_board-3154.jpg',
+      },
+      {
+        file: 'memory-usb.jpg',
+        caption:
+          'A USB stick, opened: the big black chip is its flash memory — billions of tiny boxes with electrons locked inside.',
+        creator: 'Nrbelex, Wikimedia Commons',
+        license: 'CC BY-SA 3.0',
+        source: 'https://commons.wikimedia.org/wiki/File:USB_flash_drive.JPG',
+      },
+    ],
+  },
+]
