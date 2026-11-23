@@ -36,9 +36,9 @@ points onward.
 | 1 | 🔢 What "digital" means | A drawing, a message and a song are completely different things. How can they all travel the same way? | *Digit* means finger — and a number. Digital means turned into numbers. A computer writes every number with only two digits, 1 and 0, so letters, photos and sounds all become rows of ons and offs. |
 | 2 | 📶 How Wi-Fi works | There is no wire between the tablet and the box in the hall. How does "HI" get across — even through a wall? | The tablet shakes electrons in its antenna to the rhythm of the bits; the wave makes the electrons in the router's antenna shake the same way, and the router reads the bits back. The router is the house's post office: it reads every message's address and sends it on. |
 | 3 | 🌊 Internet under the ocean | Grandma lives across the ocean. How does the drawing get there faster than a blink? | The message is cut into numbered packets with an address. Laser blinks carry their bits through glass threads on the ocean floor, and routers along the way pass each packet on toward the address. A broken packet is simply sent again. |
-| 4 | 📺 How a screen works | Grandma's screen shows the yellow sun. Look very close: there is no yellow anywhere! | A screen is millions of tiny red, green and blue lamps. The photo's numbers set how bright each one shines, 60 times a second, and your eye mixes them: red and green together look yellow. |
-| 5 | 💾 Where a photo is stored | Switch the phone off. Tomorrow the photo is still there. Where did it wait? | Each bit is a tiny box in a memory chip. Electrons pushed into the box stay locked in by glass for years, even without power: full or empty is the bit. |
-| 6 | 🔐 Keeping messages secret | Wi-Fi waves reach the neighbours too. Why can't they read your message? | Before it flies, the message's bits are mixed with a secret key. Only someone with the same key can unmix them — and the two sides can agree on a key while everyone listens. |
+| 4 | 📺 Pixels: how screens work | Grandma's screen shows the yellow sun. Look very close: there is no yellow anywhere! | A screen is millions of tiny red, green and blue lamps. The photo's numbers set how bright each one shines, 60 times a second, and your eye mixes them: red and green together look yellow. |
+| 5 | 💾 Photos in flash memory | Switch the phone off. Tomorrow the photo is still there. Where did it wait? | Each bit is a tiny box in a memory chip. Electrons pushed into the box stay locked in by glass for years, even without power: full or empty is the bit. |
+| 6 | 🔐 Encryption: secret keys | Wi-Fi waves reach the neighbours too. Why can't they read your message? | Before it flies, the message's bits are mixed with a secret key. Only someone with the same key can unmix them — and the two sides can agree on a key while everyone listens. |
 | 7 | 📡 How Morse code works | 180 years ago there was no Wi-Fi. How did a message cross a country in a minute? | A switch, a battery and a long wire: short and long pulses of electricity spelled the letters. The first fast messages were already a code of ons and offs. |
 | 8 | 🛰️ How GPS finds you | The map shows a blue dot exactly where you stand. Nobody told the phone. How does it know? | Satellites with atomic clocks keep sending the exact time. Light's speed never changes, so how late each signal arrives tells the phone how far each satellite is — four of them pin down the spot. |
 
@@ -326,7 +326,7 @@ letter H and its eight lamps; later the yellow pixel.
 
 ---
 
-## Story 4 — 📺 How a screen works
+## Story 4 — 📺 Pixels: how screens work
 
 > **Built 2026-11-22** (roadmap 51d, awaiting manual test):
 > `stage/screenScenes.ts` (beats question · pixel · led · numbers · mix ·
@@ -387,7 +387,7 @@ letter H and its eight lamps; later the yellow pixel.
 
 ---
 
-## Story 5 — 💾 Where a photo is stored
+## Story 5 — 💾 Photos in flash memory
 
 > **Built 2026-11-23** (roadmap 51e, awaiting manual test):
 > `stage/memoryScenes.ts` (beats question · chip · push · read · drill ·
@@ -444,7 +444,67 @@ one bit of the photo.
 
 ---
 
-## Story 6 — 🔐 Keeping messages secret
+## Story 6 — 🔐 Encryption: secret keys
+
+> **Built 2026-11-23** (roadmap 51f, awaiting manual test):
+> `stage/secretScenes.ts` (beats question · key · mix · gibberish · fly ·
+> unmix · paint · pour · brown · drill · padlock), `stage/secretNarration.ts` (EN · DE · RU, audio
+> `public/narration/secret/`), `core/secret.ts` (+ tests: HI mixed with
+> the key bytes 00011010 · 00001110 really reads RG; the same key flips it
+> back; 2¹²⁸ keys), 2 photos (Caesar's shift, an Enigma machine). As built,
+> changed from the table below:
+> - the antenna is explained where it appears ("a piece of metal that
+>   catches radio waves"), bouncing in an amber ring as it is named, then
+>   glowing as the waves reach it (Elena, 2026-11-23: not yet met in this
+>   story);
+> - **42 science pieces**; the neighbours' house is ringed as named, the
+>   key bounces as named; "where the key has a one, the bit flips" — the
+>   key's ones glow and those bits turn over as they pass; "where a zero,
+>   it stays" — the zeros glow;
+> - for small kids the mix is broken down further (Elena, 2026-11-23):
+>   "So the letter H has turned into the letter R!", then I → G; and a new
+>   **gibberish** beat — a funny, exaggerated example read aloud: "I miss
+>   you" → **BLOB ZONKY** through the very same machine as H → R (Elena,
+>   2026-11-23: "kids must see it goes through the same encryption
+>   process"): each letter leaves the message bubble (ringed, then pale),
+>   enters the machine, shows its 8 bits, its own key byte slides in under
+>   them, the bits pass the key flipping where it has a one, the new letter
+>   pops out and hops into its slot below — the first letter slowly
+>   (1.4 s), the other nine fast (0.27 s each, on the idle clock so the run
+>   finishes while piece 3 is said); then the jumble wobbles;
+>   then a **sneaky hacker** (Elena, 2026-11-23: kids love detective
+>   stories, "bad thieves don't get our data") — a cartoon in a hood, a
+>   bandit mask and a laptop — is named and explained ("breaks into other
+>   people's computers to steal their messages ... Hacker."), ringed and
+>   listening; grabs a copy, grinning; reads only BLOB ZONKY — "?", the key
+>   ✕, sulks — "Bad luck, hacker!" — and slinks off. The drill-in's
+>   eavesdropper is the same hacker.
+>   Pushed back and noted in ⚖️: real encrypted messages look like random
+>   symbols (BLOB ZONKY is a real result, with a key picked to make
+>   letters); a thief still sees that a message was sent, to whom and how
+>   long — only what it says is hidden, and only with a long secret key;
+> - a real jumble: **HI → RG** (one key byte per letter), shown, said
+>   ("the letters R and G"), caught by the neighbours ✕, flipped back by
+>   Grandma's same key;
+> - the paint trick broken down step by step over three beats (Elena,
+>   2026-11-23), simple colors only (yellow, red, blue → orange, green,
+>   brown). **paint**: the hacker might be listening; said honestly that
+>   how real computers do it is hard to explain, but a paint trick works
+>   very similarly (a tangle of numbers is crossed out, three paint pots
+>   pop in); a yellow bucket on each side — the hacker sees it too (a
+>   copy). **pour**: the boy secretly pours red into his bucket (it turns
+>   orange), Grandma blue (green), each in their own house; the rest of
+>   each secret color is put away in a cupboard; the buckets swap over the
+>   hacker, who keeps copies. **brown**: each takes the hidden color out
+>   and pours it into the bucket they got → brown; "each one now has
+>   yellow, red, and blue in it" — the buckets pull apart into three
+>   layers, then mix back; brown = brown, a key for each; the hacker only
+>   saw yellow, orange and green — shakes the copies, a thought bubble
+>   (yellow known, two "?") is crossed out, "Bad luck, hacker!", slinks
+>   off; a look after;
+> - the end: the padlock in a phone's address bar, the Wi-Fi password, a
+>   real 128-bit key and its 340,282,366,920,938,463,463,374,607,431,768,
+>   211,456 possibilities; it dims.
 
 **New words (2):** **key** (a secret row of bits) · **encryption**.
 **Hero:** the message HI's bits.

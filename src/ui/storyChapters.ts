@@ -98,6 +98,11 @@ const CHAPTER_TEXT = {
   'Locking electrons in': { de: 'Elektronen einsperren', ru: 'Запираем электроны' },
   'Reading a bit': { de: 'Ein Bit lesen', ru: 'Читаем бит' },
   'A flash': { de: 'Ein Blitz', ru: 'Вспышка' },
+  // 🔐 keeping messages secret
+  'The key': { de: 'Der Schlüssel', ru: 'Ключ' },
+  Mixing: { de: 'Mischen', ru: 'Смешивание' },
+  Unmixing: { de: 'Entmischen', ru: 'Обратно' },
+  'The paint trick': { de: 'Der Farbtrick', ru: 'Фокус с красками' },
   // every story's ending
   'The payoff': { de: 'Die Auflösung', ru: 'Разгадка' },
 } as const satisfies Record<string, Record<Exclude<NarrationLang, 'en'>, string>>

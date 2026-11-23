@@ -42,6 +42,7 @@ import { WIFI_SCRIPTS, WIFI_STORY_KEY } from '../../src/stage/wifiNarration'
 import { INTERNET_SCRIPTS, INTERNET_STORY_KEY } from '../../src/stage/internetNarration'
 import { SCREEN_SCRIPTS, SCREEN_STORY_KEY } from '../../src/stage/screenNarration'
 import { MEMORY_SCRIPTS, MEMORY_STORY_KEY } from '../../src/stage/memoryNarration'
+import { SECRET_SCRIPTS, SECRET_STORY_KEY } from '../../src/stage/secretNarration'
 import { CRYSTAL_INTRO_KEY, CRYSTAL_INTRO_SCRIPTS } from '../../src/stage/crystalIntros'
 import { LIGHT_INTRO_KEY, LIGHT_INTRO_SCRIPTS } from '../../src/stage/lightIntros'
 import { FIREWORK_SCRIPTS } from '../../src/stage/fireworkNarration'
@@ -519,6 +520,7 @@ const STORIES: Story[] = [
   { key: INTERNET_STORY_KEY, scripts: INTERNET_SCRIPTS },
   { key: SCREEN_STORY_KEY, scripts: SCREEN_SCRIPTS },
   { key: MEMORY_STORY_KEY, scripts: MEMORY_SCRIPTS },
+  { key: SECRET_STORY_KEY, scripts: SECRET_SCRIPTS },
   // 🧊 Crystal lab: one short intro per scene (not a story)
   { key: CRYSTAL_INTRO_KEY, scripts: CRYSTAL_INTRO_SCRIPTS },
   // 💡 Light lab: a scene's intro + its spoken results (🔬 microscopes)

@@ -163,3 +163,28 @@ export const MEMORY_PHOTOS: PlantPhotoGroup[] = [
     ],
   },
 ]
+
+/** 🔐 Keeping messages secret */
+export const SECRET_PHOTOS: PlantPhotoGroup[] = [
+  {
+    title: 'Secret codes long ago',
+    photos: [
+      {
+        file: 'secret-caesar.jpg',
+        caption:
+          "Julius Caesar's trick, 2,000 years ago: every letter moves three places along the alphabet — here E becomes B. Easy to use, and easy to break.",
+        creator: 'Matt Crypto, Wikimedia Commons',
+        license: 'Public domain',
+        source: 'https://commons.wikimedia.org/wiki/File:Caesar_cipher_left_shift_of_3.svg',
+      },
+      {
+        file: 'secret-enigma.jpg',
+        caption:
+          'An Enigma machine (1930s): its turning wheels mixed every letter with a key that changed with each key press. Alan Turing and his team learned to break it.',
+        creator: 'Alessandro Nassiri, Museo scienza e tecnologia Milano',
+        license: 'CC BY-SA 4.0',
+        source: 'https://commons.wikimedia.org/wiki/File:Enigma_(crittografia)_-_Museo_scienza_e_tecnologia_Milano.jpg',
+      },
+    ],
+  },
+]

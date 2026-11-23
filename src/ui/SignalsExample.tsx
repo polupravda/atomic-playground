@@ -22,18 +22,21 @@ import { SCREEN_ORDER, SCREEN_T, drawScreenBeat } from '../stage/screenScenes'
 import { SCREEN_SCRIPTS, SCREEN_STORY_KEY } from '../stage/screenNarration'
 import { MEMORY_ORDER, MEMORY_T, drawMemoryBeat } from '../stage/memoryScenes'
 import { MEMORY_SCRIPTS, MEMORY_STORY_KEY } from '../stage/memoryNarration'
-import { DIGITAL_PHOTO_GROUPS, INTERNET_PHOTO_GROUPS, MEMORY_PHOTOS, SCREEN_PHOTOS, WIFI_PHOTO_GROUPS } from '../core/digitalPhotos'
+import { SECRET_ORDER, SECRET_T, drawSecretBeat } from '../stage/secretScenes'
+import { SECRET_SCRIPTS, SECRET_STORY_KEY } from '../stage/secretNarration'
+import { DIGITAL_PHOTO_GROUPS, INTERNET_PHOTO_GROUPS, MEMORY_PHOTOS, SCREEN_PHOTOS, SECRET_PHOTOS, WIFI_PHOTO_GROUPS } from '../core/digitalPhotos'
 import type { PlantPhotoGroup } from '../core/plantPhotos'
 
 // R09 — 📶 Digital information: Wi-Fi, internet, screens — a 🎬 story demo
 // with the page anatomy of the others (16rem menu · canvas · 18rem
 // story/photos/notes). Eight stories planned (proposal 18); built:
 // 🔢 What "digital" means, 📶 How Wi-Fi works, 🌊 Internet under the ocean,
-// 📺 How a screen works (2026-11-22), 💾 Where a photo is stored (2026-11-23).
+// 📺 Pixels: how screens work (2026-11-22), 💾 Photos in flash memory,
+// 🔐 Encryption: secret keys (2026-11-23).
 
 const BUTTON_ZONE = 86
 
-export type SignalsJourney = 'digital' | 'wifi' | 'internet' | 'screen' | 'memory'
+export type SignalsJourney = 'digital' | 'wifi' | 'internet' | 'screen' | 'memory' | 'secret'
 
 // the notes, for adults: one scannable sentence per item, key phrase in
 // bold (Paras.tsx)
@@ -141,7 +144,7 @@ const INTERNET_BEATS: Record<string, StoryBeat> = {
   blink: { id: 'blink', group: '🎈 The payoff', icon: '👁️' },
 }
 
-// 📺 How a screen works
+// 📺 Pixels: how screens work
 const SCREEN_HOW: Para[] = [
   para('🔲', 'A phone screen has about 3 million pixels, a big TV about 8 million', ' — three tiny lamps each; many screens paint 60 pictures a second, some 120.'),
   para('💡', 'Two kinds of screens:', ' in OLED each tiny lamp shines by itself; in an LCD a white light shines from behind and tiny shutters in front decide how much passes each color filter.'),
@@ -172,7 +175,7 @@ const SCREEN_BEATS: Record<string, StoryBeat> = {
   journey: { id: 'journey', group: '🎈 The payoff', icon: '💌' },
 }
 
-// 💾 Where a photo is stored
+// 💾 Photos in flash memory
 const MEMORY_HOW: Para[] = [
   para('🔲', 'This is flash memory: each box is a tiny switch (a transistor) with an extra island of silicon, wrapped in glass about 10 nanometres thick;', ' electrons locked on the island change how easily the switch lets the test current through.'),
   para('🌀', 'The electrons get through the glass by tunnelling', ' — with a strong enough push, an electron can slip through a wall that is thin enough, one of the strange rules of tiny things.'),
@@ -200,6 +203,43 @@ const MEMORY_BEATS: Record<string, StoryBeat> = {
   drill: { id: 'drill', group: '🔁 Once more, closer', icon: '🔁' },
   erase: { id: 'erase', group: '⚡ A flash', icon: '⚡' },
   years: { id: 'years', group: '🎈 The payoff', icon: '📅' },
+}
+
+// 🔐 Encryption: secret keys
+const SECRET_HOW: Para[] = [
+  para('🔀', 'Flipping the bits where the key has a one is the "exclusive or" mix;', ' a key as long as the message, picked at random and used only once, cannot be broken at all (the one-time pad).'),
+  para('🔐', 'Real systems (AES) mix in many rounds with a 128- or 256-bit key;', ' there are 2¹²⁸ ≈ 340 trillion trillion trillion 128-bit keys — trying them all would take far longer than the age of the universe.'),
+  para('🎨', 'The paint trick is the Diffie–Hellman key exchange (1976):', ' each side keeps a secret number and sends a mix that is easy to make and practically impossible to unmix — real computers use huge numbers instead of paint.'),
+  para('🔒', 'The padlock in a browser means the page talks to you over such a mixed (encrypted) line;', ' a Wi-Fi password is the key the router and your devices start from (WPA2 / WPA3).'),
+]
+
+const SECRET_HONEST: Para[] = [
+  para('🔢', 'The story uses one key byte per letter (HI → RG);', ' real keys are much longer, and real mixing is more than one flip.'),
+  para('🎨', 'Paint stands for the maths:', ' it shows the idea — a mix anyone can see, a result only the two sides can make.'),
+  para('📡', 'Over the internet the message goes by cable, not only by radio;', ' anyone along the way could catch it — that is why it is mixed before it leaves.'),
+  para('🕵️', 'Real hackers rarely break a good key;', ' far more often they trick people into giving away a password — so a password is never told to anyone.'),
+  para('🪣', 'In the story the leftover secret paint is put in a cupboard;', ' in the real exchange each side keeps a secret number and uses it twice, just like the paint.'),
+  para('🤪', 'BLOB ZONKY is real but picked:', ' with the right key any jumble of the same length is possible; this key was chosen so it can be read aloud — real encrypted messages look like random symbols, most of them not even letters.'),
+  para('👀', 'A thief who catches a mixed message learns nothing of what it says', ' — but can still see that a message was sent, to whom, and how long it is; and only if the key is long, random and kept secret (Caesar\'s short code was easy to break).'),
+]
+
+const SECRET_TRUE: Para[] = [
+  para('🏛️', 'Julius Caesar wrote secret letters by moving every letter three places along the alphabet (📷).', ' It is easy to break — there are only 25 ways to move.'),
+  para('⚙️', 'In World War II the German army used the Enigma machine (📷);', ' Alan Turing and his team at Bletchley Park learned to break its codes.'),
+]
+
+const SECRET_BEATS: Record<string, StoryBeat> = {
+  question: { id: 'question', group: '❓ A question', icon: '❓' },
+  key: { id: 'key', group: '🔑 The key', icon: '🔑' },
+  mix: { id: 'mix', group: '🔀 Mixing', icon: '🔀' },
+  gibberish: { id: 'gibberish', group: '🔀 Mixing', icon: '🤪' },
+  fly: { id: 'fly', group: '🔀 Mixing', icon: '📡' },
+  unmix: { id: 'unmix', group: '🔓 Unmixing', icon: '🔓' },
+  paint: { id: 'paint', group: '🎨 The paint trick', icon: '🎨' },
+  pour: { id: 'pour', group: '🎨 The paint trick', icon: '🪣' },
+  brown: { id: 'brown', group: '🎨 The paint trick', icon: '🟫' },
+  drill: { id: 'drill', group: '🔁 Once more, closer', icon: '🔁' },
+  padlock: { id: 'padlock', group: '🎈 The payoff', icon: '🔒' },
 }
 
 /** everything that differs between the stories */
@@ -271,6 +311,17 @@ const JOURNEYS: Record<
     how: MEMORY_HOW,
     honest: MEMORY_HONEST,
     trueStory: MEMORY_TRUE,
+  },
+  secret: {
+    story: { order: SECRET_ORDER, durations: SECRET_T, draw: drawSecretBeat },
+    order: SECRET_ORDER,
+    beats: SECRET_BEATS,
+    scripts: SECRET_SCRIPTS,
+    storyKey: SECRET_STORY_KEY,
+    photos: SECRET_PHOTOS,
+    how: SECRET_HOW,
+    honest: SECRET_HONEST,
+    trueStory: SECRET_TRUE,
   },
 }
 

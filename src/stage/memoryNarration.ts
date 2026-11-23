@@ -1,6 +1,6 @@
 import { translated } from './narrationScript'
 
-// R09 💾 Where a photo is stored — the narration script, one line per 📖
+// R09 💾 Photos in flash memory — the narration script, one line per 📖
 // story beat (keys = MEMORY_ORDER in memoryScenes.ts), EN · DE · RU
 // (translations retell the story under the same rules; pacing marks copied
 // from English). Story design: docs/how-things-work/18-proposal-digital-

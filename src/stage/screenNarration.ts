@@ -1,6 +1,6 @@
 import { translated } from './narrationScript'
 
-// R09 📺 How a screen works — the narration script, one line per 📖 story
+// R09 📺 Pixels: how screens work — the narration script, one line per 📖 story
 // beat (keys = SCREEN_ORDER in screenScenes.ts), EN · DE · RU
 // (translations retell the story under the same rules; pacing marks copied
 // from English). Story design: docs/how-things-work/18-proposal-digital-

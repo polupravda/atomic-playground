@@ -6,7 +6,7 @@ import { BRIGHT, K, arrow, big, drawingCard, faded, lamp, stars, tween } from '.
 import { cross } from './wifiScenes'
 import { STORED_BITS, STORED_VALUE, boxesFor } from '../core/memory'
 
-// R09 — 💾 Where a photo is stored (proposal: docs/how-things-work/18-
+// R09 — 💾 Photos in flash memory (proposal: docs/how-things-work/18-
 // proposal-digital-information.md, story 5). One question — the phone is
 // off all night, without any electricity: where did the photo wait? — one
 // aha — each bit is a tiny box in a memory chip; a strong push sends

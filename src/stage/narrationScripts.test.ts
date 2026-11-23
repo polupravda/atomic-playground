@@ -23,6 +23,8 @@ import { SCREEN_SCRIPTS, SCREEN_STORY_KEY } from './screenNarration'
 import { SCREEN_ORDER } from './screenScenes'
 import { MEMORY_SCRIPTS, MEMORY_STORY_KEY } from './memoryNarration'
 import { MEMORY_ORDER } from './memoryScenes'
+import { SECRET_SCRIPTS, SECRET_STORY_KEY } from './secretNarration'
+import { SECRET_ORDER } from './secretScenes'
 import { STARDUST_SCRIPTS } from './stardustNarration'
 import { WATCH_BREAK_S, lineMarks, parseNarrationLine } from './narrationScript'
 
@@ -58,6 +60,7 @@ const ORDERS: Record<string, string[]> = {
   [INTERNET_STORY_KEY]: [...INTERNET_ORDER],
   [SCREEN_STORY_KEY]: [...SCREEN_ORDER],
   [MEMORY_STORY_KEY]: [...MEMORY_ORDER],
+  [SECRET_STORY_KEY]: [...SECRET_ORDER],
 }
 
 const SCRIPTS: Record<string, Record<string, string>> = {
@@ -77,6 +80,7 @@ const SCRIPTS: Record<string, Record<string, string>> = {
   [INTERNET_STORY_KEY]: INTERNET_SCRIPTS.en,
   [SCREEN_STORY_KEY]: SCREEN_SCRIPTS.en,
   [MEMORY_STORY_KEY]: MEMORY_SCRIPTS.en,
+  [SECRET_STORY_KEY]: SECRET_SCRIPTS.en,
 }
 
 /** every story's scripts in every language (EN is SCRIPTS above) */
@@ -97,6 +101,7 @@ const ALL_LANGS: Record<string, Partial<Record<'en' | 'de' | 'ru', Record<string
   [INTERNET_STORY_KEY]: INTERNET_SCRIPTS,
   [SCREEN_STORY_KEY]: SCREEN_SCRIPTS,
   [MEMORY_STORY_KEY]: MEMORY_SCRIPTS,
+  [SECRET_STORY_KEY]: SECRET_SCRIPTS,
 }
 
 describe('the DE and RU translations (bombs, firework, Sun)', () => {

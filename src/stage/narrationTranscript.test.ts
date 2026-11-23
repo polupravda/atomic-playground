@@ -13,6 +13,7 @@ import { WIFI_SCRIPTS, WIFI_STORY_KEY } from './wifiNarration'
 import { INTERNET_SCRIPTS, INTERNET_STORY_KEY } from './internetNarration'
 import { SCREEN_SCRIPTS, SCREEN_STORY_KEY } from './screenNarration'
 import { MEMORY_SCRIPTS, MEMORY_STORY_KEY } from './memoryNarration'
+import { SECRET_SCRIPTS, SECRET_STORY_KEY } from './secretNarration'
 import { STARDUST_SCRIPTS } from './stardustNarration'
 import { BOMB_MODES as MODES, bombStoryKey } from './bombNarration'
 import { LINE_GAP_S, WATCH_BREAK_S, displayPiece, parseNarrationLine, pieceLanding, splitSentences } from './narrationScript'
@@ -126,6 +127,7 @@ const STORIES: Array<[string, Partial<Record<'en' | 'de' | 'ru', Record<string, 
   [INTERNET_STORY_KEY, INTERNET_SCRIPTS],
   [SCREEN_STORY_KEY, SCREEN_SCRIPTS],
   [MEMORY_STORY_KEY, MEMORY_SCRIPTS],
+  [SECRET_STORY_KEY, SECRET_SCRIPTS],
   ['stardust', STARDUST_SCRIPTS],
 ]
 

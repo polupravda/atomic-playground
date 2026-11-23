@@ -7,7 +7,7 @@ import { BRIGHT, K, arrow, big, drawingCard, drawingRGB, faded, house, lamp, rgb
 import { router, tablet } from './wifiScenes'
 import { LED_NM, PAPER_RGB, PHONE_LAMPS, PHONE_PIXELS, SUN_RGB, YELLOW_NM, lampLevel } from '../core/screen'
 
-// R09 — 📺 How a screen works (proposal: docs/how-things-work/18-proposal-
+// R09 — 📺 Pixels: how screens work (proposal: docs/how-things-work/18-proposal-
 // digital-information.md, story 4). One question — Grandma's screen shows
 // the yellow sun, but up close there is no yellow lamp anywhere: where does
 // the yellow come from? — one aha — a screen is millions of tiny red, green
